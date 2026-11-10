@@ -1,0 +1,68 @@
+# tantra: production stack for the Tantra Content Engine on the Oracle VM.
+#
+# Lives in /opt/tantra on the VM next to a .env written once by setup.sh.
+# No ports are published: the only way in is the Cloudflare Tunnel connector
+# (cloudflared), which dials out to Cloudflare. SSH stays on the VM as normal.
+#
+#   docker compose pull && docker compose up -d     # deploy or update
+#   docker compose logs -f app                      # app logs
+
+name: tantra
+
+services:
+  app:
+    image: ghcr.io/adisuja/tantra-content-engine:${TANTRA_IMAGE_TAG:-latest}
+    container_name: tantra-app
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - storage:/var/www/html/storage/app
+    depends_on:
+      pgsql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  pgsql:
+    image: postgres:16-alpine
+    container_name: tantra-pgsql
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: tantra-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: tantra-cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN}
+    depends_on:
+      - app
+
+volumes:
+  pgdata:
+  redisdata:
+  storage:

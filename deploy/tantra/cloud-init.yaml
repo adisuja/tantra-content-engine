@@ -1,0 +1,18 @@
+#cloud-config
+# tantra: paste this into Oracle's "Initialization script" box when creating the VM.
+# It installs Docker and Compose, and puts setup.sh in /opt/tantra. It holds no
+# secrets: setup.sh asks for the tunnel token and generates everything else on the VM.
+package_update: true
+packages:
+  - docker.io
+  - docker-compose-v2
+  - curl
+  - openssl
+runcmd:
+  - systemctl enable --now docker
+  - usermod -aG docker ubuntu
+  - mkdir -p /opt/tantra
+  - curl -fsSL https://raw.githubusercontent.com/adisuja/tantra-content-engine/main/deploy/tantra/setup.sh -o /opt/tantra/setup.sh
+  - chmod 700 /opt/tantra/setup.sh
+  - timedatectl set-timezone UTC
+  - touch /opt/tantra/.cloud-init-done
