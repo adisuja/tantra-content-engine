@@ -15,6 +15,18 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    # tantra: ubuntu-latest is now Ubuntu 26.04, whose PHP reads the system
+    # tzdata, and the legacy zone names (Asia/Calcutta, Europe/Kiev) moved to
+    # tzdata-legacy. Without it Timezone::normalize sees them as unknown and
+    # UserTimezoneTest fails. Production is unaffected: the Alpine image uses
+    # PHP's bundled timezonedb.
+    - name: Install legacy time zone names
+      shell: bash
+      run: |
+        if ! dpkg -s tzdata-legacy >/dev/null 2>&1; then
+          sudo apt-get update -qq && sudo apt-get install -y -qq tzdata-legacy
+        fi
+
     - name: Setup PHP
       uses: shivammathur/setup-php@v2
       with:
