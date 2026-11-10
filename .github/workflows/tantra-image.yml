@@ -1,0 +1,156 @@
+# tantra: builds the Tantra Content Engine image and publishes it to GHCR.
+#
+# Runs on every push to main (and by hand). amd64 and arm64 build on native
+# runners (free for public repos), then merge into one multi-arch manifest:
+#   ghcr.io/adisuja/tantra-content-engine:<sha>  and  :latest
+#
+# Upstream's release-docker.yml is left untouched so upstream merges stay clean;
+# it only fires on v* tags, which this fork does not push (ours are tantra-v*).
+#
+# The Reverb client settings are baked into the JS bundle at build time. The app
+# key is public by design (it ships in the browser bundle); REVERB_APP_SECRET is
+# the secret and lives only in the server env. REVERB_APP_KEY on the server must
+# equal VITE_REVERB_APP_KEY below.
+
+name: Tantra image
+
+on:
+  push:
+    branches: [main]
+    tags: ['tantra-v*']
+  workflow_dispatch:
+
+concurrency:
+  group: tantra-image-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: adisuja/tantra-content-engine
+  VITE_APP_NAME: Tantra Content Engine
+  VITE_REVERB_APP_KEY: tantraksw2eiq3uobd69194mqv
+  VITE_REVERB_HOST: content.usetantra.com
+  VITE_REVERB_PORT: '443'
+  VITE_REVERB_SCHEME: https
+
+jobs:
+  build:
+    name: Build (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Prepare platform slug
+        run: echo "PLATFORM_PAIR=${platform//\//-}" >> "$GITHUB_ENV"
+        env:
+          platform: ${{ matrix.platform }}
+
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Docker metadata (labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          labels: |
+            org.opencontainers.image.title=Tantra Content Engine
+            org.opencontainers.image.licenses=AGPL-3.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          target: production
+          platforms: ${{ matrix.platform }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VITE_APP_NAME=${{ env.VITE_APP_NAME }}
+            VITE_REVERB_APP_KEY=${{ env.VITE_REVERB_APP_KEY }}
+            VITE_REVERB_HOST=${{ env.VITE_REVERB_HOST }}
+            VITE_REVERB_PORT=${{ env.VITE_REVERB_PORT }}
+            VITE_REVERB_SCHEME=${{ env.VITE_REVERB_SCHEME }}
+            VITE_POSTHOG_ENABLED=false
+          cache-from: type=gha,scope=tantra-${{ env.PLATFORM_PAIR }}
+          cache-to: type=gha,mode=max,scope=tantra-${{ env.PLATFORM_PAIR }}
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
+
+      - name: Export digest
+        run: |
+          mkdir -p "${{ runner.temp }}/digests"
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${{ runner.temp }}/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v7
+        with:
+          name: digests-${{ env.PLATFORM_PAIR }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    name: Merge multi-arch manifest
+    runs-on: ubuntu-latest
+    needs: [build]
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v7
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker metadata (tags)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,format=long,prefix=
+            type=ref,event=tag
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create and push manifest list
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          docker buildx imagetools create \
+            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+
+      - name: Inspect published image
+        run: docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
