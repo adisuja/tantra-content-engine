@@ -1,0 +1,13 @@
+Tantra Content Engine
+
+This is a modified version of TryPost (https://github.com/trypostit/trypost),
+forked at tag v2.0.1. TryPost is copyright its authors and is licensed under the
+GNU Affero General Public License v3.0. See LICENSE.md.
+
+Our modifications are released under the same licence. The full source of the
+version running at https://content.usetantra.com is published at
+https://github.com/adisuja/tantra-content-engine.
+
+Tantra code lives in app/Tantra, database/migrations/tantra,
+resources/js/pages/tantra, resources/js/components/tantra and lang/*/tantra.php.
+Small changes to upstream files are marked with a "tantra:" comment.
