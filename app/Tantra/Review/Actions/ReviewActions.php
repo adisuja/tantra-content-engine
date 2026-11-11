@@ -11,6 +11,8 @@ use App\Enums\Post\Status as PostStatus;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
+use App\Tantra\Manual\ManualTask;
+use App\Tantra\Manual\ManualTasks;
 use App\Tantra\Review\Enums\EventKind;
 use App\Tantra\Review\Enums\ReviewStatus;
 use App\Tantra\Review\Models\ReviewItem;
@@ -55,8 +57,13 @@ final class ReviewActions
                 throw ValidationException::withMessages(['review' => 'Connect your LinkedIn under Channels first, then approve again.']);
             }
             self::settle($item, $user, ReviewStatus::Approved, EventKind::Approve, $note, ['manual' => true]);
+            $task = ManualTasks::createFor($item);
 
-            return ['status' => ReviewStatus::Approved->value, 'scheduled_at' => null, 'slot_fallback' => false, 'message' => 'Approved. It is posted by hand at its time.'];
+            $when = $task->due_at
+                ? 'It is yours to post by hand on '.$task->due_at->setTimezone(self::zone($item, null))->format('D j M H:i').'.'
+                : 'It is yours to post by hand once its LinkedIn post is scheduled.';
+
+            return ['status' => ReviewStatus::Approved->value, 'scheduled_at' => null, 'slot_fallback' => false, 'message' => 'Approved. '.$when];
         }
 
         $posts = $item->posts();
@@ -115,6 +122,8 @@ final class ReviewActions
                 UpdatePost::execute($item->workspace, $post, ['status' => PostStatus::Draft->value, 'scheduled_at' => null], $user);
             }
         }
+
+        ManualTask::query()->where('review_item_id', $item->id)->delete();
 
         $item->slot_fallback = false;
         $item->approved_by = null;
@@ -204,11 +213,11 @@ final class ReviewActions
         return [$free, true];
     }
 
-    private static function zone(ReviewItem $item, SocialAccount $channel): string
+    private static function zone(ReviewItem $item, ?SocialAccount $channel): string
     {
         return $item->timezone
             ?? WorkspaceSettings::query()->find($item->workspace_id)?->timezone
-            ?? $channel->timezone
+            ?? $channel?->timezone
             ?? 'UTC';
     }
 

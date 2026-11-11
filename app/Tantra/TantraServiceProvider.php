@@ -14,12 +14,15 @@ use App\Tantra\Console\MapProfileCommand;
 use App\Tantra\Console\ZernioConnectCommand;
 use App\Tantra\Http\Controllers\Web\ReviewPageController;
 use App\Tantra\Http\Middleware\EnsureOwnerToken;
+use App\Tantra\Manual\ManualTask;
+use App\Tantra\Manual\ManualTasks;
 use App\Tantra\Ops\LeanHorizon;
 use App\Tantra\Review\Actions\DraftMaker;
 use App\Tantra\Review\Listeners\RecordComposerEdit;
 use App\Tantra\Review\Models\Batch;
 use App\Tantra\Review\ReviewChips;
 use App\Tantra\Review\ReviewGate;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Broadcast;
@@ -64,9 +67,16 @@ class TantraServiceProvider extends ServiceProvider
         // The sidebar's Review badge: posts waiting for this user's approval.
         Inertia::share('tantraReview', fn (): ?array => Auth::user() === null ? null : [
             'waiting' => ReviewGate::waitingCount(Auth::user()),
+            'tasks_open' => ManualTask::query()->where('owner_user_id', Auth::id())->whereIn('status', ['waiting', 'due'])->count(),
+            'tasks_due' => ManualTask::query()->where('owner_user_id', Auth::id())->where('status', 'due')->count(),
         ]);
 
-        if ($this->app->runningInConsole()) {
+        // Manual tasks (X, personal polls): time them, mark due, expire (PRD 12).
+        $this->callAfterResolving(Schedule::class, function (Schedule $schedule): void {
+            $schedule->call(fn () => ManualTasks::tick())->everyFiveMinutes()->name('tantra:manual-tasks')->withoutOverlapping();
+        });
+
+                if ($this->app->runningInConsole()) {
             $this->commands([CreateOwnerCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class]);
         }
 

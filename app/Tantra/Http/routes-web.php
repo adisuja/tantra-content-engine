@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Middleware\App\EnsureAccountReady;
 use App\Http\Middleware\App\EnsureHasWorkspace;
 use App\Tantra\Http\Controllers\Web\JoinController;
+use App\Tantra\Http\Controllers\Web\ManualTaskController;
 use App\Tantra\Http\Controllers\Web\ReviewItemActionController;
 use App\Tantra\Http\Controllers\Web\ReviewPageController;
 use Illuminate\Support\Facades\Route;
@@ -27,6 +28,18 @@ Route::middleware(['web', 'auth'])
             Route::post('/comments', [ReviewItemActionController::class, 'comment'])->name('comment');
             Route::post('/sign-off', [ReviewItemActionController::class, 'signOff'])->name('sign-off');
         });
+    });
+
+// tantra: posts published by hand (PRD 12).
+Route::middleware(['web', 'auth'])
+    ->prefix('tantra/tasks')
+    ->name('tantra.tasks.')
+    ->group(function (): void {
+        Route::get('/', [ManualTaskController::class, 'index'])
+            ->middleware([EnsureAccountReady::class, EnsureHasWorkspace::class])
+            ->name('index');
+        Route::post('/{task}/posted', [ManualTaskController::class, 'posted'])->whereUuid('task')->name('posted');
+        Route::post('/{task}/skip', [ManualTaskController::class, 'skip'])->whereUuid('task')->name('skip');
     });
 
 // tantra: a teammate's welcome link (signed, 14 days) opens the set-password page.

@@ -58,3 +58,36 @@ export async function sendReviewAction(
         return { ok: false, message: '' };
     }
 }
+
+/** POST JSON to one of the Engine's own endpoints, with the session's CSRF token. */
+export async function postJson(
+    url: string,
+    body: Record<string, unknown> = {},
+): Promise<ReviewActionResult> {
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-XSRF-TOKEN': xsrfToken(),
+            },
+            body: JSON.stringify(body),
+        });
+        const data = (await response.json().catch(() => ({}))) as {
+            message?: string;
+            errors?: Record<string, string[]>;
+        };
+        const firstError = data.errors
+            ? Object.values(data.errors).flat()[0]
+            : undefined;
+
+        return response.ok
+            ? { ok: true, message: data.message ?? '' }
+            : { ok: false, message: firstError ?? data.message ?? '' };
+    } catch {
+        return { ok: false, message: '' };
+    }
+}

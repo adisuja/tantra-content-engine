@@ -4,6 +4,7 @@ import {
     IconBulb,
     IconCalendarEvent,
     IconEye, // tantra:
+    IconHandClick, // tantra:
     IconTrendingUp,
     IconFileText,
     IconLayoutGrid,
@@ -74,11 +75,14 @@ const scheduledPostsCount = computed(() =>
 );
 
 // tantra: posts waiting for this user's approval in the review studio.
-const tantraReviewWaiting = computed(
+const tantraReview = computed(
     () =>
-        (page.props.tantraReview as { waiting?: number } | null | undefined)
-            ?.waiting ?? 0,
+        page.props.tantraReview as
+            | { waiting?: number; tasks_open?: number; tasks_due?: number }
+            | null
+            | undefined,
 );
+const tantraReviewWaiting = computed(() => tantraReview.value?.waiting ?? 0);
 
 const mainNavItems = computed<NavItem[]>(() => [
     // tantra: the review studio, visible to everyone (PRD 10.2).
@@ -90,6 +94,19 @@ const mainNavItems = computed<NavItem[]>(() => [
         countTestId: 'sidebar-tantra-review-count',
         activePattern: '/tantra/review',
     },
+    // tantra: posts to publish by hand (X, personal polls), only while there are some.
+    ...((tantraReview.value?.tasks_open ?? 0) > 0
+        ? [
+              {
+                  title: trans('tantra.tasks.nav'),
+                  href: '/tantra/tasks',
+                  icon: IconHandClick,
+                  count: tantraReview.value?.tasks_due || undefined,
+                  countTestId: 'sidebar-tantra-tasks-count',
+                  activePattern: '/tantra/tasks',
+              },
+          ]
+        : []),
     ...(canCreatePost.value
         ? [
               {
