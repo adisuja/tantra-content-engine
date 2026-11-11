@@ -23,6 +23,19 @@ function mcpToolAnnotations(): array
 function mcpExpectedToolAnnotations(): array
 {
     return [
+        // tantra: the Tantra tools (PRD 10.7)
+        'tantra-list-review-items-tool' => [true, false, false],
+        'tantra-get-review-item-tool' => [true, false, false],
+        'tantra-approve-review-item-tool' => [false, true, true],
+        'tantra-request-changes-tool' => [false, false, false],
+        'tantra-comment-review-item-tool' => [false, false, false],
+        'tantra-edit-engagement-comment-tool' => [false, false, false],
+        'tantra-list-boost-runs-tool' => [true, false, false],
+        'tantra-get-post-performance-tool' => [true, false, false],
+        'tantra-winning-formula-tool' => [true, false, false],
+        'tantra-list-manual-tasks-tool' => [true, false, false],
+        'tantra-mark-manual-task-posted-tool' => [false, false, false],
+
         // Posts
         'list-posts-tool' => [true, false, false],
         'get-post-tool' => [true, false, false],

@@ -106,6 +106,19 @@ class TryPostServer extends Server
     public int $maxPaginationLength = 200;
 
     protected array $tools = [
+        // tantra: review, engagement, numbers and posts by hand (PRD 10.7).
+        \App\Tantra\Mcp\Tools\TantraListReviewItemsTool::class,
+        \App\Tantra\Mcp\Tools\TantraGetReviewItemTool::class,
+        \App\Tantra\Mcp\Tools\TantraApproveReviewItemTool::class,
+        \App\Tantra\Mcp\Tools\TantraRequestChangesTool::class,
+        \App\Tantra\Mcp\Tools\TantraCommentReviewItemTool::class,
+        \App\Tantra\Mcp\Tools\TantraEditEngagementCommentTool::class,
+        \App\Tantra\Mcp\Tools\TantraListBoostRunsTool::class,
+        \App\Tantra\Mcp\Tools\TantraGetPostPerformanceTool::class,
+        \App\Tantra\Mcp\Tools\TantraWinningFormulaTool::class,
+        \App\Tantra\Mcp\Tools\TantraListManualTasksTool::class,
+        \App\Tantra\Mcp\Tools\TantraMarkManualTaskPostedTool::class,
+
         ListPostsTool::class,
         GetPostTool::class,
         CreatePostTool::class,

@@ -21,12 +21,16 @@ final class BatchResults
 {
     public const METRICS = ['impressions', 'unique_impressions', 'clicks', 'reactions', 'comments', 'shares'];
 
-    /** @return array{batch: string, generated_at: string, posts: list<array<string, mixed>>, by_format: array<string, mixed>, by_pillar: array<string, mixed>, by_profile: array<string, mixed>} */
-    public static function for(string $accountId, string $engineBatchId): array
+    /**
+     * @param  list<string>|null  $workspaceIds  only these workspaces (MCP is bound to one)
+     * @return array{batch: string, generated_at: string, posts: list<array<string, mixed>>, by_format: array<string, mixed>, by_pillar: array<string, mixed>, by_profile: array<string, mixed>}
+     */
+    public static function for(string $accountId, string $engineBatchId, ?array $workspaceIds = null): array
     {
         $items = ReviewItem::query()
             ->where('account_id', $accountId)
             ->where('engine_batch_id', $engineBatchId)
+            ->when($workspaceIds !== null, fn ($q) => $q->whereIn('workspace_id', $workspaceIds))
             ->where('review_status', '!=', ReviewStatus::Superseded->value)
             ->orderBy('engine_post_id')
             ->get();
