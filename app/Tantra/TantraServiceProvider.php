@@ -12,6 +12,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Tantra\Boost\Boost;
 use App\Tantra\Boost\StartBoostRun;
+use App\Tantra\Composer\MakeComposerThread;
 use App\Tantra\Console\CollectMetricsCommand;
 use App\Tantra\Console\CreateOwnerCommand;
 use App\Tantra\Console\GiveawayRepliesCommand;
@@ -75,6 +76,10 @@ class TantraServiceProvider extends ServiceProvider
         Event::listen(PostStatusChanged::class, function (PostStatusChanged $event): void {
             if ($event->post->status === PostStatus::Published && Boost::enabled()) {
                 StartBoostRun::dispatch($event->post->id);
+            }
+            // A composer post has no engine thread: write one when it is scheduled (PRD M3).
+            if ($event->post->status === PostStatus::Scheduled && Boost::enabled()) {
+                MakeComposerThread::dispatch($event->post->id);
             }
         });
 
