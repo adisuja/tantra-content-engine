@@ -54,10 +54,20 @@ const statuses = ['all', 'waiting', 'changes', 'done'] as const;
             class="flex min-h-full min-w-0 flex-col gap-6 px-4 pt-6 pb-10 md:px-8"
         >
             <header class="flex flex-col gap-3">
-                <HeaderTitle
-                    :title="$t('tantra.review.title')"
-                    :icon="IconEye"
-                />
+                <div class="flex flex-wrap items-center gap-3">
+                    <HeaderTitle
+                        :title="$t('tantra.review.title')"
+                        :icon="IconEye"
+                    />
+                    <Link
+                        href="/tantra/tasks"
+                        class="ml-auto text-sm underline"
+                        >{{ $t('tantra.tasks.nav') }}</Link
+                    >
+                    <Link href="/tantra/team" class="text-sm underline">{{
+                        $t('tantra.team.title')
+                    }}</Link>
+                </div>
                 <div class="flex flex-wrap items-center gap-2">
                     <Button
                         v-for="s in statuses"
