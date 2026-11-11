@@ -793,6 +793,10 @@ return [
             'label' => 'منشور',
             'description' => 'منشور قياسي — صورة واحدة أو متعددة أو فيديو أو PDF',
         ],
+        'zernio_linkedin_page_post' => [
+            'label' => 'منشور',
+            'description' => 'منشور قياسي: صورة واحدة أو متعددة أو فيديو أو PDF',
+        ],
         'facebook_post' => [
             'label' => 'منشور',
             'description' => 'منشور قياسي على صفحتك',
@@ -870,6 +874,7 @@ return [
     'platforms' => [
         'linkedin' => 'LinkedIn',
         'linkedin-page' => 'LinkedIn Page',
+        'zernio-linkedin-page' => 'LinkedIn Page (Zernio)',
         'x' => 'X',
         'tiktok' => 'TikTok',
         'youtube' => 'YouTube Shorts',

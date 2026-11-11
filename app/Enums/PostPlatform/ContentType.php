@@ -26,6 +26,8 @@ enum ContentType: string
 
     // LinkedIn Page
     case LinkedInPagePost = 'linkedin_page_post';
+    // tantra: a Tantra page post published through Zernio (PRD 10.4).
+    case ZernioLinkedInPagePost = 'zernio_linkedin_page_post';
 
     case LinkedInComment = 'linkedin_comment';
 
@@ -90,7 +92,7 @@ enum ContentType: string
             self::InstagramFeed => 'Feed Post',
             self::InstagramReel => 'Reel',
             self::InstagramStory => 'Story',
-            self::LinkedInPost, self::LinkedInPagePost => 'Post',
+            self::LinkedInPost, self::LinkedInPagePost, self::ZernioLinkedInPagePost => 'Post',
             self::LinkedInComment => 'Comment',
             self::FacebookPost => 'Post',
             self::FacebookReel => 'Reel',
@@ -129,6 +131,7 @@ enum ContentType: string
             self::InstagramFeed, self::InstagramReel, self::InstagramStory => SocialPlatform::Instagram,
             self::LinkedInPost, self::LinkedInComment => SocialPlatform::LinkedIn,
             self::LinkedInPagePost => SocialPlatform::LinkedInPage,
+            self::ZernioLinkedInPagePost => SocialPlatform::ZernioLinkedInPage,
             self::FacebookPost, self::FacebookReel, self::FacebookStory => SocialPlatform::Facebook,
             self::TikTokVideo, self::TikTokPhoto => SocialPlatform::TikTok,
             self::YouTubeShort => SocialPlatform::YouTube,
@@ -158,6 +161,7 @@ enum ContentType: string
             // Square 1:1 (LinkedIn, X, Facebook, Bluesky, Mastodon)
             self::LinkedInPost,
             self::LinkedInPagePost,
+            self::ZernioLinkedInPagePost,
             self::FacebookPost,
             self::XPost,
             self::BlueskyPost,
@@ -216,7 +220,7 @@ enum ContentType: string
         return match ($this) {
             self::InstagramFeed => 10,
             self::InstagramReel, self::InstagramStory => 1,
-            self::LinkedInPost, self::LinkedInPagePost => 10,
+            self::LinkedInPost, self::LinkedInPagePost, self::ZernioLinkedInPagePost => 10,
             self::LinkedInComment => 0,
             self::FacebookPost => 10,
             self::FacebookReel, self::FacebookStory => 1,
@@ -255,7 +259,7 @@ enum ContentType: string
             self::FacebookPost => 240 * 60,
             self::FacebookReel => 90,
             self::FacebookStory => 60,
-            self::LinkedInPost, self::LinkedInPagePost => 10 * 60,
+            self::LinkedInPost, self::LinkedInPagePost, self::ZernioLinkedInPagePost => 10 * 60,
             self::YouTubeShort => 3 * 60,
             self::PinterestVideoPin => 15 * 60,
             self::XPost => 20 * 60,
@@ -316,7 +320,7 @@ enum ContentType: string
             self::InstagramFeed, self::InstagramStory => self::bytesFromMb(8),
             self::FacebookPost => self::bytesFromMb(4),
             self::FacebookStory => self::bytesFromMb(10),
-            self::LinkedInPost, self::LinkedInPagePost => self::bytesFromMb(5),
+            self::LinkedInPost, self::LinkedInPagePost, self::ZernioLinkedInPagePost => self::bytesFromMb(5),
             self::PinterestPin, self::PinterestCarousel => self::bytesFromMb(20),
             self::XPost => self::bytesFromMb(5),
             self::ThreadsPost => self::bytesFromMb(8),
@@ -344,7 +348,7 @@ enum ContentType: string
             self::InstagramReel => self::bytesFromMb(300),
             self::FacebookPost => self::bytesFromGb(10),
             self::FacebookReel, self::FacebookStory => self::bytesFromGb(1),
-            self::LinkedInPost, self::LinkedInPagePost => self::bytesFromGb(5),
+            self::LinkedInPost, self::LinkedInPagePost, self::ZernioLinkedInPagePost => self::bytesFromGb(5),
             self::YouTubeShort => self::bytesFromGb(256),
             self::PinterestVideoPin => self::bytesFromGb(2),
             self::XPost => self::bytesFromGb(8),
@@ -367,7 +371,7 @@ enum ContentType: string
     public function maxDocumentBytes(): ?int
     {
         $bytes = match ($this) {
-            self::LinkedInPost, self::LinkedInPagePost => self::bytesFromMb(100),
+            self::LinkedInPost, self::LinkedInPagePost, self::ZernioLinkedInPagePost => self::bytesFromMb(100),
             default => null,
         };
 
@@ -486,7 +490,7 @@ enum ContentType: string
             self::TikTokVideo, self::YouTubeShort => ['9:16'],
             self::XPost, self::XPoll => ['1:1', '4:3', '16:9', '2:1'],
             self::TikTokPhoto => ['4:3', '16:9', '9:16', '1:1'],
-            self::FacebookPost, self::LinkedInPost, self::LinkedInPagePost => ['1:1', '1.91:1'],
+            self::FacebookPost, self::LinkedInPost, self::LinkedInPagePost, self::ZernioLinkedInPagePost => ['1:1', '1.91:1'],
             self::PinterestPin, self::PinterestCarousel => ['2:3', '1:1'],
             self::PinterestVideoPin => ['2:3'],
             self::ThreadsPost, self::ThreadsGhostPost => ['1:1', '4:5', '1.91:1'],
@@ -736,7 +740,7 @@ enum ContentType: string
     {
         return match ($this) {
             self::InstagramFeed, self::InstagramReel, self::InstagramStory => true,
-            self::LinkedInPost, self::LinkedInPagePost => true,
+            self::LinkedInPost, self::LinkedInPagePost, self::ZernioLinkedInPagePost => true,
             self::LinkedInComment => false,
             self::FacebookPost, self::FacebookReel, self::FacebookStory => true,
             self::TikTokVideo => true,
@@ -780,7 +784,7 @@ enum ContentType: string
     public function supportsDocument(): bool
     {
         return match ($this) {
-            self::LinkedInPost, self::LinkedInPagePost => true,
+            self::LinkedInPost, self::LinkedInPagePost, self::ZernioLinkedInPagePost => true,
             default => false,
         };
     }
@@ -796,7 +800,7 @@ enum ContentType: string
         return match ($this) {
             self::BlueskyPost => false,
             // LinkedIn publishes images XOR one video XOR one document — never mixed.
-            self::LinkedInPost, self::LinkedInPagePost => false,
+            self::LinkedInPost, self::LinkedInPagePost, self::ZernioLinkedInPagePost => false,
             // TikTok publishes photos (up to 35) XOR one video.
             self::TikTokVideo, self::TikTokPhoto => false,
             default => true,
@@ -818,7 +822,7 @@ enum ContentType: string
     public function requiresMedia(): bool
     {
         return match ($this) {
-            self::LinkedInPost, self::LinkedInPagePost, self::LinkedInComment => false,
+            self::LinkedInPost, self::LinkedInPagePost, self::ZernioLinkedInPagePost, self::LinkedInComment => false,
             self::XPost, self::XPoll => false,
             self::ThreadsPost, self::ThreadsGhostPost => false,
             self::BlueskyPost => false,
@@ -888,6 +892,7 @@ enum ContentType: string
             SocialPlatform::Instagram, SocialPlatform::InstagramFacebook => self::InstagramFeed,
             SocialPlatform::LinkedIn => self::LinkedInPost,
             SocialPlatform::LinkedInPage => self::LinkedInPagePost,
+            SocialPlatform::ZernioLinkedInPage => self::ZernioLinkedInPagePost,
             SocialPlatform::Facebook => self::FacebookPost,
             SocialPlatform::TikTok => self::TikTokVideo,
             SocialPlatform::YouTube => self::YouTubeShort,

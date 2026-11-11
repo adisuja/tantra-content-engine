@@ -9,6 +9,7 @@ use App\Actions\Post\DeletePost;
 use App\Actions\Post\HostInlineMedia;
 use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Status as PostStatus;
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
 use App\Models\SocialAccount;
@@ -246,7 +247,8 @@ final class ImportBatch
     public static function channelFor(Workspace $workspace, string $platform): ?SocialAccount
     {
         $platforms = match (strtolower($platform)) {
-            'linkedin' => [Platform::LinkedIn->value],
+            // A personal profile through TryPost, the Tantra page through Zernio.
+            'linkedin' => [Platform::LinkedIn->value, Platform::ZernioLinkedInPage->value, Platform::LinkedInPage->value],
             default => [],
         };
 
@@ -281,7 +283,7 @@ final class ImportBatch
             'created_via' => CreatedVia::Api,
             'destinations' => [[
                 'social_account_id' => $channel->id,
-                'content_type' => 'linkedin_post',
+                'content_type' => ContentType::defaultFor($channel->platform)->value,
                 'meta' => $meta,
             ]],
         ]));

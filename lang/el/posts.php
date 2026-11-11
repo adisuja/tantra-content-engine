@@ -793,6 +793,10 @@ return [
             'label' => 'Δημοσίευση',
             'description' => 'Τυπική δημοσίευση — μία εικόνα, πολλές εικόνες, βίντεο ή PDF',
         ],
+        'zernio_linkedin_page_post' => [
+            'label' => 'Δημοσίευση',
+            'description' => 'Τυπική δημοσίευση: μία εικόνα, πολλές εικόνες, βίντεο ή PDF',
+        ],
         'facebook_post' => [
             'label' => 'Δημοσίευση',
             'description' => 'Τυπική δημοσίευση στη σελίδα σας',
@@ -870,6 +874,7 @@ return [
     'platforms' => [
         'linkedin' => 'LinkedIn',
         'linkedin-page' => 'Σελίδα LinkedIn',
+        'zernio-linkedin-page' => 'Σελίδα LinkedIn (Zernio)',
         'x' => 'X',
         'tiktok' => 'TikTok',
         'youtube' => 'YouTube Shorts',

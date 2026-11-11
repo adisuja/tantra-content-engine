@@ -793,6 +793,10 @@ return [
             'label' => 'Post',
             'description' => 'Standardowy post — pojedynczy obraz, wiele obrazów, wideo lub PDF',
         ],
+        'zernio_linkedin_page_post' => [
+            'label' => 'Post',
+            'description' => 'Standardowy post: pojedynczy obraz, wiele obrazów, wideo lub PDF',
+        ],
         'facebook_post' => [
             'label' => 'Post',
             'description' => 'Standardowy post na Twojej stronie',
@@ -870,6 +874,7 @@ return [
     'platforms' => [
         'linkedin' => 'LinkedIn',
         'linkedin-page' => 'Strona LinkedIn',
+        'zernio-linkedin-page' => 'Strona LinkedIn (Zernio)',
         'x' => 'X',
         'tiktok' => 'TikTok',
         'youtube' => 'YouTube Shorts',

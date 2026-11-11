@@ -793,6 +793,10 @@ return [
             'label' => '帖子',
             'description' => '标准帖子——单图、多图、视频或 PDF',
         ],
+        'zernio_linkedin_page_post' => [
+            'label' => '帖子',
+            'description' => '标准帖子: : 单图、多图、视频或 PDF',
+        ],
         'facebook_post' => [
             'label' => '帖子',
             'description' => '发布在你主页上的标准帖子',
@@ -870,6 +874,7 @@ return [
     'platforms' => [
         'linkedin' => 'LinkedIn',
         'linkedin-page' => 'LinkedIn 页面',
+        'zernio-linkedin-page' => 'LinkedIn 页面 (Zernio)',
         'x' => 'X',
         'tiktok' => 'TikTok',
         'youtube' => 'YouTube Shorts',

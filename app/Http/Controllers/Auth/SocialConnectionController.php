@@ -44,7 +44,8 @@ class SocialConnectionController extends Controller
             Platform::Mastodon => MastodonController::class,
             Platform::Discord => DiscordController::class,
             Platform::GoogleBusiness => GoogleBusinessController::class,
-            Platform::LinkedInPage, Platform::Telegram => abort(SymfonyResponse::HTTP_NOT_FOUND),
+            // tantra: Zernio channels are linked with tantra:zernio-connect, never through OAuth.
+            Platform::LinkedInPage, Platform::Telegram, Platform::ZernioLinkedInPage => abort(SymfonyResponse::HTTP_NOT_FOUND),
         });
     }
 }

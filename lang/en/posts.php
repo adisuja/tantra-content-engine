@@ -793,6 +793,10 @@ return [
             'label' => 'Post',
             'description' => 'Standard post — single image, multi-image, video, or PDF',
         ],
+        'zernio_linkedin_page_post' => [
+            'label' => 'Post',
+            'description' => 'Standard post: single image, multi-image, video, or PDF',
+        ],
         'facebook_post' => [
             'label' => 'Post',
             'description' => 'Standard post on your page',
@@ -870,6 +874,7 @@ return [
     'platforms' => [
         'linkedin' => 'LinkedIn',
         'linkedin-page' => 'LinkedIn Page',
+        'zernio-linkedin-page' => 'LinkedIn Page (Zernio)',
         'x' => 'X',
         'tiktok' => 'TikTok',
         'youtube' => 'YouTube Shorts',

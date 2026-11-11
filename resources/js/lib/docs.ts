@@ -12,6 +12,7 @@ const MEDIA_LIMITS_ANCHOR: Record<PlatformValue, string> = {
     [Platform.X]: 'x-twitter',
     [Platform.LinkedIn]: 'linkedin',
     [Platform.LinkedInPage]: 'linkedin',
+    [Platform.ZernioLinkedInPage]: 'linkedin', // tantra:
     [Platform.TikTok]: 'tiktok',
     [Platform.YouTube]: 'youtube',
     [Platform.Pinterest]: 'pinterest',

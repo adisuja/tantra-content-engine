@@ -793,6 +793,10 @@ return [
             'label' => 'Пост',
             'description' => 'Обычный пост — одно изображение, несколько изображений, видео или PDF',
         ],
+        'zernio_linkedin_page_post' => [
+            'label' => 'Пост',
+            'description' => 'Обычный пост: одно изображение, несколько изображений, видео или PDF',
+        ],
         'facebook_post' => [
             'label' => 'Пост',
             'description' => 'Обычный пост на вашей странице',
@@ -870,6 +874,7 @@ return [
     'platforms' => [
         'linkedin' => 'LinkedIn',
         'linkedin-page' => 'Страница LinkedIn',
+        'zernio-linkedin-page' => 'Страница LinkedIn (Zernio)',
         'x' => 'X',
         'tiktok' => 'TikTok',
         'youtube' => 'YouTube Shorts',

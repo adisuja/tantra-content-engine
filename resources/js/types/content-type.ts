@@ -4,6 +4,7 @@ export const ContentType = {
     InstagramReel: 'instagram_reel',
     LinkedInPost: 'linkedin_post',
     LinkedInPagePost: 'linkedin_page_post',
+    ZernioLinkedInPagePost: 'zernio_linkedin_page_post', // tantra:
     LinkedInComment: 'linkedin_comment',
     FacebookPost: 'facebook_post',
     FacebookReel: 'facebook_reel',

@@ -40,7 +40,7 @@ class ThreadReplies
             Platform::Bluesky => ContentType::BlueskyPost,
             Platform::Mastodon => ContentType::MastodonPost,
             Platform::X => ContentType::XPost,
-            Platform::LinkedIn, Platform::LinkedInPage => ContentType::LinkedInComment,
+            Platform::LinkedIn, Platform::LinkedInPage, Platform::ZernioLinkedInPage => ContentType::LinkedInComment, // tantra: Zernio's firstComment
             default => null,
         };
     }
@@ -54,7 +54,7 @@ class ThreadReplies
     {
         return match ($platform) {
             Platform::Bluesky, Platform::Mastodon, Platform::X => self::MAX_REPLIES,
-            Platform::LinkedIn, Platform::LinkedInPage => 1,
+            Platform::LinkedIn, Platform::LinkedInPage, Platform::ZernioLinkedInPage => 1, // tantra:
             default => 0,
         };
     }

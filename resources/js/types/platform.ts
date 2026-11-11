@@ -16,6 +16,8 @@ export const Platform = {
     Telegram: 'telegram',
     Discord: 'discord',
     GoogleBusiness: 'google_business',
+    // tantra: the Tantra LinkedIn page, published through Zernio
+    ZernioLinkedInPage: 'zernio-linkedin-page',
 } as const;
 
 export type PlatformValue = (typeof Platform)[keyof typeof Platform];

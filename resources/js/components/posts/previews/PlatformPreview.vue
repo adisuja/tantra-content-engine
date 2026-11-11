@@ -114,6 +114,7 @@ const previewComponent = computed(() => {
     switch (props.platform) {
         case 'linkedin':
         case 'linkedin-page':
+        case 'zernio-linkedin-page': // tantra:
             return LinkedInPreview;
         case 'x':
             return XPreview;

@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Tantra\Console\CreateOwnerCommand;
 use App\Tantra\Console\InviteTeammateCommand;
 use App\Tantra\Console\MapProfileCommand;
+use App\Tantra\Console\ZernioConnectCommand;
 use App\Tantra\Http\Controllers\Web\ReviewPageController;
 use App\Tantra\Http\Middleware\EnsureOwnerToken;
 use App\Tantra\Ops\LeanHorizon;
@@ -66,7 +67,7 @@ class TantraServiceProvider extends ServiceProvider
         ]);
 
         if ($this->app->runningInConsole()) {
-            $this->commands([CreateOwnerCommand::class, MapProfileCommand::class, InviteTeammateCommand::class]);
+            $this->commands([CreateOwnerCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class]);
         }
 
         if ($this->app->environment('production') && config('tantra.lean_workers.enabled')) {

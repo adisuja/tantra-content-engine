@@ -20,6 +20,7 @@ use App\Exceptions\Social\XPublishException;
 use App\Exceptions\Social\YouTubePublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\SocialAccount;
+use App\Tantra\Zernio\ZernioVerifier; // tantra:
 use App\Services\Social\Discord\DiscordClient;
 use App\Services\Social\Mastodon\MastodonApi;
 use App\Services\Social\Meta\GraphError;
@@ -220,6 +221,7 @@ class ConnectionVerifier
             Platform::Telegram => $this->verifyTelegram($account),
             Platform::Discord => $this->verifyDiscord($account),
             Platform::GoogleBusiness => $this->verifyGoogleBusiness($account),
+            Platform::ZernioLinkedInPage => ZernioVerifier::verify($account), // tantra:
         };
     }
 

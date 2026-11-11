@@ -793,6 +793,10 @@ return [
             'label' => 'Gönderi',
             'description' => 'Standart gönderi — tek görsel, çoklu görsel, video veya PDF',
         ],
+        'zernio_linkedin_page_post' => [
+            'label' => 'Gönderi',
+            'description' => 'Standart gönderi: tek görsel, çoklu görsel, video veya PDF',
+        ],
         'facebook_post' => [
             'label' => 'Gönderi',
             'description' => 'Sayfanızda standart gönderi',
@@ -870,6 +874,7 @@ return [
     'platforms' => [
         'linkedin' => 'LinkedIn',
         'linkedin-page' => 'LinkedIn Sayfası',
+        'zernio-linkedin-page' => 'LinkedIn Sayfası (Zernio)',
         'x' => 'X',
         'tiktok' => 'TikTok',
         'youtube' => 'YouTube Shorts',

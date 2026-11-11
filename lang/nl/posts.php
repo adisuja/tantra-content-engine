@@ -793,6 +793,10 @@ return [
             'label' => 'Post',
             'description' => 'Standaardpost — enkele afbeelding, meerdere afbeeldingen, video of PDF',
         ],
+        'zernio_linkedin_page_post' => [
+            'label' => 'Post',
+            'description' => 'Standaardpost: enkele afbeelding, meerdere afbeeldingen, video of PDF',
+        ],
         'facebook_post' => [
             'label' => 'Post',
             'description' => 'Standaardpost op je pagina',
@@ -870,6 +874,7 @@ return [
     'platforms' => [
         'linkedin' => 'LinkedIn',
         'linkedin-page' => 'LinkedIn-pagina',
+        'zernio-linkedin-page' => 'LinkedIn-pagina (Zernio)',
         'x' => 'X',
         'tiktok' => 'TikTok',
         'youtube' => 'YouTube Shorts',

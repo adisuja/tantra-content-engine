@@ -28,11 +28,13 @@ enum Platform: string
     case Telegram = 'telegram';
     case Discord = 'discord';
     case GoogleBusiness = 'google_business';
+    // tantra: the Tantra LinkedIn page, published through Zernio (PRD 10.4).
+    case ZernioLinkedInPage = 'zernio-linkedin-page';
 
     public function network(): string
     {
         return match ($this) {
-            self::LinkedIn, self::LinkedInPage => 'linkedin',
+            self::LinkedIn, self::LinkedInPage, self::ZernioLinkedInPage => 'linkedin',
             self::Instagram, self::InstagramFacebook => 'instagram',
             default => $this->value,
         };
@@ -48,7 +50,7 @@ enum Platform: string
     {
         return match ($this) {
             self::LinkedIn, self::LinkedInPage, self::Telegram,
-            self::Discord, self::GoogleBusiness => false,
+            self::Discord, self::GoogleBusiness, self::ZernioLinkedInPage => false,
             default => true,
         };
     }
@@ -99,6 +101,7 @@ enum Platform: string
             self::Telegram => 'Telegram',
             self::Discord => 'Discord',
             self::GoogleBusiness => 'Google Business Profile',
+            self::ZernioLinkedInPage => 'LinkedIn Page (Zernio)',
         };
     }
 
@@ -106,7 +109,7 @@ enum Platform: string
     public function identityType(): IdentityType
     {
         return match ($this) {
-            self::LinkedInPage, self::Facebook => IdentityType::Page,
+            self::LinkedInPage, self::ZernioLinkedInPage, self::Facebook => IdentityType::Page,
             self::YouTube, self::Telegram => IdentityType::Channel,
             self::GoogleBusiness => IdentityType::Location,
             self::Discord => IdentityType::Server,
@@ -117,7 +120,7 @@ enum Platform: string
     public function color(): string
     {
         return match ($this) {
-            self::LinkedIn, self::LinkedInPage => '#0A66C2',
+            self::LinkedIn, self::LinkedInPage, self::ZernioLinkedInPage => '#0A66C2',
             self::X => '#000000',
             self::TikTok => '#000000',
             self::YouTube => '#FF0000',
@@ -137,7 +140,7 @@ enum Platform: string
     public function allowedMediaTypes(): array
     {
         return match ($this) {
-            self::LinkedIn, self::LinkedInPage => [MediaType::Image, MediaType::Video, MediaType::Document],
+            self::LinkedIn, self::LinkedInPage, self::ZernioLinkedInPage => [MediaType::Image, MediaType::Video, MediaType::Document],
             self::X => [MediaType::Image, MediaType::Video],
             self::TikTok => [MediaType::Image, MediaType::Video],
             self::YouTube => [MediaType::Video],
@@ -156,7 +159,7 @@ enum Platform: string
     public function maxImages(): int
     {
         return match ($this) {
-            self::LinkedIn, self::LinkedInPage => 10,
+            self::LinkedIn, self::LinkedInPage, self::ZernioLinkedInPage => 10,
             self::X => 4,
             self::TikTok => 0,
             self::YouTube => 0,
@@ -192,7 +195,7 @@ enum Platform: string
             self::Threads => 1000,
             self::Pinterest => 500,
             self::Discord => 1024,
-            self::TikTok, self::YouTube, self::Telegram, self::GoogleBusiness => null,
+            self::TikTok, self::YouTube, self::Telegram, self::GoogleBusiness, self::ZernioLinkedInPage => null,
         };
     }
 
@@ -230,7 +233,7 @@ enum Platform: string
     public function maxContentLength(): int
     {
         return match ($this) {
-            self::LinkedIn, self::LinkedInPage => 3000,
+            self::LinkedIn, self::LinkedInPage, self::ZernioLinkedInPage => 3000,
             self::X => 280,
             self::TikTok => 2200,
             self::YouTube => 5000,
@@ -291,7 +294,7 @@ enum Platform: string
             // Threads/Mastodon — similar feel, slightly more relaxed
             self::Threads, self::Mastodon => 300,
             // LinkedIn — readable long-form sweet spot is ~1200-1500
-            self::LinkedIn, self::LinkedInPage => 1200,
+            self::LinkedIn, self::LinkedInPage, self::ZernioLinkedInPage => 1200,
             // Instagram captions — most viewers expand only when interested,
             // 100-150 words performs best
             self::Instagram, self::InstagramFacebook => 600,
@@ -335,6 +338,8 @@ enum Platform: string
             self::Telegram => [],
             self::Discord => [],
             self::GoogleBusiness => ['https://www.googleapis.com/auth/business.manage'],
+            // Zernio holds the LinkedIn grant; the Engine only has Tantra's Zernio key.
+            self::ZernioLinkedInPage => [],
         };
     }
 
@@ -350,7 +355,7 @@ enum Platform: string
     public function supportsTextOnly(): bool
     {
         return match ($this) {
-            self::LinkedIn, self::LinkedInPage => true,
+            self::LinkedIn, self::LinkedInPage, self::ZernioLinkedInPage => true,
             self::X => true,
             self::TikTok => false,
             self::YouTube => false,
@@ -507,6 +512,7 @@ enum Platform: string
                 self::Telegram => 'TELEGRAM_ENABLED',
                 self::Discord => 'DISCORD_ENABLED',
                 self::GoogleBusiness => 'GOOGLE_BUSINESS_ENABLED',
+                self::ZernioLinkedInPage => 'ZERNIO_ENABLED',
             }, true),
         );
     }
@@ -521,7 +527,7 @@ enum Platform: string
     public function isConnectable(): bool
     {
         return match ($this) {
-            self::LinkedInPage, self::InstagramFacebook => false,
+            self::LinkedInPage, self::InstagramFacebook, self::ZernioLinkedInPage => false,
             self::LinkedIn => self::LinkedIn->isEnabled() || self::LinkedInPage->isEnabled(),
             self::Instagram => self::Instagram->isEnabled() || self::InstagramFacebook->isEnabled(),
             default => $this->isEnabled(),
