@@ -139,6 +139,8 @@ class BuildCalendarPageProps
         );
 
         $props['slots'] = $request->boolean('slots') ? $slots : Inertia::optional($slots);
+        // tantra: X posts and personal polls posted by hand, shown above the grid.
+        $props['tantraManualTasks'] = fn (): array => \App\Tantra\Manual\ManualTasks::forCalendar($workspace->id, $channel?->id, $rangeStart, $rangeEnd);
 
         return $props;
     }

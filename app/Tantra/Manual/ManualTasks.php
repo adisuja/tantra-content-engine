@@ -4,16 +4,21 @@ declare(strict_types=1);
 
 namespace App\Tantra\Manual;
 
+use App\Models\SocialAccount;
 use App\Models\User;
+use App\Tantra\Review\Actions\ImportBatch;
+use App\Tantra\Review\Actions\ReviewActions;
 use App\Tantra\Review\Enums\EventKind;
 use App\Tantra\Review\Enums\ReviewStatus;
 use App\Tantra\Review\Models\ReviewItem;
 use App\Tantra\Review\Models\WorkspaceSettings;
 use App\Tantra\Review\ReviewGate;
 use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -32,10 +37,16 @@ final class ManualTasks
         $thread = array_values(array_filter((array) ($payload['thread'] ?? []), 'is_string'));
         $preview = data_get($item->media_manifest, 'previews.0');
 
+        $kind = $item->platform === 'x' ? ($thread !== [] ? 'x_thread' : 'x_post') : 'linkedin_poll';
+        // A poll holds its LinkedIn slot; X tasks hold none.
+        $channel = $kind === 'linkedin_poll' && $item->workspace ? ImportBatch::channelFor($item->workspace, 'linkedin') : null;
+
         $task = ManualTask::query()->updateOrCreate(['review_item_id' => $item->id], [
             'workspace_id' => $item->workspace_id,
+            'social_account_id' => $channel?->id,
+            'slot_fallback' => false,
             'owner_user_id' => ReviewGate::reviewOwnerId($item),
-            'kind' => $item->platform === 'x' ? ($thread !== [] ? 'x_thread' : 'x_post') : 'linkedin_poll',
+            'kind' => $kind,
             'status' => 'waiting',
             'due_at' => null,
             'text' => (string) ($payload['text'] ?? ''),
@@ -52,6 +63,31 @@ final class ManualTasks
         return $task->refresh();
     }
 
+    /**
+     * The calendar's "Post by hand" strip: tasks timed inside the visible range.
+     *
+     * @return list<array{id: string, kind: string, status: string, at: string, text: string, fallback: bool}>
+     */
+    public static function forCalendar(string $workspaceId, ?string $channelId, CarbonInterface $from, CarbonInterface $until): array
+    {
+        return ManualTask::query()
+            ->where('workspace_id', $workspaceId)
+            ->when($channelId, fn ($q) => $q->where('social_account_id', $channelId))
+            ->whereIn('status', ['waiting', 'due', 'posted'])
+            ->whereBetween('due_at', [$from->toImmutable()->utc(), $until->toImmutable()->utc()])
+            ->orderBy('due_at')
+            ->limit(50)
+            ->get()
+            ->map(fn (ManualTask $t): array => [
+                'id' => $t->id,
+                'kind' => $t->kind,
+                'status' => $t->status,
+                'at' => $t->due_at->toIso8601ZuluString(),
+                'text' => Str::limit(trim(strtok($t->text, "\n") ?: $t->text), 70),
+                'fallback' => (bool) $t->slot_fallback,
+            ])->values()->all();
+    }
+
     /** Give a waiting task its time once it can be known. */
     public static function schedule(ManualTask $task): void
     {
@@ -62,7 +98,16 @@ final class ManualTasks
         $item = $task->item;
         $due = null;
 
-        if ($task->kind === 'linkedin_poll') {
+        $fallback = false;
+        if ($task->kind === 'linkedin_poll' && $task->social_account_id !== null) {
+            // The same rule as a post: the planned slot if free and ahead, else the next free one.
+            $channel = SocialAccount::query()->find($task->social_account_id);
+            try {
+                [$due, $fallback] = $channel ? ReviewActions::slotFor($item, $channel) : [null, false];
+            } catch (ValidationException) {
+                $due = null; // no free slot yet: try again on the next pass
+            }
+        } elseif ($task->kind === 'linkedin_poll') {
             if ($item->planned_date !== null && filled($item->planned_time)) {
                 $zone = $item->timezone ?? WorkspaceSettings::query()->find($item->workspace_id)?->timezone ?? 'UTC';
                 $due = CarbonImmutable::parse($item->planned_date->toDateString().' '.$item->planned_time, $zone)->utc();
@@ -74,7 +119,7 @@ final class ManualTasks
         }
 
         if ($due !== null) {
-            $task->forceFill(['due_at' => $due])->save();
+            $task->forceFill(['due_at' => $due, 'slot_fallback' => $fallback])->save();
         }
     }
 

@@ -102,6 +102,7 @@ class ReflowChannelQueue
             ->pluck('scheduled_at')
             ->mapWithKeys(fn (CarbonInterface $at): array => [$at->getTimestamp() => true])
             ->all();
+        $taken += \App\Tantra\Manual\ManualTask::heldSlotsOn($channel->id, $after); // tantra: polls posted by hand hold their slot
 
         $placed = [];
         $displaced = [];
@@ -197,7 +198,8 @@ class ReflowChannelQueue
             && ! Post::query()->occupyingSlotsOn($channel->id, $after)
                 ->when($exceptPostId, fn ($query) => $query->whereKeyNot($exceptPostId))
                 ->where('scheduled_at', $slotAt)
-                ->exists();
+                ->exists()
+            && ! isset(\App\Tantra\Manual\ManualTask::heldSlotsOn($channel->id, $after)[$slotAt->getTimestamp()]); // tantra:
     }
 
     private static function sameLocalClock(CarbonInterface $at, string $from, string $to): CarbonImmutable

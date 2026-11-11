@@ -35,6 +35,9 @@ import CalendarTimeGrid from '@/components/publish/CalendarTimeGrid.vue';
 import CalendarUndatedPanel from '@/components/publish/CalendarUndatedPanel.vue';
 import PublishFilterMenu from '@/components/publish/PublishFilterMenu.vue';
 import PublishHeader from '@/components/publish/PublishHeader.vue';
+import ManualTaskStrip, {
+    type CalendarManualTask,
+} from '@/components/tantra/ManualTaskStrip.vue'; // tantra:
 import { Button } from '@/components/ui/button';
 import { useCalendarAnnouncer } from '@/composables/calendar/useCalendarAnnouncer';
 import {
@@ -102,6 +105,7 @@ interface Props {
     filterAccounts: PublishSocialAccount[];
     undatedDrafts?: ScrollUndatedDrafts;
     slots?: Record<string, CalendarSlot[]>;
+    tantraManualTasks?: CalendarManualTask[]; // tantra:
 }
 
 const props = defineProps<Props>();
@@ -120,6 +124,7 @@ const RELOAD_PROPS = [
     'view',
     'displayTimezone',
     'filters',
+    'tantraManualTasks', // tantra:
 ];
 
 /**
@@ -758,6 +763,12 @@ const goToDay = (key: string): void => {
                     </Button>
                 </div>
             </div>
+
+            <!-- tantra: posts that go out by hand this period -->
+            <ManualTaskStrip
+                :tasks="tantraManualTasks ?? []"
+                :timezone="timezone"
+            />
 
             <div class="mx-4 flex min-h-0 flex-1 gap-4 md:mx-8">
                 <div

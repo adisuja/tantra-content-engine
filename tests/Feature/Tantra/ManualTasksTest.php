@@ -115,3 +115,27 @@ it('lists the tasks on the Post by hand page', function () {
             ->where('tasks.0.can_mark', true)
             ->where('tantraReview.tasks_open', 1));
 });
+
+it('gives a poll the next free slot when its planned one is taken, and holds that slot', function () {
+    ReviewActions::approve($this->owner, $this->linkedin); // Mon 16 Nov 08:30 New York
+    $this->poll->forceFill(['planned_date' => '2026-11-16'])->save();
+
+    ReviewActions::approve($this->owner, $this->poll);
+    $task = ManualTask::query()->where('review_item_id', $this->poll->id)->sole();
+    $channel = SocialAccount::query()->where('workspace_id', $this->adi->id)->sole();
+
+    // Wednesday 11 Nov 08:30 in New York is the first free slot.
+    expect($task->social_account_id)->toBe($channel->id)
+        ->and($task->slot_fallback)->toBeTrue()
+        ->and($task->due_at->utc()->toDateTimeString())->toBe('2026-11-11 13:30:00');
+
+    // Posts queued after it skip the poll's slot, and the composer sees it taken.
+    expect(App\Actions\Post\Queue\ListFreeQueueSlots::handle($channel)[0]->utc()->toDateTimeString())->toBe('2026-11-12 13:30:00')
+        ->and(App\Actions\Post\Queue\ListTakenSlots::handle([$channel->id], now(), now()->addDays(7))[$channel->id])
+        ->toBe(['2026-11-11T13:30:00Z', '2026-11-16T13:30:00Z']);
+
+    $this->actingAs($this->owner)->get(route('app.calendar', ['view' => 'week', 'week' => '2026-11-09']))
+        ->assertInertia(fn (Assert $page) => $page->has('tantraManualTasks', 1)
+            ->where('tantraManualTasks.0.kind', 'linkedin_poll')
+            ->where('tantraManualTasks.0.fallback', true));
+});

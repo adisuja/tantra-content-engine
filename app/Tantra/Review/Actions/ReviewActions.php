@@ -228,7 +228,7 @@ final class ReviewActions
      *
      * @return array{0: CarbonImmutable, 1: bool}
      */
-    private static function slotFor(ReviewItem $item, SocialAccount $channel): array
+    public static function slotFor(ReviewItem $item, SocialAccount $channel): array
     {
         $planned = null;
         if ($item->planned_date !== null && filled($item->planned_time)) {
@@ -236,7 +236,9 @@ final class ReviewActions
         }
 
         if ($planned !== null && $planned->greaterThan(now()->addMinute())) {
-            $taken = Post::query()->occupyingSlotsOn($channel->id, now())->where('scheduled_at', $planned)->exists();
+            // A poll posted by hand holds its slot too.
+            $taken = Post::query()->occupyingSlotsOn($channel->id, now())->where('scheduled_at', $planned)->exists()
+                || isset(ManualTask::heldSlotsOn($channel->id, now())[$planned->getTimestamp()]);
             if (! $taken) {
                 return [$planned, false];
             }

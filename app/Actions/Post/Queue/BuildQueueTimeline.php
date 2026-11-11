@@ -53,6 +53,8 @@ class BuildQueueTimeline
             }
         }
 
+        $occupied = array_replace_recursive($occupied, \App\Tantra\Manual\ManualTask::heldSlots($channelIds, now(), $until)); // tantra: polls posted by hand hold their slot
+
         if ($labelIds === [] && ! $untagged) {
             foreach ($channels as $channel) {
                 $schedule = $channel->posting_schedule;

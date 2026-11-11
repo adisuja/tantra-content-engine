@@ -7,6 +7,7 @@ namespace App\Tantra\Manual;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Tantra\Review\Models\ReviewItem;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -25,7 +26,7 @@ class ManualTask extends Model
     protected $table = 'tantra_manual_tasks';
 
     protected $fillable = [
-        'review_item_id', 'workspace_id', 'owner_user_id', 'kind', 'status', 'due_at', 'text', 'thread', 'poll',
+        'review_item_id', 'workspace_id', 'social_account_id', 'owner_user_id', 'kind', 'status', 'due_at', 'slot_fallback', 'text', 'thread', 'poll',
         'media_url', 'posted_url', 'posted_at', 'notified_at',
     ];
 
@@ -33,6 +34,7 @@ class ManualTask extends Model
     {
         return [
             'due_at' => 'datetime',
+            'slot_fallback' => 'boolean',
             'posted_at' => 'datetime',
             'notified_at' => 'datetime',
             'thread' => 'array',
@@ -58,5 +60,39 @@ class ManualTask extends Model
     public function isOpen(): bool
     {
         return in_array($this->status, ['waiting', 'due'], true);
+    }
+
+    /**
+     * The slot instants that open manual tasks hold, as UTC timestamps keyed by
+     * channel, for the slot logic next to Post::scopeOccupyingSlotsOn().
+     *
+     * @param  list<string>  $channelIds
+     * @return array<string, array<int, true>>
+     */
+    public static function heldSlots(array $channelIds, CarbonInterface $after, ?CarbonInterface $until = null, ?string $exceptId = null): array
+    {
+        if ($channelIds === []) {
+            return [];
+        }
+
+        $held = [];
+        self::query()
+            ->whereIn('social_account_id', $channelIds)
+            ->whereIn('status', ['waiting', 'due'])
+            ->where('due_at', '>', $after)
+            ->when($until, fn ($q) => $q->where('due_at', '<', $until))
+            ->when($exceptId, fn ($q) => $q->whereKeyNot($exceptId))
+            ->get(['social_account_id', 'due_at'])
+            ->each(function (self $task) use (&$held): void {
+                $held[$task->social_account_id][$task->due_at->getTimestamp()] = true;
+            });
+
+        return $held;
+    }
+
+    /** @return array<int, true> */
+    public static function heldSlotsOn(string $channelId, CarbonInterface $after, ?string $exceptId = null): array
+    {
+        return self::heldSlots([$channelId], $after, null, $exceptId)[$channelId] ?? [];
     }
 }

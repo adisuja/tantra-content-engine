@@ -30,6 +30,7 @@ class ListFreeQueueSlots
             ->pluck('scheduled_at')
             ->mapWithKeys(fn (CarbonInterface $at): array => [$at->getTimestamp() => true])
             ->all();
+        $taken += \App\Tantra\Manual\ManualTask::heldSlotsOn($channel->id, $after); // tantra: polls posted by hand hold their slot
 
         $horizon = now()->addDays(BuildPublishPageProps::MAX_QUEUE_DAYS);
         $free = [];

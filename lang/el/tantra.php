@@ -137,6 +137,9 @@ return [
         'posted' => 'Posted',
         'url_placeholder' => 'Paste the link of the post',
         'view_post' => 'See the post',
+        'calendar' => 'Post by hand',
+        'calendar_open' => 'Open the list',
+        'moved' => 'Moved, the planned slot was taken',
         'kinds' => [
             'x_post' => 'X post',
             'x_thread' => 'X thread',
