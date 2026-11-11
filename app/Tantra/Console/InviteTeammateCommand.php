@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Tantra\Console;
 
+use App\Enums\User\Locale;
+use App\Enums\User\TimeFormat;
+use App\Enums\User\WeekStart;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Tantra\Review\Models\WorkspaceSettings;
@@ -55,6 +58,9 @@ class InviteTeammateCommand extends Command
                 'password' => null,
                 'email_verified_at' => now(),
                 'account_id' => $workspace->account_id,
+                'locale' => Locale::DEFAULT,
+                'time_format' => TimeFormat::forLocale(Locale::DEFAULT),
+                'week_starts_on' => WeekStart::DEFAULT,
                 'timezone' => 'Asia/Kolkata',
             ]);
 
