@@ -8,6 +8,7 @@ use App\Enums\Media\Type as MediaType;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Enums\YouTube\Category;
 use App\Support\Hashtags;
+use App\Support\Social\XPoll;
 use Illuminate\Support\Str;
 
 enum Platform: string
@@ -246,17 +247,6 @@ enum Platform: string
     }
 
     /**
-     * Number of characters by which the given content exceeds this platform's
-     * hard cap. Returns 0 when it fits. Single source of truth for content-
-     * length checks — used both at schedule-validation time and at publish
-     * time itself so the two paths can never drift apart.
-     */
-    public function contentOverflow(string $content, int $reserved = 0): int
-    {
-        return max(0, mb_strlen($content) + $reserved - $this->maxContentLength());
-    }
-
-    /**
      * Characters a network counts against the post limit besides its text:
      * Mastodon counts the content warning.
      *
@@ -484,11 +474,16 @@ enum Platform: string
             ->all();
     }
 
-    public function instagramGraphBaseUrl(): string
+    /**
+     * The Graph API a Meta platform reads and publishes through.
+     */
+    public function graphApiUrl(): string
     {
         return match ($this) {
-            self::InstagramFacebook => (string) config('trypost.platforms.instagram-facebook.graph_api'),
-            default => (string) config('trypost.platforms.instagram.graph_api'),
+            self::Facebook => config('trypost.platforms.facebook.graph_api'),
+            self::Instagram => config('trypost.platforms.instagram.graph_api'),
+            self::InstagramFacebook => config('trypost.platforms.instagram-facebook.graph_api'),
+            self::Threads => config('trypost.platforms.threads.graph_api'),
         };
     }
 
@@ -592,6 +587,9 @@ enum Platform: string
             self::YouTube => [
                 'categoryOptions' => Category::options(),
                 'defaultCategoryId' => Category::DEFAULT->value,
+            ],
+            self::X => [
+                'poll' => XPoll::limits(),
             ],
             default => [],
         };

@@ -16,8 +16,11 @@ import PlatformBrandIcon from '@/components/PlatformBrandIcon.vue';
 import ThreadView from '@/components/posts/ThreadView.vue';
 import PostCardLabels from '@/components/publish/PostCardLabels.vue';
 import PostCardMenu from '@/components/publish/PostCardMenu.vue';
+import PostDeletedOnNetworkBadge from '@/components/publish/PostDeletedOnNetworkBadge.vue';
 import PostDetailsMedia from '@/components/publish/PostDetailsMedia.vue';
 import PostMetricsBand from '@/components/publish/PostMetricsBand.vue';
+import PostPollResults from '@/components/publish/PostPollResults.vue';
+import PostPollResultsList from '@/components/publish/PostPollResultsList.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -33,16 +36,23 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import {
     getPlatformLabel,
 } from '@/composables/usePlatformLogo';
-import { schedulePostCard } from '@/composables/usePostCardActions';
-import { getPostStatusConfig } from '@/composables/usePostStatus';
+import {
+    schedulePostCard,
+} from '@/composables/usePostCardActions';
+import {
+    getPostCardStatusConfig,
+    getPostStatusConfig,
+} from '@/composables/usePostStatus';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import date from '@/date';
 import dayjs from '@/dayjs';
+import { filled } from '@/lib/helpers';
+import { isDeletedOnNetwork, postPermalink } from '@/lib/postNetwork';
+import { postThreadOf } from '@/lib/postThread';
 import { compactPublicationMetrics } from '@/lib/publicationMetrics';
 import { isRecurring } from '@/lib/recurrence';
-import { type ThreadReply, threadRepliesOf } from '@/lib/threadReplies';
+import { postPollResults } from '@/lib/xPoll';
 import type { MediaItem } from '@/types/media';
-import { THREAD_PLATFORMS } from '@/types/network-options';
 import { Platform } from '@/types/platform';
 import { PostOrigin, PostStatus, PublishStatus } from '@/types/post';
 import type { PostCard, PostCardMenuAction } from '@/types/publish';
@@ -131,6 +141,16 @@ const currentStatusConfig = computed(() =>
     ),
 );
 
+/** Each sibling's status in the rail; a post the network deleted reads as deleted. */
+const railStatuses = computed(() =>
+    Object.fromEntries(
+        siblings.value.map((sibling) => [
+            sibling.id,
+            getPostCardStatusConfig(sibling),
+        ]),
+    ),
+);
+
 const currentKey = computed(() =>
     current.value.id === props.post.id ? props.testKey : current.value.id,
 );
@@ -144,7 +164,7 @@ const channel = computed(() =>
         : null,
 );
 
-const permalink = computed(() => current.value.platform_url ?? null);
+const permalink = computed(() => postPermalink(current.value));
 
 const metricsDetail = computed(() => {
     const detail = current.value.metrics ?? null;
@@ -155,6 +175,8 @@ const metricsDetail = computed(() => {
         ? detail
         : null;
 });
+
+const pollResults = computed(() => postPollResults(current.value));
 
 const moment = computed(() => {
     if (current.value.published_at) {
@@ -202,18 +224,12 @@ watch(
     },
 );
 
-const threadReplies = computed((): ThreadReply[] => {
-    return channel.value && THREAD_PLATFORMS.includes(channel.value.platform)
-        ? threadRepliesOf(current.value.meta ?? {}).filter(
-              (reply) => reply.text.trim() !== '' || reply.media.length > 0,
-          )
-        : [];
-});
+/** The post's thread, each post with its own text, media and poll. */
+const thread = computed(() => postThreadOf(current.value));
 
 const showsThread = computed(
-    () =>
-        threadReplies.value.length > 0 &&
-        Boolean(channel.value?.social_account),
+    (): boolean =>
+        filled(thread.value) && filled(channel.value?.social_account),
 );
 
 const lightboxOpen = ref(false);
@@ -306,10 +322,11 @@ const siblingMoment = (sibling: PostCard): string | null => {
                                 :data-status="sibling.status"
                             >
                                 <component
-                                    :is="getPostStatusConfig(sibling.status).icon"
-                                    :class="getPostStatusConfig(sibling.status).iconClass"
+                                    :is="railStatuses[sibling.id].icon"
+                                    :class="railStatuses[sibling.id].iconClass"
                                     class="size-3.5 shrink-0"
-                                    :aria-label="$t(`posts.status.${sibling.status}`)"
+                                    :aria-label="railStatuses[sibling.id].label"
+                                    :data-testid="`post-details-rail-status-icon-${sibling.id}`"
                                 />
                                 {{
                                     siblingMoment(sibling) ??
@@ -339,7 +356,12 @@ const siblingMoment = (sibling: PostCard): string | null => {
                             class="flex flex-wrap items-center gap-2"
                             as="div"
                         >
+                            <PostDeletedOnNetworkBadge
+                                v-if="isDeletedOnNetwork(current)"
+                                :data-testid="`post-details-deleted-on-network-${testKey}`"
+                            />
                             <Badge
+                                v-else
                                 :variant="currentStatusConfig.variant"
                                 class="h-6 gap-1 px-2 [&>svg]:size-4"
                                 :data-testid="`post-details-status-${testKey}`"
@@ -417,10 +439,18 @@ const siblingMoment = (sibling: PostCard): string | null => {
                     <ThreadView
                         v-if="showsThread && channel?.social_account"
                         :account="channel.social_account"
-                        :posts="[{ text: content, media }, ...threadReplies]"
+                        :posts="thread"
                         :test-key="currentKey"
                         @open-media="openMediaPreview"
-                    />
+                    >
+                        <template #post-end="{ index }">
+                            <PostPollResults
+                                v-if="thread[index]?.poll"
+                                :poll="thread[index].poll"
+                                :test-id="`post-details-poll${thread[index].pollTestSuffix}`"
+                            />
+                        </template>
+                    </ThreadView>
                     <template v-else>
                     <div class="flex flex-col items-start gap-1">
                         <p
@@ -459,6 +489,14 @@ const siblingMoment = (sibling: PostCard): string | null => {
                         :post-id="current.id"
                         :labels="current.labels ?? []"
                         :test-key="`details-${currentKey}`"
+                    />
+
+                    <PostPollResultsList
+                        v-if="!showsThread"
+                        class="-mx-6"
+                        :poll="pollResults.poll"
+                        :thread-polls="pollResults.threadPolls"
+                        test-id="post-details-poll"
                     />
 
                     <PostMetricsBand

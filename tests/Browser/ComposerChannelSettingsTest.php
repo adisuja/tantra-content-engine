@@ -689,6 +689,30 @@ test('save and link saves a draft reel as a draft before linking Facebook', func
     expect($post->fresh()->status)->toBe(Status::Draft);
 });
 
+test('the collaborators notice shows once in this browser', function () {
+    fakeChannelSettingsApis();
+    $post = seedChannelSettingsPost(Platform::Instagram, ContentType::InstagramReel);
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitFor($page, '@instagram-collaborator-input');
+    $page->type('@instagram-collaborator-input', 'alice')
+        ->keys('@instagram-collaborator-input', 'Enter');
+    waitFor($page, '@instagram-collaborators-notice');
+    $page->click('@instagram-collaborators-notice-dismiss');
+    waitForGone($page, '@instagram-collaborators-notice');
+
+    expect(browserStorageItem($page, $post->user, 'composer.instagramCollaboratorsNoticeSeen'))->toBeTrue();
+
+    $page->navigate(route('app.posts.edit', $post));
+    waitFor($page, '@instagram-collaborator-input');
+    $page->type('@instagram-collaborator-input', 'bob')
+        ->keys('@instagram-collaborator-input', 'Enter');
+    waitFor($page, '@instagram-collaborator-bob');
+
+    $page->assertMissing('@instagram-collaborators-notice')
+        ->assertNoJavaScriptErrors();
+});
+
 test('an invalid collaborator in any position shows its error', function () {
     fakeChannelSettingsApis();
     $post = seedChannelSettingsPost(Platform::Instagram, ContentType::InstagramReel);
@@ -884,8 +908,9 @@ test('the threads card offers a topic and a ghost post drops the topic and the m
         ->assertMissing("@composer-{$id}-media-source-menu")
         ->assertVisible("@composer-{$id}-media-source-disabled")
         ->hover("@composer-{$id}-media-source-disabled");
-    waitForText($page, '[data-slot="tooltip-content"]', __('posts.composer.media_not_supported'));
-    $page->click("@composer-type-{$id}-threads_post");
+    waitForText($page, '[data-slot="tooltip-content"]', __('posts.form.threads.ghost_post_attachments'));
+    $page->assertSeeIn('[data-slot="tooltip-content"]', __('posts.form.threads.ghost_post_attachments'))
+        ->click("@composer-type-{$id}-threads_post");
     waitFor($page, '@threads-topic-tag');
     $page->assertVisible("@composer-{$id}-media-source-menu")
         ->assertMissing("@composer-{$id}-media-source-disabled")
@@ -994,12 +1019,39 @@ test('a server error on a thread reply shows under that reply', function () {
         ->assertNoJavaScriptErrors();
 });
 
+test('a Mastodon reply keeps its media inside the preview, in line with its text', function () {
+    fakeChannelSettingsApis();
+    $post = seedChannelSettingsPost(Platform::Mastodon, ContentType::MastodonPost);
+    $image = Media::factory()->ownedByPost($post)->create(['mime_type' => 'image/png']);
+    $post->update(['meta' => ['thread_replies' => [['text' => 'With a photo', 'media' => [MediaItem::fromMedia($image)->toArray()]]]]]);
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitFor($page, '@preview-thread-reply-0 img');
+
+    $edges = $page->script(<<<'JS'
+        (() => {
+            const reply = document.querySelector('[data-testid="preview-thread-reply-0"]');
+            const walker = document.createTreeWalker(reply, NodeFilter.SHOW_TEXT, (node) => node.textContent.includes('With a photo') ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP);
+            const text = document.createRange();
+            text.selectNodeContents(walker.nextNode());
+            const image = reply.querySelector('img').getBoundingClientRect();
+            const box = reply.getBoundingClientRect();
+
+            return { gap: box.right - image.right, offset: Math.abs(Math.round(image.left - text.getBoundingClientRect().left)) };
+        })()
+        JS);
+
+    expect($edges['gap'])->toBeGreaterThanOrEqual(16)
+        ->and($edges['offset'])->toBeLessThanOrEqual(1);
+    $page->assertNoJavaScriptErrors();
+});
+
 test('a thread reply shows its own media under it and keeps it on save', function () {
     fakeChannelSettingsApis();
     $post = seedChannelSettingsPost(Platform::X, ContentType::XPost);
     $id = $post->social_account_id;
     $image = Media::factory()->ownedByPost($post)->create(['mime_type' => 'image/png']);
-    $post->update(['meta' => ['thread_replies' => [['text' => 'With a photo', 'media' => [MediaItem::fromMedia($image)->toArray()]], 'Plain reply']]]);
+    $post->update(['meta' => ['thread_replies' => [['text' => 'With a photo', 'media' => [MediaItem::fromMedia($image)->toArray()]], ['text' => 'Plain reply', 'media' => []]]]]);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
     waitFor($page, "@composer-{$id}-reply-0-media-item-0");
@@ -1035,7 +1087,7 @@ test('a thread reply shows its own media under it and keeps it on save', functio
 test('the mastodon preview hides the post behind its content warning on every post of the thread', function () {
     fakeChannelSettingsApis();
     $post = seedChannelSettingsPost(Platform::Mastodon, ContentType::MastodonPost);
-    $post->update(['meta' => ['spoiler_text' => 'Spoilers', 'thread_replies' => ['Hidden reply']]]);
+    $post->update(['meta' => ['spoiler_text' => 'Spoilers', 'thread_replies' => [['text' => 'Hidden reply', 'media' => []]]]]);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
     waitFor($page, '@mastodon-preview-content-warning');
@@ -1125,7 +1177,7 @@ test('arrow keys move between the posts of a thread from the end and the start o
     fakeChannelSettingsApis();
     $post = seedChannelSettingsPost(Platform::X, ContentType::XPost);
     $post->update(['content' => 'Root']);
-    $post->update(['meta' => ['thread_replies' => ['First reply', 'Second reply']]]);
+    $post->update(['meta' => ['thread_replies' => [['text' => 'First reply', 'media' => []], ['text' => 'Second reply', 'media' => []]]]]);
     $id = $post->social_account_id;
 
     $page = visit(route('app.posts.edit', $post))->resize(1440, 1000);
@@ -1160,7 +1212,11 @@ test('the preview scrolls to the thread post being edited', function () {
     fakeChannelSettingsApis();
     $post = seedChannelSettingsPost(Platform::X, ContentType::XPost);
     $post->update(['content' => str_repeat('Root post text. ', 40)]);
-    $post->update(['meta' => ['thread_replies' => [str_repeat('First reply text. ', 40), str_repeat('Second reply text. ', 40), 'Last reply']]]);
+    $post->update(['meta' => ['thread_replies' => [
+        ['text' => str_repeat('First reply text. ', 40), 'media' => []],
+        ['text' => str_repeat('Second reply text. ', 40), 'media' => []],
+        ['text' => 'Last reply', 'media' => []],
+    ]]]);
     $id = $post->social_account_id;
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 700);
@@ -1648,4 +1704,27 @@ test('a collaborator link shows the link cursor of a link that opens a new tab',
     expect($page->script("getComputedStyle(document.querySelector('[data-testid=\"instagram-collaborator-alice\"]')).cursor"))->toBe('alias')
         ->and($page->script("document.querySelector('[data-testid=\"instagram-collaborator-alice\"]').target"))->toBe('_blank');
     $page->assertNoJavaScriptErrors();
+});
+
+test('shift enter in an earlier post of an x thread opens the new post right below it', function () {
+    fakeChannelSettingsApis();
+    $post = seedChannelSettingsPost(Platform::X, ContentType::XPost);
+    $post->update(['content' => 'Root', 'meta' => ['thread_replies' => [['text' => 'Second tweet', 'media' => []], ['text' => 'Third tweet', 'media' => []]]]]);
+    $id = $post->social_account_id;
+
+    $page = visit(route('app.posts.edit', $post))->resize(1440, 1000);
+    waitFor($page, "@composer-caption-{$id}");
+
+    $page->script("(() => { const c = document.querySelector('[data-testid=\"composer-caption-{$id}\"]'); c.focus(); c.setSelectionRange(c.value.length, c.value.length); })()");
+    $page->keys("@composer-caption-{$id}", 'ArrowDown');
+    waitFor($page, '@thread-reply-0');
+
+    $page->keys('@thread-reply-0', 'Shift+Enter');
+    waitFor($page, '@thread-reply-1');
+
+    expect($page->script('document.activeElement?.dataset.testid'))->toBe('thread-reply-1')
+        ->and($page->script("document.querySelector('[data-testid=\"thread-reply-1\"]').value"))->toBe('');
+    $page->assertSeeIn('@thread-reply-collapsed-0', 'Second tweet')
+        ->assertSeeIn('@thread-reply-collapsed-2', 'Third tweet')
+        ->assertNoJavaScriptErrors();
 });

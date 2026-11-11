@@ -351,8 +351,8 @@ test('show posting times renders empty slots in the week and month views', funct
     waitForGone($page, '[data-testid^="calendar-posting-slot-"]');
     waitForCondition($page, "!new URLSearchParams(location.search).has('slots')");
 
+    expect(browserStorageItem($page, $user, 'publish.showSlots'))->toBeFalse();
     $page->assertMissing("@calendar-posting-slot-{$slotKey}")
-        ->assertScript('window.localStorage.getItem("publish.showSlots")', 'false')
         ->assertScript("new URLSearchParams(location.search).has('slots')", false)
         ->assertScript("window.__partialData.every((only) => !only.split(',').includes('slots'))", true);
 
@@ -382,6 +382,65 @@ test('show posting times renders empty slots in the week and month views', funct
     expect($post->scheduled_at->equalTo($day->copy()->setTime(15, 0)))->toBeTrue()
         ->and($post->schedule_mode)->toBe(ScheduleMode::Queue);
     $month->assertNoJavaScriptErrors();
+});
+
+test('a calendar opened by its link asks for its posting times only once its page is in the browser history, so Back still returns to it', function () {
+    [$user, $linkedin] = calendarPageSetup();
+    $post = calendarPagePost($linkedin, now('UTC')->startOfWeek()->addWeek()->addDays(2)->setTime(10, 0));
+    $this->actingAs($user);
+
+    $page = visit(route('app.settings.preferences'));
+    $page->page()->context()->addInitScript(<<<'JS'
+        window.__slotsAskedWith = [];
+        const setRequestHeader = XMLHttpRequest.prototype.setRequestHeader;
+        XMLHttpRequest.prototype.setRequestHeader = function (name, value) {
+            if (name.toLowerCase() === 'x-inertia-partial-data' && String(value).split(',').includes('slots')) {
+                window.__slotsAskedWith.push(window.history.state?.page ? 'page' : 'nothing');
+            }
+
+            return setRequestHeader.call(this, name, value);
+        };
+    JS);
+    $page->navigate(route('app.calendar', ['view' => 'week']));
+    waitForCondition($page, 'window.__slotsAskedWith.length === 1');
+
+    expect($page->script('window.__slotsAskedWith'))->toBe(['page']);
+
+    $page->click('@calendar-next');
+    waitFor($page, "@calendar-post-{$post->id}");
+    $page->back();
+    waitForGone($page, "@calendar-post-{$post->id}");
+
+    $page->assertPathIs(route('app.calendar', ['view' => 'week'], false))
+        ->assertScript("new URLSearchParams(location.search).has('week')", false)
+        ->assertNoJavaScriptErrors();
+});
+
+test('in the month a post the network deleted shows the deleted mark instead of the published one', function () {
+    [$user, $linkedin] = calendarPageSetup();
+    $day = now('UTC')->subMonthNoOverflow()->startOfMonth()->addDays(14);
+    $published = Post::factory()->forAccount($linkedin)->published()->create([
+        'user_id' => $user->id,
+        'scheduled_at' => $day->setTime(10, 0),
+        'published_at' => $day->setTime(10, 0),
+    ]);
+    $deleted = Post::factory()->forAccount($linkedin)->deletedOnNetwork()->create([
+        'user_id' => $user->id,
+        'scheduled_at' => $day->setTime(12, 0),
+        'published_at' => $day->setTime(12, 0),
+    ]);
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.calendar', ['view' => 'month', 'month' => $day->format('Y-m-d')]))->resize(1440, 900);
+    waitFor($page, "@calendar-post-{$deleted->id}");
+
+    $page->assertPresent("@calendar-post-deleted-{$deleted->id}")
+        ->assertMissing("@calendar-post-published-{$deleted->id}")
+        ->assertAttribute("@calendar-post-deleted-{$deleted->id}", 'aria-label', __('calendar.post_status.deleted'))
+        ->assertPresent("@calendar-post-published-{$published->id}")
+        ->assertMissing("@calendar-post-deleted-{$published->id}")
+        ->assertNoJavaScriptErrors();
 });
 
 test('in the month a post shows its network in color and a status icon with a tooltip, and a free posting time reads as a hatched empty slot', function () {

@@ -275,6 +275,33 @@ export interface PublicationMetricFact {
     provider_metric?: string | null;
 }
 
+export interface PublicationPoll {
+    options: { label: string; votes: number }[];
+    voting_status: 'open' | 'closed' | null;
+    end_datetime: string | null;
+    duration_minutes: number | null;
+}
+
+/** The poll of one thread reply; `reply` is its position among the replies, from 0. */
+export interface PublicationThreadPoll extends PublicationPoll {
+    reply: number;
+}
+
+export const PublicationAvailability = {
+    Available: 'available',
+    Deleted: 'deleted',
+    Unavailable: 'unavailable',
+} as const;
+
+export type PublicationAvailabilityValue =
+    (typeof PublicationAvailability)[keyof typeof PublicationAvailability];
+
+export type MetricsUnavailableReason =
+    | 'not_published'
+    | 'deleted_on_network'
+    | 'platform_not_supported'
+    | 'not_collected';
+
 export interface PublicationAnalyticsDetail {
     available: true;
     reason: null;
@@ -285,11 +312,13 @@ export interface PublicationAnalyticsDetail {
         platform: string;
         origin: string;
         content_type: string;
-        availability: string;
+        availability: PublicationAvailabilityValue;
         provider_published_at: string | null;
         permalink: string | null;
         excerpt: string | null;
         preview_metadata: Record<string, unknown> | null;
+        poll: PublicationPoll | null;
+        thread_polls: PublicationThreadPoll[];
         account_display_name: string | null;
         account_username: string | null;
         account_avatar_url: string | null;
