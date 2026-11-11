@@ -102,5 +102,9 @@ return [
         'close' => 'Close',
         'chip_approved' => 'Approved by :name',
         'chip_moved' => 'Moved slot',
+        'team_comments' => 'Team comments',
+        'team_comments_help' => 'Posted from each person\'s own profile when the post goes live; replies land in their comment\'s thread a few minutes later.',
+        'author' => 'Author',
+        'reply' => 'reply',
     ],
 ];

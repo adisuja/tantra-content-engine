@@ -34,6 +34,24 @@ const canUnapprove = computed(
         (status.value === 'scheduled' || status.value === 'approved'),
 );
 
+/* The team thread (RULES.md 0c): top-level comments with their replies nested. */
+const threads = computed(() => {
+    const all = props.item.team_comments.map((comment, index) => ({
+        comment,
+        index,
+    }));
+
+    return all
+        .filter(
+            (c) =>
+                c.comment.reply_to === null || c.comment.reply_to === undefined,
+        )
+        .map((top) => ({
+            ...top,
+            replies: all.filter((c) => c.comment.reply_to === top.index),
+        }));
+});
+
 const formatDate = (iso: string | null): string =>
     iso
         ? new Date(iso).toLocaleString(undefined, {
@@ -422,6 +440,61 @@ const statusVariant = (
                 </Button>
             </div>
         </form>
+
+        <details
+            v-if="item.team_comments.length"
+            open
+            data-testid="tantra-team-comments"
+        >
+            <summary class="cursor-pointer font-medium">
+                {{ $t('tantra.review.team_comments') }} ·
+                {{ item.team_comments.length }}
+            </summary>
+            <p class="mt-1 text-xs text-muted-foreground">
+                {{ $t('tantra.review.team_comments_help') }}
+            </p>
+            <ol class="mt-2 flex flex-col gap-2">
+                <li
+                    v-for="thread in threads"
+                    :key="thread.index"
+                    class="flex flex-col gap-1.5"
+                >
+                    <div class="rounded-lg bg-muted/60 p-2">
+                        <div class="text-xs text-muted-foreground">
+                            <b class="text-foreground">{{
+                                thread.comment.name || thread.comment.by
+                            }}</b>
+                            <template v-if="thread.comment.tone">
+                                · {{ thread.comment.tone }}</template
+                            >
+                        </div>
+                        <div class="whitespace-pre-line">
+                            {{ thread.comment.text }}
+                        </div>
+                    </div>
+                    <div
+                        v-for="reply in thread.replies"
+                        :key="reply.index"
+                        class="ml-5 rounded-lg border border-border p-2"
+                    >
+                        <div class="text-xs text-muted-foreground">
+                            <b class="text-foreground">{{
+                                reply.comment.name || reply.comment.by
+                            }}</b>
+                            <span
+                                v-if="reply.comment.by === item.author_key"
+                                class="ml-1 rounded bg-foreground px-1 text-[10px] text-background"
+                                >{{ $t('tantra.review.author') }}</span
+                            >
+                            · {{ $t('tantra.review.reply') }}
+                        </div>
+                        <div class="whitespace-pre-line">
+                            {{ reply.comment.text }}
+                        </div>
+                    </div>
+                </li>
+            </ol>
+        </details>
 
         <details v-if="item.events.length" class="group">
             <summary class="cursor-pointer font-medium">

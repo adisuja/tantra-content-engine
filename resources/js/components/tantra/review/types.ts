@@ -96,6 +96,7 @@ export interface ReviewItemRow {
         url?: string;
     } | null;
     team_comments: TeamComment[];
+    author_key: string;
     mentions: string[];
     media: ReviewMedia;
     profile: ReviewProfile;

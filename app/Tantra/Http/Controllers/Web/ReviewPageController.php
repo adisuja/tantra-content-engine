@@ -178,6 +178,7 @@ class ReviewPageController extends Controller
                 'reply_to' => isset($c['reply_to']) ? (int) $c['reply_to'] : null,
                 'tone' => $c['tone'] ?? null,
             ])->values(),
+            'author_key' => (string) ($p['profile'] ?? ''),
             'mentions' => array_values(array_filter((array) ($p['mentions'] ?? []), 'is_string')),
             'media' => [
                 'type' => $manifest['type'] ?? ($video ? 'video' : ($images->isNotEmpty() ? 'image' : null)),

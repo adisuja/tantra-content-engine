@@ -140,7 +140,9 @@ function commentHtml(p: ReviewItemRow, pr: ReviewProfile): string {
             kind: 'person',
         };
 
-        return `<div class="li-cm${rep ? ' li-rep' : ''}">${avatar(cp, rep ? 24 : 32)}<div class="li-cm-b"><div class="li-cm-bubble"><div class="li-cm-n">${esc(cp.name)} <span class="li-deg">· 1st</span></div><div class="li-cm-h">${esc(c.headline || '')}</div><div class="li-cm-t">${rich(c.text, 'li-link', p.mentions).replace(/\n/g, '<br>')}</div></div><div class="li-cm-a">Like · Reply</div></div></div>`;
+        const isA = c.by === p.author_key;
+
+        return `<div class="li-cm${rep ? ' li-rep' : ''}">${avatar(cp, rep ? 24 : 32)}<div class="li-cm-b"><div class="li-cm-bubble"><div class="li-cm-n">${esc(cp.name)}${isA ? ' <span class="li-auth">Author</span>' : ' <span class="li-deg">· 1st</span>'}</div><div class="li-cm-h">${esc(c.headline || '')}</div><div class="li-cm-t">${rich(c.text, 'li-link', p.mentions).replace(/\n/g, '<br>')}</div></div><div class="li-cm-a">Like · Reply</div></div></div>`;
     };
 
     return `<div class="li-cmts"><div class="li-cm-sort">Most relevant ▾</div><div class="li-cm">${avatar(pr, 32)}<div class="li-cm-b"><div class="li-cm-bubble"><div class="li-cm-n">${esc(pr.name)} <span class="li-auth">Author</span></div><div class="li-cm-h">${esc(pr.headline || '')}</div><div class="li-cm-t">${txt}</div></div><div class="li-cm-a">Like · Reply</div></div></div>${shown.map(one).join('')}${tc.length > shown.length ? `<div class="li-cm-more">Load more comments (${tc.length - shown.length})</div>` : ''}</div>`;
