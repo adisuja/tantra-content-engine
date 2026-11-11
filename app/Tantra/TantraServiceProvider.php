@@ -28,6 +28,7 @@ class TantraServiceProvider extends ServiceProvider
 
         $this->app->make(Router::class)->aliasMiddleware('tantra.owner-token', EnsureOwnerToken::class);
         $this->loadRoutesFrom(__DIR__.'/Http/routes-api.php');
+        $this->loadRoutesFrom(__DIR__.'/Http/routes-web.php');
 
         if ($this->app->runningInConsole()) {
             $this->commands([CreateOwnerCommand::class, MapProfileCommand::class]);
