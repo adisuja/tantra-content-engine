@@ -40,6 +40,20 @@ class UnipileClient
         return $response->successful() ? ((string) $response->json('id') ?: null) : null;
     }
 
+    /**
+     * A post as Unipile sees it through its author's account: reactions_counter,
+     * comments_counter, reposts_counter. No impressions (Spike S2).
+     *
+     * @return array<string, mixed>|null
+     */
+    public function postDetails(string $accountId, string $nativeId): ?array
+    {
+        $native = preg_replace('/^urn:li:/', '', $nativeId);
+        $response = $this->get("/{$accountId}/posts/".rawurlencode((string) $native), allowFailure: true);
+
+        return $response->successful() ? (array) $response->json() : null;
+    }
+
     public function react(string $accountId, string $postId, string $reaction = 'linkedin_like'): Response
     {
         return $this->post("/{$accountId}/posts/{$postId}/reactions", ['reaction' => $reaction]);

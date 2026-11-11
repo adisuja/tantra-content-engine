@@ -12,6 +12,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Tantra\Boost\Boost;
 use App\Tantra\Boost\StartBoostRun;
+use App\Tantra\Console\CollectMetricsCommand;
 use App\Tantra\Console\CreateOwnerCommand;
 use App\Tantra\Console\GiveawayRepliesCommand;
 use App\Tantra\Console\InviteTeammateCommand;
@@ -103,10 +104,12 @@ class TantraServiceProvider extends ServiceProvider
             $schedule->command('tantra:giveaway-replies')->hourly()->withoutOverlapping();
             // 09:11 in Kolkata: reconnect reminders for LinkedIn channels.
             $schedule->command('tantra:reconnect-reminders')->dailyAt('03:41');
+            // Post and page numbers (PRD 10.6).
+            $schedule->command('tantra:collect-metrics')->twiceDaily(6, 18)->withoutOverlapping();
         });
 
                 if ($this->app->runningInConsole()) {
-            $this->commands([CreateOwnerCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class, TeamAccountsCommand::class, GiveawayRepliesCommand::class, ReconnectRemindersCommand::class]);
+            $this->commands([CollectMetricsCommand::class, CreateOwnerCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class, TeamAccountsCommand::class, GiveawayRepliesCommand::class, ReconnectRemindersCommand::class]);
         }
 
         if ($this->app->environment('production') && config('tantra.lean_workers.enabled')) {

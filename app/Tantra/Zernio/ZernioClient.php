@@ -51,6 +51,26 @@ class ZernioClient
         return $this->send('get', "/posts/{$postId}", allowFailure: true);
     }
 
+    /** One LinkedIn post's numbers by URN: impressions, reach, likes, comments, shares, clicks. */
+    public function linkedInPostAnalytics(string $accountId, string $urn): Response
+    {
+        return $this->send('get', "/accounts/{$accountId}/linkedin-post-analytics?".http_build_query(['urn' => $urn]), allowFailure: true);
+    }
+
+    /**
+     * Page totals for a LinkedIn organization over a date range (at most 89 days,
+     * follower numbers end two days ago).
+     *
+     * @param  list<string>  $metrics
+     */
+    public function linkedInOrgTotals(string $accountId, string $from, string $to, array $metrics): Response
+    {
+        return $this->send('get', '/analytics/linkedin/org-aggregate-analytics?'.http_build_query([
+            'accountId' => $accountId, 'fromDate' => $from, 'toDate' => $to,
+            'metrics' => implode(',', $metrics), 'metricType' => 'total_value',
+        ]), allowFailure: true);
+    }
+
     public function retryPost(string $postId): Response
     {
         return $this->send('post', "/posts/{$postId}/retry", [], allowFailure: true);
