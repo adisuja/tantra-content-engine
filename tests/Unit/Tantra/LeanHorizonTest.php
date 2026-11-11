@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\SocialAccount\Platform;
 use App\Tantra\Ops\LeanHorizon;
 use App\Tantra\TantraServiceProvider;
+use Laravel\Horizon\ProvisioningPlan;
 
 function tantraLeanPlan(int $processes = 3): array
 {
@@ -67,6 +68,22 @@ test('in production the provider swaps in the lean pool and names it for the env
 
     expect(array_keys(config('horizon.defaults')))->toBe([LeanHorizon::SUPERVISOR])
         ->and(config('horizon.environments.production'))->toBe([LeanHorizon::SUPERVISOR => ['maxProcesses' => 3]]);
+});
+
+test('horizon can start with the lean pool in every environment', function () {
+    app()->detectEnvironment(fn (): string => 'production');
+    config(['tantra.lean_workers' => ['enabled' => true, 'processes' => 3]]);
+
+    (new TantraServiceProvider(app()))->boot();
+
+    // This is what `php artisan horizon` builds first; it read every
+    // environment and crashed when one still named a removed supervisor.
+    $options = ProvisioningPlan::get('tantra-test')->toSupervisorOptions();
+
+    expect(array_keys($options))->toEqualCanonicalizing(array_keys(config('horizon.environments')))
+        ->and($options)->each(fn ($environment) => $environment->toHaveKeys([LeanHorizon::SUPERVISOR]))
+        ->and($options['production'][LeanHorizon::SUPERVISOR]->maxProcesses)->toBe(3)
+        ->and($options['production'][LeanHorizon::SUPERVISOR]->connection)->toBe('redis');
 });
 
 test('the switch turns lean workers off in production', function () {

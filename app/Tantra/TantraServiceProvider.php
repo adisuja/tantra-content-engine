@@ -74,13 +74,19 @@ class TantraServiceProvider extends ServiceProvider
             (int) config('tantra.lean_workers.processes', 3),
         );
 
+        // Horizon checks the supervisors named under every environment when
+        // it starts (ProvisioningPlan), not only the current one, so each
+        // environment must name only supervisors that still exist.
+        $sizes = array_map(
+            fn (array $supervisor): array => ['maxProcesses' => (int) ($supervisor['maxProcesses'] ?? 1)],
+            $plan,
+        );
+
         config([
             'horizon.defaults' => $plan,
-            // Horizon starts only the supervisors named for the environment,
-            // so production must name each one; upstream's names are gone.
-            'horizon.environments.production' => array_map(
-                fn (array $supervisor): array => ['maxProcesses' => (int) ($supervisor['maxProcesses'] ?? 1)],
-                $plan,
+            'horizon.environments' => array_map(
+                fn (): array => $sizes,
+                (array) config('horizon.environments', []) + ['production' => []],
             ),
         ]);
     }
