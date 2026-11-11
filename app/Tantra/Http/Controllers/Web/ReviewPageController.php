@@ -9,6 +9,7 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Tantra\Channels\ReconnectReminders;
 use App\Tantra\Giveaway\GiveawayReply;
 use App\Tantra\Review\Enums\ReviewStatus;
 use App\Tantra\Review\Models\Batch;
@@ -58,7 +59,7 @@ class ReviewPageController extends Controller
                 ],
             ]);
 
-        return Inertia::render('tantra/review/Index', ['batches' => $batches]);
+        return Inertia::render('tantra/review/Index', ['batches' => $batches, 'reconnect' => ReconnectReminders::forUser($user)]);
     }
 
     public function show(Request $request, Batch $batch): Response

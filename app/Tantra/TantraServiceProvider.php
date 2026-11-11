@@ -17,6 +17,7 @@ use App\Tantra\Console\GiveawayRepliesCommand;
 use App\Tantra\Console\InviteTeammateCommand;
 use App\Tantra\Console\ManualTasksCommand;
 use App\Tantra\Console\MapProfileCommand;
+use App\Tantra\Console\ReconnectRemindersCommand;
 use App\Tantra\Console\TeamAccountsCommand;
 use App\Tantra\Console\ZernioConnectCommand;
 use App\Tantra\Http\Controllers\Web\ReviewPageController;
@@ -89,10 +90,12 @@ class TantraServiceProvider extends ServiceProvider
         $this->callAfterResolving(Schedule::class, function (Schedule $schedule): void {
             $schedule->command('tantra:manual-tasks')->everyFiveMinutes()->withoutOverlapping();
             $schedule->command('tantra:giveaway-replies')->hourly()->withoutOverlapping();
+            // 09:11 in Kolkata: reconnect reminders for LinkedIn channels.
+            $schedule->command('tantra:reconnect-reminders')->dailyAt('03:41');
         });
 
                 if ($this->app->runningInConsole()) {
-            $this->commands([CreateOwnerCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class, TeamAccountsCommand::class, GiveawayRepliesCommand::class]);
+            $this->commands([CreateOwnerCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class, TeamAccountsCommand::class, GiveawayRepliesCommand::class, ReconnectRemindersCommand::class]);
         }
 
         if ($this->app->environment('production') && config('tantra.lean_workers.enabled')) {

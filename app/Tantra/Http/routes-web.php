@@ -6,6 +6,7 @@ use App\Http\Middleware\App\EnsureAccountReady;
 use App\Http\Middleware\App\EnsureHasWorkspace;
 use App\Tantra\Http\Controllers\Web\JoinController;
 use App\Tantra\Http\Controllers\Web\ManualTaskController;
+use App\Tantra\Http\Controllers\Web\ReconnectController;
 use App\Tantra\Http\Controllers\Web\ReviewItemActionController;
 use App\Tantra\Http\Controllers\Web\ReviewPageController;
 use App\Tantra\Http\Controllers\Web\TeamController;
@@ -57,6 +58,12 @@ Route::middleware(['web', 'auth'])
         Route::post('/expertise', [TeamController::class, 'expertise'])->name('expertise');
         Route::post('/match', [TeamController::class, 'match'])->name('match');
     });
+
+// tantra: reconnect a LinkedIn channel from the reminder (PRD M3).
+Route::middleware(['web', 'auth'])
+    ->get('tantra/reconnect/{account}', ReconnectController::class)
+    ->whereUuid('account')
+    ->name('tantra.reconnect');
 
 // tantra: a teammate's welcome link (signed, 14 days) opens the set-password page.
 Route::middleware(['web', 'signed', 'throttle:6,1'])
