@@ -107,7 +107,8 @@ trait HasWorkspace
         return [
             'is_owner' => $isOwner,
             'is_admin' => $isAdmin,
-            'requires_approval' => ! $isAdmin && (bool) $pivot?->requires_approval,
+            // tantra: once a workspace's review owner has joined, everyone else needs their approval (PRD 10.8).
+            'requires_approval' => (! $isAdmin && (bool) $pivot?->requires_approval) || \App\Tantra\Review\OwnerApproval::someoneElseApproves($workspace, $this),
         ];
     }
 
@@ -131,6 +132,10 @@ trait HasWorkspace
      */
     public function publishesDirectlyThrough(Workspace $workspace, ?Pivot $pivot): bool
     {
+        if (\App\Tantra\Review\OwnerApproval::someoneElseApproves($workspace, $this)) { // tantra: PRD 10.8
+            return false;
+        }
+
         if ($this->ownsAccountOf($workspace)) {
             return true;
         }

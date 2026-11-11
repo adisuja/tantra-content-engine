@@ -70,7 +70,8 @@ class Workspace extends Model
             ->filter(fn (User $member): bool => $member->publishesDirectlyThrough($this, $member->pivot));
         $owner = $this->account?->owner;
 
-        if ($owner !== null && ! $approvers->contains('id', $owner->id)) {
+        // tantra: not in a workspace whose own review owner approves (PRD 10.8).
+        if ($owner !== null && ! $approvers->contains('id', $owner->id) && ! \App\Tantra\Review\OwnerApproval::someoneElseApproves($this, $owner)) {
             $approvers->push($owner);
         }
 

@@ -27,6 +27,8 @@ use App\Tantra\Ops\LeanHorizon;
 use App\Tantra\Review\Actions\DraftMaker;
 use App\Tantra\Review\Listeners\RecordComposerEdit;
 use App\Tantra\Review\Models\Batch;
+use App\Tantra\Review\Models\WorkspaceSettings;
+use App\Tantra\Review\OwnerApproval;
 use App\Tantra\Review\ReviewChips;
 use App\Tantra\Review\ReviewGate;
 use Illuminate\Console\Scheduling\Schedule;
@@ -78,6 +80,15 @@ class TantraServiceProvider extends ServiceProvider
 
                 // An edit in the composer is a new version of the post under review.
         Post::updated(fn (Post $post) => RecordComposerEdit::handle($post));
+
+        // Approval by the review owner (PRD 10.8): drop the kept answers when they can change.
+        WorkspaceSettings::saved(fn () => OwnerApproval::forget());
+        WorkspaceSettings::deleted(fn () => OwnerApproval::forget());
+        User::saved(function (User $user): void {
+            if ($user->wasChanged(['password', 'google_id', 'github_id'])) {
+                OwnerApproval::forget();
+            }
+        });
 
         // The sidebar's Review badge: posts waiting for this user's approval.
         Inertia::share('tantraReview', fn (): ?array => Auth::user() === null ? null : [

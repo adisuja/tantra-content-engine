@@ -14,7 +14,8 @@ export const useWorkspaceAbilities = () => {
         () => isOwner.value || workspace.value?.is_admin === true,
     );
     const requiresApproval = computed(
-        () => !isOwner.value && workspace.value?.requires_approval === true,
+        // tantra: the server decides, the Account owner included (PRD 10.8).
+        () => workspace.value?.requires_approval === true,
     );
     const canPublishDirectly = computed(
         () => workspace.value !== null && !requiresApproval.value,
