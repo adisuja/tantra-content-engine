@@ -3,6 +3,7 @@ import { Link, router, usePage } from '@inertiajs/vue3';
 import {
     IconBulb,
     IconCalendarEvent,
+    IconEye, // tantra:
     IconTrendingUp,
     IconFileText,
     IconLayoutGrid,
@@ -72,7 +73,23 @@ const scheduledPostsCount = computed(() =>
     ),
 );
 
+// tantra: posts waiting for this user's approval in the review studio.
+const tantraReviewWaiting = computed(
+    () =>
+        (page.props.tantraReview as { waiting?: number } | null | undefined)
+            ?.waiting ?? 0,
+);
+
 const mainNavItems = computed<NavItem[]>(() => [
+    // tantra: the review studio, visible to everyone (PRD 10.2).
+    {
+        title: trans('tantra.review.nav'),
+        href: '/tantra/review',
+        icon: IconEye,
+        count: tantraReviewWaiting.value || undefined,
+        countTestId: 'sidebar-tantra-review-count',
+        activePattern: '/tantra/review',
+    },
     ...(canCreatePost.value
         ? [
               {

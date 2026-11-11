@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Tantra\Review;
 
 use App\Models\User;
+use App\Models\Workspace;
+use App\Tantra\Review\Enums\ReviewStatus;
 use App\Tantra\Review\Models\ReviewItem;
 use App\Tantra\Review\Models\WorkspaceSettings;
 use Illuminate\Validation\ValidationException;
@@ -43,6 +45,35 @@ final class ReviewGate
         if (! self::isReviewOwner($user, $item)) {
             throw ValidationException::withMessages(['review' => 'Only the review owner of this workspace can do that.']);
         }
+    }
+
+    /**
+     * Workspaces whose posts this user approves: the ones naming them as review
+     * owner, plus, for the Account owner, every workspace that names nobody.
+     *
+     * @return list<string>
+     */
+    public static function reviewedWorkspaceIds(User $user): array
+    {
+        $named = WorkspaceSettings::query()->where('review_owner_user_id', $user->id)->pluck('workspace_id')->all();
+
+        if ($user->account?->owner_id !== $user->id) {
+            return array_values($named);
+        }
+
+        $claimed = WorkspaceSettings::query()->whereNotNull('review_owner_user_id')->pluck('workspace_id')->all();
+        $unclaimed = Workspace::query()->where('account_id', $user->account_id)->whereNotIn('id', $claimed)->pluck('id')->all();
+
+        return array_values(array_unique([...$named, ...$unclaimed]));
+    }
+
+    public static function waitingCount(User $user): int
+    {
+        return ReviewItem::query()
+            ->where('account_id', $user->account_id)
+            ->whereIn('workspace_id', self::reviewedWorkspaceIds($user))
+            ->where('review_status', ReviewStatus::InReview->value)
+            ->count();
     }
 
     public static function canSign(User $user, ReviewItem $item, string $signer): bool

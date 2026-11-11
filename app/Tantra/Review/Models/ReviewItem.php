@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Tantra\Review\Enums\EventKind;
 use App\Tantra\Review\Enums\ReviewStatus;
+use App\Tantra\Review\Events\ReviewItemChanged;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -97,11 +98,15 @@ class ReviewItem extends Model
     /** @param array<string, mixed>|null $value */
     public function record(EventKind $kind, ?User $user = null, ?string $body = null, ?array $value = null): ReviewEvent
     {
-        return $this->events()->create([
+        $event = $this->events()->create([
             'user_id' => $user?->id,
             'kind' => $kind->value,
             'body' => $body,
             'value' => $value,
         ]);
+
+        ReviewItemChanged::dispatch($this->batch_id, $this->id, $kind->value, $user?->id);
+
+        return $event;
     }
 }

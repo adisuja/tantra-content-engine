@@ -2,14 +2,22 @@
 
 declare(strict_types=1);
 
+use App\Http\Middleware\App\EnsureAccountReady;
+use App\Http\Middleware\App\EnsureHasWorkspace;
 use App\Tantra\Http\Controllers\Web\ReviewItemActionController;
+use App\Tantra\Http\Controllers\Web\ReviewPageController;
 use Illuminate\Support\Facades\Route;
 
-// tantra: review studio (PRD 10.2). Pages arrive in M1.3; actions answer JSON.
+// tantra: review studio (PRD 10.2). Pages render with Inertia; actions answer JSON.
 Route::middleware(['web', 'auth'])
     ->prefix('tantra/review')
     ->name('tantra.review.')
     ->group(function (): void {
+        Route::middleware([EnsureAccountReady::class, EnsureHasWorkspace::class])->group(function (): void {
+            Route::get('/', [ReviewPageController::class, 'index'])->name('index');
+            Route::get('/{batch}', [ReviewPageController::class, 'show'])->whereUuid('batch')->name('show');
+        });
+
         Route::prefix('items/{item}')->whereUuid('item')->name('items.')->group(function (): void {
             Route::post('/approve', [ReviewItemActionController::class, 'approve'])->name('approve');
             Route::post('/unapprove', [ReviewItemActionController::class, 'unapprove'])->name('unapprove');

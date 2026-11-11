@@ -5,11 +5,17 @@ declare(strict_types=1);
 namespace App\Tantra;
 
 use App\Enums\SocialAccount\Platform;
+use App\Models\User;
 use App\Tantra\Console\CreateOwnerCommand;
 use App\Tantra\Console\MapProfileCommand;
+use App\Tantra\Http\Controllers\Web\ReviewPageController;
 use App\Tantra\Http\Middleware\EnsureOwnerToken;
-use Illuminate\Routing\Router;
 use App\Tantra\Ops\LeanHorizon;
+use App\Tantra\Review\Models\Batch;
+use App\Tantra\Review\ReviewGate;
+use Illuminate\Routing\Router;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\ServiceProvider;
 use Inertia\Inertia;
 
@@ -29,6 +35,17 @@ class TantraServiceProvider extends ServiceProvider
         $this->app->make(Router::class)->aliasMiddleware('tantra.owner-token', EnsureOwnerToken::class);
         $this->loadRoutesFrom(__DIR__.'/Http/routes-api.php');
         $this->loadRoutesFrom(__DIR__.'/Http/routes-web.php');
+
+        // Live review screens: anyone who may open the batch hears its changes.
+        Broadcast::channel('tantra.review.batch.{batch}', fn (User $user, string $batch): bool => Batch::query()
+            ->whereKey($batch)
+            ->whereIn('workspace_id', ReviewPageController::visibleWorkspaceIds($user))
+            ->exists());
+
+        // The sidebar's Review badge: posts waiting for this user's approval.
+        Inertia::share('tantraReview', fn (): ?array => Auth::user() === null ? null : [
+            'waiting' => ReviewGate::waitingCount(Auth::user()),
+        ]);
 
         if ($this->app->runningInConsole()) {
             $this->commands([CreateOwnerCommand::class, MapProfileCommand::class]);

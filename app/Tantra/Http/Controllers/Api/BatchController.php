@@ -53,6 +53,17 @@ class BatchController extends Controller
             'posts.*.flags' => ['nullable', 'array'],
             'posts.*.cta' => ['nullable', 'string', 'max:64'],
             'posts.*.cta_date' => ['nullable', 'date_format:Y-m-d'],
+            'posts.*.visual_copy' => ['nullable', 'array'],
+            'posts.*.resource' => ['nullable', 'array'],
+            'posts.*.mentions' => ['nullable', 'array', 'max:20'],
+            'posts.*.mentions.*' => ['string', 'max:120'],
+            'posts.*.profile_card' => ['nullable', 'array'],
+            'posts.*.profile_card.name' => ['nullable', 'string', 'max:120'],
+            'posts.*.profile_card.headline' => ['nullable', 'string', 'max:255'],
+            'posts.*.profile_card.avatar' => ['nullable', 'url:https', 'max:1024'],
+            'posts.*.profile_card.kind' => ['nullable', Rule::in(['person', 'company'])],
+            'posts.*.profile_card.followers_line' => ['nullable', 'string', 'max:120'],
+            'posts.*.profile_card.x_handle' => ['nullable', 'string', 'max:64'],
         ]);
 
         return response()->json(['data' => ImportBatch::execute($request->user(), $data)]);

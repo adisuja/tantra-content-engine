@@ -1,0 +1,66 @@
+/* tantra: studio styles from tantra-content kits/content/studio, scoped under .tantra-studio. Do not edit by hand. */
+.tantra-studio .screen.linkedin{background:#f4f2ee;color:rgba(0,0,0,.9);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Helvetica,Arial,sans-serif}
+.tantra-studio .li-ic{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;flex:0 0 auto}
+.tantra-studio .li-ic svg{display:block}
+.tantra-studio .li-sp{flex:1}
+.tantra-studio .li-top{display:flex;align-items:center;gap:10px;height:52px;padding:0 12px;background:#fff;flex:0 0 auto}
+.tantra-studio .li-search{flex:1;display:flex;align-items:center;gap:8px;height:34px;border-radius:6px;background:#eef3f8;padding:0 10px;font-size:15px;color:rgba(0,0,0,.6)}
+.tantra-studio .li-feed{padding-bottom:8px}
+.tantra-studio .li-post{background:#fff;margin-bottom:8px;padding:12px 0 4px}
+.tantra-studio .li-head{display:flex;align-items:flex-start;gap:8px;padding:0 4px 0 12px}
+.tantra-studio .li-who{flex:1;min-width:0;padding-top:1px}
+.tantra-studio .li-name{font-size:14px;font-weight:600;color:rgba(0,0,0,.9);line-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tantra-studio .li-deg{font-weight:400;font-size:12px;color:rgba(0,0,0,.6)}
+.tantra-studio .li-sub{font-size:12px;color:rgba(0,0,0,.6);line-height:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:3px}
+.tantra-studio .li-text{position:relative;padding:8px 12px 6px;font-size:14px;line-height:20px;color:rgba(0,0,0,.9);word-wrap:break-word}
+.tantra-studio .li-text.clamp{max-height:calc(20px * 3 + 8px);padding-bottom:0;overflow:hidden}
+.tantra-studio .li-more{position:absolute;right:12px;bottom:0;padding-left:28px;background:linear-gradient(90deg,rgba(255,255,255,0),#fff 40%);color:rgba(0,0,0,.6);font-size:14px;line-height:20px}
+.tantra-studio .li-link{color:#0a66c2;font-weight:600;text-decoration:none;word-break:break-all}
+.tantra-studio .li-tag{color:#0a66c2;font-weight:600}
+.tantra-studio .li-doc{border-top:1px solid rgba(0,0,0,.08);border-bottom:1px solid rgba(0,0,0,.08);background:#fff}
+.tantra-studio .li-doc-head{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;font-size:12px;color:rgba(0,0,0,.6)}
+.tantra-studio .li-doc-title{font-weight:600;color:rgba(0,0,0,.9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:8px}
+.tantra-studio .li-doc-view{position:relative;background:#000}
+.tantra-studio .li-slides{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
+.tantra-studio .li-slides::-webkit-scrollbar{display:none}
+.tantra-studio .li-slide{flex:0 0 100%;scroll-snap-align:start}
+.tantra-studio .li-slide img{display:block;width:100%;height:auto}
+.tantra-studio .li-pg{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.6);color:#fff;font-size:12px;font-weight:600;padding:3px 8px;border-radius:12px}
+.tantra-studio .li-exp{position:absolute;top:6px;right:6px;width:28px;height:28px;border-radius:50%;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center}
+.tantra-studio .li-art{margin:4px 0 0;border-top:1px solid rgba(0,0,0,.08);border-bottom:1px solid rgba(0,0,0,.08);background:#f3f2f0}
+.tantra-studio .li-art-cover,.tantra-studio .li-cover{height:150px;background:linear-gradient(135deg,#0d1b2a,#1f3a5f 60%,#0a66c2);display:flex;align-items:flex-end;padding:14px 16px;color:#ffd600;font-weight:800;font-size:18px;line-height:22px;letter-spacing:-.2px}
+.tantra-studio .li-art-meta{padding:10px 12px}
+.tantra-studio .li-art-t{font-size:14px;font-weight:600;color:rgba(0,0,0,.9);line-height:18px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tantra-studio .li-art-s{font-size:12px;color:rgba(0,0,0,.6);margin-top:2px}
+.tantra-studio .li-social{display:flex;justify-content:space-between;align-items:center;padding:6px 12px;font-size:12px;color:rgba(0,0,0,.6);border-bottom:1px solid rgba(0,0,0,.08)}
+.tantra-studio .li-react{display:inline-flex;margin-right:2px;vertical-align:-3px}
+.tantra-studio .li-react .r{width:16px;height:16px;border-radius:50%;border:1.5px solid #fff;margin-right:-5px;display:inline-block}
+.tantra-studio .li-react .r.like{background:#378fe9}
+.tantra-studio .li-react .r.love{background:#df704d}
+.tantra-studio .li-react .r.idea{background:#f5c33b}
+.tantra-studio .li-actions{display:flex;justify-content:space-around;padding:6px 4px 2px}
+.tantra-studio .li-actions span{display:inline-flex;flex-direction:column;align-items:center;gap:3px;font-size:12px;font-weight:600;color:rgba(0,0,0,.6);width:64px}
+.tantra-studio .li-tabs{flex:0 0 auto;display:flex;justify-content:space-around;height:80px;padding:6px 0 22px;background:#fff;border-top:1px solid rgba(0,0,0,.08)}
+.tantra-studio .li-tab{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;color:rgba(0,0,0,.6);width:70px}
+.tantra-studio .li-tab.on{color:#000}
+.tantra-studio .li-arr{position:absolute;top:50%;transform:translateY(-50%);width:34px;height:34px;border:0;border-radius:50%;background:rgba(255,255,255,.92);color:#000;font-size:24px;line-height:1;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.35);opacity:0;transition:opacity .15s}
+.tantra-studio .li-arr.prev{left:8px}
+.tantra-studio .li-arr.next{right:8px}
+.tantra-studio .li-doc-view:hover .li-arr{opacity:1}
+@media (hover:none){.tantra-studio .li-arr{opacity:1;background:rgba(255,255,255,.75)}}
+.tantra-studio .li-exp{cursor:pointer}
+.tantra-studio .li-imgpost img{display:block;width:100%;height:auto}
+.tantra-studio .li-more{cursor:pointer}
+.tantra-studio .li-more:hover{color:#0a66c2;text-decoration:underline}
+.tantra-studio .li-nav{display:flex;align-items:center;height:52px;padding:0 8px;background:#fff;border-bottom:1px solid rgba(0,0,0,.08);flex:0 0 auto}
+.tantra-studio .li-reader{background:#fff}
+.tantra-studio .li-reader h1{font-size:24px;line-height:30px;font-weight:700;margin:16px 16px 12px;letter-spacing:-.3px;color:rgba(0,0,0,.9)}
+.tantra-studio .li-byline{display:flex;align-items:center;gap:10px;padding:0 16px 14px;border-bottom:1px solid rgba(0,0,0,.08)}
+.tantra-studio .li-byline > div{flex:1;min-width:0}
+.tantra-studio .li-follow{color:#0a66c2;font-weight:600;font-size:14px;padding:6px 10px;border:1px solid #0a66c2;border-radius:16px}
+.tantra-studio .li-body{padding:14px 16px 8px;font-size:16px;line-height:24px;color:rgba(0,0,0,.9)}
+.tantra-studio .li-body p{margin:0 0 16px}
+.tantra-studio .li-body h3{font-size:17px;margin:20px 0 8px}
+.tantra-studio .li-body ul{margin:0 0 16px;padding-left:22px}
+.tantra-studio .li-body li{margin-bottom:6px}
+.tantra-studio .mention{color:#0a66c2;font-weight:600}
