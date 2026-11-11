@@ -184,7 +184,7 @@ it('keeps an item without a connected channel and says why', function () {
     $item = ReviewItem::query()->sole();
 
     expect($item->post_group_id)->toBeNull()
-        ->and(collect($item->flags)->join(' '))->toContain('No linkedin channel is connected');
+        ->and(collect($item->flags)->join(' '))->toContain('No LinkedIn channel is connected');
 });
 
 it('lists profiles with their workspaces and channels', function () {

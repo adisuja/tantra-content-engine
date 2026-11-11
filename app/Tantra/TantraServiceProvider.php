@@ -6,12 +6,15 @@ namespace App\Tantra;
 
 use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
+use App\Models\SocialAccount;
 use App\Models\User;
 use App\Tantra\Console\CreateOwnerCommand;
+use App\Tantra\Console\InviteTeammateCommand;
 use App\Tantra\Console\MapProfileCommand;
 use App\Tantra\Http\Controllers\Web\ReviewPageController;
 use App\Tantra\Http\Middleware\EnsureOwnerToken;
 use App\Tantra\Ops\LeanHorizon;
+use App\Tantra\Review\Actions\DraftMaker;
 use App\Tantra\Review\Listeners\RecordComposerEdit;
 use App\Tantra\Review\Models\Batch;
 use App\Tantra\Review\ReviewChips;
@@ -51,7 +54,10 @@ class TantraServiceProvider extends ServiceProvider
             ->whereIn('workspace_id', ReviewPageController::visibleWorkspaceIds($user))
             ->exists());
 
-        // An edit in the composer is a new version of the post under review.
+        // A teammate connecting LinkedIn turns their waiting posts into drafts.
+        SocialAccount::created(fn (SocialAccount $channel) => DraftMaker::forWorkspace($channel));
+
+                // An edit in the composer is a new version of the post under review.
         Post::updated(fn (Post $post) => RecordComposerEdit::handle($post));
 
         // The sidebar's Review badge: posts waiting for this user's approval.
@@ -60,7 +66,7 @@ class TantraServiceProvider extends ServiceProvider
         ]);
 
         if ($this->app->runningInConsole()) {
-            $this->commands([CreateOwnerCommand::class, MapProfileCommand::class]);
+            $this->commands([CreateOwnerCommand::class, MapProfileCommand::class, InviteTeammateCommand::class]);
         }
 
         if ($this->app->environment('production') && config('tantra.lean_workers.enabled')) {

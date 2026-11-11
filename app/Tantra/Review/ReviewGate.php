@@ -20,8 +20,28 @@ final class ReviewGate
 {
     public static function reviewOwnerId(ReviewItem $item): ?string
     {
-        return WorkspaceSettings::query()->find($item->workspace_id)?->review_owner_user_id
-            ?? $item->workspace?->account?->owner_id;
+        return self::reviewOwnerIdFor((string) $item->workspace_id, $item->workspace?->account?->owner_id);
+    }
+
+    /**
+     * The named review owner once they have joined (set a password or signed in
+     * with Google or GitHub); until then, and when nobody is named, the Account owner.
+     */
+    public static function reviewOwnerIdFor(string $workspaceId, ?string $accountOwnerId): ?string
+    {
+        $named = WorkspaceSettings::query()->find($workspaceId)?->review_owner_user_id;
+        if ($named === null || $named === $accountOwnerId) {
+            return $named ?? $accountOwnerId;
+        }
+
+        $user = User::query()->find($named);
+
+        return $user !== null && self::hasJoined($user) ? $named : $accountOwnerId;
+    }
+
+    public static function hasJoined(User $user): bool
+    {
+        return filled($user->password) || filled($user->google_id) || filled($user->github_id);
     }
 
     public static function isReviewOwner(User $user, ReviewItem $item): bool
@@ -55,16 +75,11 @@ final class ReviewGate
      */
     public static function reviewedWorkspaceIds(User $user): array
     {
-        $named = WorkspaceSettings::query()->where('review_owner_user_id', $user->id)->pluck('workspace_id')->all();
+        $ownerId = $user->account?->owner_id;
 
-        if ($user->account?->owner_id !== $user->id) {
-            return array_values($named);
-        }
-
-        $claimed = WorkspaceSettings::query()->whereNotNull('review_owner_user_id')->pluck('workspace_id')->all();
-        $unclaimed = Workspace::query()->where('account_id', $user->account_id)->whereNotIn('id', $claimed)->pluck('id')->all();
-
-        return array_values(array_unique([...$named, ...$unclaimed]));
+        return Workspace::query()->where('account_id', $user->account_id)->pluck('id')
+            ->filter(fn (string $id): bool => self::reviewOwnerIdFor($id, $ownerId) === $user->id)
+            ->values()->all();
     }
 
     public static function waitingCount(User $user): int

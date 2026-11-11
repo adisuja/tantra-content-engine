@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Middleware\App\EnsureAccountReady;
 use App\Http\Middleware\App\EnsureHasWorkspace;
+use App\Tantra\Http\Controllers\Web\JoinController;
 use App\Tantra\Http\Controllers\Web\ReviewItemActionController;
 use App\Tantra\Http\Controllers\Web\ReviewPageController;
 use Illuminate\Support\Facades\Route;
@@ -27,3 +28,9 @@ Route::middleware(['web', 'auth'])
             Route::post('/sign-off', [ReviewItemActionController::class, 'signOff'])->name('sign-off');
         });
     });
+
+// tantra: a teammate's welcome link (signed, 14 days) opens the set-password page.
+Route::middleware(['web', 'signed', 'throttle:6,1'])
+    ->get('tantra/join/{user}', JoinController::class)
+    ->whereUuid('user')
+    ->name('tantra.join');

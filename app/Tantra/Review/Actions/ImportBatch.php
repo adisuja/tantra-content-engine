@@ -152,7 +152,11 @@ final class ImportBatch
                 $item->post_group_id = $group;
                 $item->save();
             } elseif (! $item->assisted_manual) {
-                $item->flags = [...($item->flags ?? []), 'No '.$post['platform'].' channel is connected in this workspace yet, so nothing can be scheduled until one is.'];
+                // No channel yet (a teammate who has not joined): keep the media
+                // safe from the 24-hour upload pruning; the drafts are made when
+                // a channel is connected (DraftMaker).
+                DraftMaker::hold($workspace, $item, (array) ($post['upload_tokens'] ?? []));
+                $item->flags = [...($item->flags ?? []), DraftMaker::NO_CHANNEL_FLAG];
                 $item->save();
             }
 
@@ -239,7 +243,7 @@ final class ImportBatch
         }, $numbers));
     }
 
-    private static function channelFor(Workspace $workspace, string $platform): ?SocialAccount
+    public static function channelFor(Workspace $workspace, string $platform): ?SocialAccount
     {
         $platforms = match (strtolower($platform)) {
             'linkedin' => [Platform::LinkedIn->value],
@@ -252,7 +256,7 @@ final class ImportBatch
     }
 
     /** @param array<string, mixed> $post */
-    private static function createDrafts(User $owner, Workspace $workspace, SocialAccount $channel, Batch $batch, array $post): string
+    public static function createDrafts(User $owner, Workspace $workspace, SocialAccount $channel, Batch $batch, array $post): string
     {
         $meta = [];
         if (filled($post['first_comment'] ?? null)) {

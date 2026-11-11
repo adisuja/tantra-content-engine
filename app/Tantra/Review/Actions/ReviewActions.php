@@ -46,9 +46,13 @@ final class ReviewActions
             throw ValidationException::withMessages(['review' => "Sign off this number first ({$who}): {$open['text']}"]);
         }
 
+        if ($item->post_group_id === null && ! $item->assisted_manual && DraftMaker::forItem($item, $user)) {
+            $item->refresh();
+        }
+
         if ($item->assisted_manual || $item->post_group_id === null) {
             if (! $item->assisted_manual) {
-                throw ValidationException::withMessages(['review' => 'No channel is connected for this post yet, so it cannot be scheduled.']);
+                throw ValidationException::withMessages(['review' => 'Connect your LinkedIn under Channels first, then approve again.']);
             }
             self::settle($item, $user, ReviewStatus::Approved, EventKind::Approve, $note, ['manual' => true]);
 
