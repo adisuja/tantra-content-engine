@@ -27,7 +27,32 @@ interface Member {
     consent: boolean;
     paused_until: string | null;
     expertise: string | null;
+    checklist: Record<ChecklistStep, boolean>;
 }
+
+type ChecklistStep =
+    | 'joined'
+    | 'linkedin'
+    | 'expertise'
+    | 'unipile'
+    | 'consent'
+    | 'api_key';
+
+// Where each step is done. Steps done on this page, or by Adi, have no link.
+const STEP_LINKS: Partial<Record<ChecklistStep, string>> = {
+    linkedin: '/connect/linkedin',
+    api_key: '/settings/workspace/api-keys',
+};
+const STEPS: ChecklistStep[] = [
+    'joined',
+    'linkedin',
+    'expertise',
+    'unipile',
+    'consent',
+    'api_key',
+];
+const doneCount = (m: Member): number =>
+    STEPS.filter((step) => m.checklist[step]).length;
 
 interface UnipileAccount {
     id: string;
@@ -86,6 +111,43 @@ const send = async (url: string, body: Record<string, unknown>) => {
                     $t('tantra.team.boost_off')
                 }}</Badge>
             </header>
+
+            <section
+                v-if="me && doneCount(me) < STEPS.length"
+                class="flex max-w-2xl flex-col gap-2 rounded-xl border border-border bg-card p-4 text-sm"
+                data-testid="tantra-checklist"
+            >
+                <div class="font-medium">
+                    {{ $t('tantra.team.checklist.title') }}
+                </div>
+                <div
+                    v-for="step in STEPS"
+                    :key="step"
+                    class="flex items-center gap-2"
+                >
+                    <span
+                        :class="
+                            me.checklist[step]
+                                ? 'text-emerald-600 dark:text-emerald-400'
+                                : 'text-muted-foreground'
+                        "
+                        >{{ me.checklist[step] ? '✓' : '○' }}</span
+                    >
+                    <span
+                        :class="{
+                            'text-muted-foreground line-through':
+                                me.checklist[step],
+                        }"
+                        >{{ $t(`tantra.team.checklist.${step}`) }}</span
+                    >
+                    <a
+                        v-if="!me.checklist[step] && STEP_LINKS[step]"
+                        :href="STEP_LINKS[step]"
+                        class="text-xs underline"
+                        >{{ $t('tantra.team.checklist.do_it') }}</a
+                    >
+                </div>
+            </section>
 
             <section
                 v-if="me"
@@ -151,6 +213,14 @@ const send = async (url: string, body: Record<string, unknown>) => {
                         <b>{{ m.name }}</b>
                         <div class="text-xs text-muted-foreground">
                             {{ m.email }}
+                        </div>
+                        <div class="text-xs text-muted-foreground">
+                            {{
+                                $t('tantra.team.checklist.progress', {
+                                    done: String(doneCount(m)),
+                                    total: String(STEPS.length),
+                                })
+                            }}
                         </div>
                     </div>
                     <select

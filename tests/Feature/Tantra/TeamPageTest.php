@@ -45,3 +45,15 @@ it('records consent only for the person themself', function () {
     $this->actingAs($this->nelbin)->postJson(route('tantra.team.consent'), ['on' => false])->assertOk();
     expect(MemberProfile::query()->find($this->nelbin->id)->boost_consent_at)->toBeNull();
 });
+
+it('shows each person their setup checklist', function () {
+    $this->actingAs($this->nelbin)->postJson(route('tantra.team.expertise'), ['expertise' => 'Outbound for SaaS founders.'])->assertOk();
+
+    $this->actingAs($this->nelbin)->get(route('tantra.team.index'))
+        ->assertInertia(fn ($page) => $page
+            ->where('members.0.checklist.joined', true)
+            ->where('members.0.checklist.expertise', true)
+            ->where('members.0.checklist.linkedin', false)
+            ->where('members.0.checklist.unipile', false)
+            ->where('members.0.checklist.api_key', false));
+});

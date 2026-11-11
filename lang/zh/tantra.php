@@ -190,6 +190,17 @@ return [
         'open_post' => 'Open the post',
     ],
     'team' => [
+        'checklist' => [
+            'title' => 'Getting set up',
+            'joined' => 'Set your password',
+            'linkedin' => 'Connect your LinkedIn',
+            'expertise' => 'Write your expertise line, below',
+            'unipile' => 'Adi matches your LinkedIn account for team comments',
+            'consent' => 'Switch on team comments in your name, below (optional)',
+            'api_key' => 'Create an API key to use the Engine from your own Claude (optional)',
+            'do_it' => 'Do it now',
+            'progress' => ':done of :total set up',
+        ],
         'title' => 'Team and boosting',
         'intro' => 'When a post goes live, the team comments written with it are posted from each person\'s own LinkedIn, and the author answers in each thread. Nothing is posted in your name unless you switch it on here.',
         'boost_off' => 'Boosting is switched off for now',

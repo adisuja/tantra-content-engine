@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 namespace App\Tantra\Http\Controllers\Web;
 
+use App\Enums\SocialAccount\Platform;
+use App\Enums\SocialAccount\Status;
 use App\Http\Controllers\Controller;
+use App\Models\SocialAccount;
 use App\Models\User;
 use App\Tantra\Boost\Boost;
 use App\Tantra\Boost\MemberProfile;
+use App\Tantra\Review\Models\WorkspaceSettings;
+use App\Tantra\Review\ReviewGate;
 use App\Tantra\Unipile\UnipileClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -43,6 +48,7 @@ class TeamController extends Controller
                 'consent' => $profiles->get($u->id)?->boost_consent_at !== null,
                 'paused_until' => $profiles->get($u->id)?->boost_paused_until?->isFuture() ? $profiles->get($u->id)->boost_paused_until->toIso8601String() : null,
                 'expertise' => $profiles->get($u->id)?->expertise,
+                'checklist' => $this->checklist($u, $profiles->get($u->id)),
             ])->values();
 
         return Inertia::render('tantra/team/Index', [
@@ -51,6 +57,28 @@ class TeamController extends Controller
             'boostEnabled' => Boost::enabled(),
             'unipileAccounts' => $isOwner ? $this->unipileAccounts($members->pluck('name')->all()) : [],
         ]);
+    }
+
+    /**
+     * The onboarding checklist (PRD 10.9): joined, LinkedIn connected in a
+     * workspace they review, expertise written, Unipile account matched,
+     * team comments switched on, an API key for MCP.
+     *
+     * @return array<string, bool>
+     */
+    private function checklist(User $user, ?MemberProfile $profile): array
+    {
+        $reviewed = WorkspaceSettings::query()->where('review_owner_user_id', $user->id)->pluck('workspace_id');
+
+        return [
+            'joined' => ReviewGate::hasJoined($user),
+            'linkedin' => SocialAccount::query()->whereIn('workspace_id', $reviewed)
+                ->whereIn('platform', [Platform::LinkedIn, Platform::ZernioLinkedInPage])->where('status', Status::Connected)->exists(),
+            'expertise' => filled($profile?->expertise),
+            'unipile' => $profile?->unipile_confirmed_at !== null,
+            'consent' => $profile?->boost_consent_at !== null,
+            'api_key' => $user->tokens()->where('revoked', false)->exists(),
+        ];
     }
 
     public function consent(Request $request): JsonResponse
