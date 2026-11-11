@@ -61,6 +61,15 @@ export interface PostCardFailure {
     failed_at?: string | null;
 }
 
+// tantra: see app/Tantra/Review/ReviewChips.php
+export interface TantraReviewChip {
+    status: string;
+    approved_by: string | null;
+    slot_fallback: boolean;
+    batch_id: string;
+    engine_post_id: string;
+}
+
 export interface PostCard {
     id: string;
     content: string | null;
@@ -92,6 +101,8 @@ export interface PostCard {
     published_at: string | null;
     user: { name: string } | null;
     labels: PostCardLabel[];
+    // tantra: review chip (approved by, slot moved), null for posts not from a review batch
+    tantra_review?: TantraReviewChip | null;
     notes_count: number;
     media?: MediaItem[];
     can_delete: boolean;

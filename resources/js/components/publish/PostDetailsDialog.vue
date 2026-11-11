@@ -15,6 +15,7 @@ import MediaLightbox from '@/components/media/MediaLightbox.vue';
 import PlatformBrandIcon from '@/components/PlatformBrandIcon.vue';
 import ThreadView from '@/components/posts/ThreadView.vue';
 import PostCardLabels from '@/components/publish/PostCardLabels.vue';
+import ReviewChip from '@/components/tantra/review/ReviewChip.vue'; // tantra:
 import PostCardMenu from '@/components/publish/PostCardMenu.vue';
 import PostDeletedOnNetworkBadge from '@/components/publish/PostDeletedOnNetworkBadge.vue';
 import PostDetailsMedia from '@/components/publish/PostDetailsMedia.vue';
@@ -483,6 +484,12 @@ const siblingMoment = (sibling: PostCard): string | null => {
                     />
                     </template>
 
+
+                    <!-- tantra: review chip -->
+                    <ReviewChip
+                        v-if="current.tantra_review"
+                        :review="current.tantra_review"
+                    />
 
                     <PostCardLabels
                         :key="current.id"

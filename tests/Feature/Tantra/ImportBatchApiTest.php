@@ -11,9 +11,12 @@ use App\Models\Workspace;
 use App\Models\WorkspaceLabel;
 use App\Tantra\Review\Enums\EventKind;
 use App\Tantra\Review\Enums\ReviewStatus;
+use App\Tantra\Review\Mail\NumbersToSignOff;
+use App\Tantra\Review\Mail\ReviewReady;
 use App\Tantra\Review\Models\ReviewItem;
 use App\Tantra\Review\Models\WorkspaceSettings;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
@@ -226,4 +229,37 @@ it('maps a profile to a workspace with the command', function () {
         ->assertSuccessful();
 
     expect(WorkspaceSettings::query()->find($this->shweta->id)->brand_profile_key)->toBe('shweta-2');
+});
+
+it('creates a missing workspace for a profile without moving the owner', function () {
+    $before = $this->owner->current_workspace_id;
+
+    $this->artisan('tantra:map-profile', ['workspace' => 'Nelbin', 'profile' => 'nelbin', '--create' => true, '--account' => $this->owner->email])
+        ->assertSuccessful();
+
+    $nelbin = Workspace::query()->where('name', 'Nelbin')->sole();
+
+    expect($nelbin->account_id)->toBe($this->owner->account_id)
+        ->and(WorkspaceSettings::query()->find($nelbin->id)->review_owner_user_id)->toBe($this->owner->id)
+        ->and($this->owner->refresh()->current_workspace_id)->toBe($before);
+});
+
+it('emails each review owner, and Adi for his numbers in a teammate post', function () {
+    Mail::fake();
+
+    tantraPush($this, [
+        tantraPost('A1'),
+        tantraPost('S1', 'shweta', ['date' => '2026-11-18']),
+        tantraPost('S2', 'shweta', ['date' => '2026-11-19', 'numbers_for_signoff' => []]),
+    ])->assertOk();
+
+    Mail::assertQueued(ReviewReady::class, fn (ReviewReady $m): bool => $m->hasTo($this->teammate->email)
+        && $m->envelope()->subject === '2 new posts to review for the week of 16 Nov');
+    Mail::assertQueued(ReviewReady::class, fn (ReviewReady $m): bool => $m->hasTo($this->owner->email)
+        && $m->envelope()->subject === '1 new post to review for the week of 16 Nov');
+    Mail::assertQueued(NumbersToSignOff::class, fn (NumbersToSignOff $m): bool => $m->hasTo($this->owner->email)
+        && $m->posts[0]['numbers'] === ['six stages']
+        && count($m->posts) === 1);
+
+    (new ReviewReady('b', 'Shweta', '16 Nov', [['id' => 'S1', 'date' => '2026-11-18', 'short' => 'Hook', 'revised' => false]]))->assertSeeInHtml('Review them');
 });

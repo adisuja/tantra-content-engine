@@ -71,6 +71,8 @@ final class ImportBatch
             $results[] = self::importPost($owner, $workspace, $batch, $engineBatchId, $post, in_array((string) $post['engine_post_id'], $forceReopen, true));
         }
 
+        NotifyReviewers::afterImport($results);
+
         return [
             'batches' => collect($batches)->map(fn (Batch $b): array => ['batch_id' => $b->id, 'workspace_id' => $b->workspace_id])->values()->all(),
             'items' => $results,
@@ -214,6 +216,8 @@ final class ImportBatch
                 'title' => $media['title'] ?? null,
                 'previews' => array_values((array) ($post['preview_paths'] ?? [])),
                 'poll' => $isPoll ? Arr::only($media, ['question', 'options', 'duration']) : null,
+                'placement' => $media['placement'] ?? null,
+                'tall' => (bool) ($media['tall'] ?? false),
             ],
             'payload' => Arr::except($post, ['upload_tokens']),
         ];

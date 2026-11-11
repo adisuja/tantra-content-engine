@@ -180,3 +180,14 @@ it('approves through the studio endpoint and answers with the outcome', function
         ->postJson(route('tantra.review.items.comment', $item), ['body' => 'Looks good'])
         ->assertNotFound();
 });
+
+it('counts an edit in the composer as a new version of the post under review', function () {
+    $item = tantraItem($this, 'A9');
+    $post = Post::query()->where('post_group_id', $item->post_group_id)->sole();
+
+    $this->actingAs($this->owner);
+    $post->update(['content' => 'Sharper hook.']);
+
+    expect($item->refresh()->revision)->toBe(2)
+        ->and($item->events()->where('kind', EventKind::Revised->value)->sole()->body)->toBe('Edited in the composer.');
+});

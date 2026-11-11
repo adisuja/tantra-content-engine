@@ -32,6 +32,7 @@ import PostScheduleModeBadge from '@/components/posts/PostScheduleModeBadge.vue'
 import AddToQueueButton from '@/components/publish/AddToQueueButton.vue';
 import ApprovePostButton from '@/components/publish/ApprovePostButton.vue';
 import PostCardLabels from '@/components/publish/PostCardLabels.vue';
+import ReviewChip from '@/components/tantra/review/ReviewChip.vue'; // tantra:
 import PostCardMenu from '@/components/publish/PostCardMenu.vue';
 import PostCardThread from '@/components/publish/PostCardThread.vue';
 import PostDeletedOnNetworkPopover from '@/components/publish/PostDeletedOnNetworkPopover.vue';
@@ -734,6 +735,11 @@ defineExpose({ openDetails });
                         :items="visuals"
                         :start-index="lightboxIndex"
                     />
+                </div>
+
+                <!-- tantra: review chip -->
+                <div v-if="post.tantra_review" class="-mt-1 px-4 pb-2">
+                    <ReviewChip :review="post.tantra_review" />
                 </div>
 
                 <PostCardLabels

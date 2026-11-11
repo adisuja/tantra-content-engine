@@ -5,13 +5,16 @@ declare(strict_types=1);
 namespace App\Tantra;
 
 use App\Enums\SocialAccount\Platform;
+use App\Models\Post;
 use App\Models\User;
 use App\Tantra\Console\CreateOwnerCommand;
 use App\Tantra\Console\MapProfileCommand;
 use App\Tantra\Http\Controllers\Web\ReviewPageController;
 use App\Tantra\Http\Middleware\EnsureOwnerToken;
 use App\Tantra\Ops\LeanHorizon;
+use App\Tantra\Review\Listeners\RecordComposerEdit;
 use App\Tantra\Review\Models\Batch;
+use App\Tantra\Review\ReviewChips;
 use App\Tantra\Review\ReviewGate;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Auth;
@@ -27,10 +30,16 @@ use Inertia\Inertia;
  */
 class TantraServiceProvider extends ServiceProvider
 {
+    public function register(): void
+    {
+        $this->app->scoped(ReviewChips::class);
+    }
+
     public function boot(): void
     {
         // Our migrations live apart from upstream's, in database/migrations/tantra.
         $this->loadMigrationsFrom(database_path('migrations/tantra'));
+        $this->loadViewsFrom(__DIR__.'/views', 'tantra');
 
         $this->app->make(Router::class)->aliasMiddleware('tantra.owner-token', EnsureOwnerToken::class);
         $this->loadRoutesFrom(__DIR__.'/Http/routes-api.php');
@@ -41,6 +50,9 @@ class TantraServiceProvider extends ServiceProvider
             ->whereKey($batch)
             ->whereIn('workspace_id', ReviewPageController::visibleWorkspaceIds($user))
             ->exists());
+
+        // An edit in the composer is a new version of the post under review.
+        Post::updated(fn (Post $post) => RecordComposerEdit::handle($post));
 
         // The sidebar's Review badge: posts waiting for this user's approval.
         Inertia::share('tantraReview', fn (): ?array => Auth::user() === null ? null : [

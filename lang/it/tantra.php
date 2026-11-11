@@ -100,5 +100,7 @@ return [
         'phone_mode' => 'Phone mode',
         'position' => ':n of :total',
         'close' => 'Close',
+        'chip_approved' => 'Approved by :name',
+        'chip_moved' => 'Moved slot',
     ],
 ];

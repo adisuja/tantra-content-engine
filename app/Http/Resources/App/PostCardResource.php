@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources\App;
 
 use App\Models\Post;
+use App\Tantra\Review\ReviewChips; // tantra:
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -27,6 +28,7 @@ class PostCardResource extends JsonResource
                 'category' => data_get($this->resource->error_context, 'category'),
                 'failed_at' => data_get($this->resource->error_context, 'failed_at'),
             ],
+            'tantra_review' => app(ReviewChips::class)->for($this->resource), // tantra: review chip
         ];
 
         if ($this->resource->relationLoaded('user')) {
@@ -46,6 +48,9 @@ class PostCardResource extends JsonResource
      */
     public static function cards(iterable $posts): array
     {
-        return collect($posts)->map(fn (Post $post): array => self::make($post)->resolve())->values()->all();
+        $posts = collect($posts);
+        app(ReviewChips::class)->prime($posts); // tantra: one query for the page's review chips
+
+        return $posts->map(fn (Post $post): array => self::make($post)->resolve())->values()->all();
     }
 }
