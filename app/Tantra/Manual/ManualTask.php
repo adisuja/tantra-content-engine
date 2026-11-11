@@ -11,6 +11,8 @@ use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Support\Facades\DB;
 
 /**
  * tantra: a post the owner publishes by hand (PRD 12): an X post or thread, or a
@@ -88,6 +90,22 @@ class ManualTask extends Model
             });
 
         return $held;
+    }
+
+    /**
+     * The same slots as a query of (social_account_id, scheduled_at) rows, for a
+     * UNION with TryPost's own taken-slots query (one query, however many channels).
+     *
+     * @param  list<string>  $channelIds
+     */
+    public static function heldSlotsQuery(array $channelIds, CarbonInterface $from, CarbonInterface $until): QueryBuilder
+    {
+        return DB::table('tantra_manual_tasks')
+            ->select(['social_account_id', 'due_at as scheduled_at'])
+            ->whereIn('social_account_id', $channelIds)
+            ->whereIn('status', ['waiting', 'due'])
+            ->where('due_at', '>=', $from)
+            ->where('due_at', '<', $until);
     }
 
     /** @return array<int, true> */

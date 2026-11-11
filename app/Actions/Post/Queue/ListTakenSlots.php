@@ -24,16 +24,15 @@ class ListTakenSlots
             ->holdingSlot()
             ->where('scheduled_at', '>=', $from)
             ->where('scheduled_at', '<', $until)
-            ->get(['social_account_id', 'scheduled_at'])
+            ->select(['social_account_id', 'scheduled_at'])
+            ->union(\App\Tantra\Manual\ManualTask::heldSlotsQuery($channelIds, $from, $until)) // tantra: polls posted by hand hold their slot
+            ->get()
             ->groupBy('social_account_id');
-        $held = \App\Tantra\Manual\ManualTask::heldSlots($channelIds, $from->toImmutable()->subSecond(), $until); // tantra: polls posted by hand hold their slot
 
         return collect($channelIds)
             ->mapWithKeys(fn (string $channelId): array => [$channelId => $taken->get($channelId, collect())
                 ->sortBy(fn (Post $post): int => $post->scheduled_at->getTimestamp())
                 ->map(fn (Post $post): string => $post->scheduled_at->toIso8601ZuluString())
-                ->concat(collect(array_keys($held[$channelId] ?? []))->map(fn (int $ts): string => \Carbon\CarbonImmutable::createFromTimestampUTC($ts)->toIso8601ZuluString())) // tantra:
-                ->sort()
                 ->unique()
                 ->values()
                 ->all()])

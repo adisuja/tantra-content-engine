@@ -34,6 +34,8 @@ beforeEach(function () {
     $this->nelbinWs = Workspace::factory()->create(['account_id' => $this->adi->account_id, 'user_id' => $this->nelbin->id]);
     $this->aquila = User::factory()->create(['account_id' => $this->adi->account_id]);
     $this->aquilaWs = Workspace::factory()->create(['account_id' => $this->adi->account_id, 'user_id' => $this->aquila->id]);
+    $this->nelbinWs->members()->attach($this->nelbin->id, membershipPivot('admin'));
+    $this->aquilaWs->members()->attach($this->aquila->id, membershipPivot('admin'));
 
     foreach ([[$this->adiWs, 'adi', $this->adi], [$this->nelbinWs, 'nelbin', $this->nelbin], [$this->aquilaWs, 'aquila', $this->aquila]] as [$ws, $key, $user]) {
         WorkspaceSettings::query()->create(['workspace_id' => $ws->id, 'brand_profile_key' => $key, 'review_owner_user_id' => $user->id]);
