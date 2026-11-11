@@ -65,7 +65,7 @@ it('times a personal poll at its own slot and tells the owner when it is due', f
     $task = ManualTask::query()->where('review_item_id', $this->poll->id)->sole();
 
     expect($task->kind)->toBe('linkedin_poll')
-        ->and($task->poll)->toBe(['question' => 'Which first?', 'options' => ['Leads', 'Revenue']])
+        ->and($task->poll)->toEqual(['question' => 'Which first?', 'options' => ['Leads', 'Revenue']])
         ->and($task->due_at->utc()->toDateTimeString())->toBe('2026-11-17 13:30:00');
 
     $this->travelTo(CarbonImmutable::parse('2026-11-17 13:31:00', 'UTC'));

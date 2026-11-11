@@ -10,12 +10,12 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Tantra\Console\CreateOwnerCommand;
 use App\Tantra\Console\InviteTeammateCommand;
+use App\Tantra\Console\ManualTasksCommand;
 use App\Tantra\Console\MapProfileCommand;
 use App\Tantra\Console\ZernioConnectCommand;
 use App\Tantra\Http\Controllers\Web\ReviewPageController;
 use App\Tantra\Http\Middleware\EnsureOwnerToken;
 use App\Tantra\Manual\ManualTask;
-use App\Tantra\Manual\ManualTasks;
 use App\Tantra\Ops\LeanHorizon;
 use App\Tantra\Review\Actions\DraftMaker;
 use App\Tantra\Review\Listeners\RecordComposerEdit;
@@ -73,11 +73,11 @@ class TantraServiceProvider extends ServiceProvider
 
         // Manual tasks (X, personal polls): time them, mark due, expire (PRD 12).
         $this->callAfterResolving(Schedule::class, function (Schedule $schedule): void {
-            $schedule->call(fn () => ManualTasks::tick())->everyFiveMinutes()->name('tantra:manual-tasks')->withoutOverlapping();
+            $schedule->command('tantra:manual-tasks')->everyFiveMinutes()->withoutOverlapping();
         });
 
                 if ($this->app->runningInConsole()) {
-            $this->commands([CreateOwnerCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class]);
+            $this->commands([CreateOwnerCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class]);
         }
 
         if ($this->app->environment('production') && config('tantra.lean_workers.enabled')) {
