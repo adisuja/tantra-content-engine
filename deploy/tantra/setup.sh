@@ -55,6 +55,10 @@ TANTRA_IMAGE_TAG=latest
 LOG_CHANNEL=daily
 LOG_DAILY_DAYS=14
 
+# Requests reach the app only from the cloudflared container on this compose
+# network (see compose.yaml), so only that range may set X-Forwarded-* headers.
+TRUSTED_PROXIES=172.30.0.0/24
+
 DB_CONNECTION=pgsql
 DB_HOST=pgsql
 DB_PORT=5432
