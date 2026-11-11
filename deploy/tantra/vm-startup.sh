@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# tantra: Google Compute Engine startup script for the Tantra Content Engine VM.
+# tantra: first-boot script for the Tantra Content Engine VM (Ubuntu 24.04).
 #
-# Paste into: Create instance > Advanced > Automation > Startup script.
-# Google runs it as root on every boot, so every step is safe to repeat.
+# AWS EC2: paste into Launch instance > Advanced details > User data.
+# Google Compute Engine: paste into Advanced > Automation > Startup script.
+# It runs as root; every step is safe to repeat (Google reruns it on each boot).
 # It holds no secrets: /opt/tantra/setup.sh asks for the tunnel token and
 # generates everything else on the VM.
 set -euo pipefail
