@@ -65,4 +65,4 @@ it('ships the source code label in every locale', function (string $locale) {
     $strings = require lang_path("{$locale}/tantra.php");
 
     expect($strings['source_code'])->toBeString()->not->toBeEmpty();
-})->with(array_map(fn ($path) => basename(dirname($path)), glob(lang_path('*/tantra.php'))));
+})->with(array_map(fn (string $path): string => basename(dirname($path)), glob(dirname(__DIR__, 3).'/lang/*/tantra.php')));
