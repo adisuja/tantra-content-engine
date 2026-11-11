@@ -10,8 +10,11 @@ import {
     watch,
 } from 'vue';
 
+// Browser defaults first, then the studio's own order: core, x, linkedin, studio.
 import '@/components/tantra/review/css/studio-core.css';
 import '@/components/tantra/review/css/studio-linkedin.css';
+import '@/components/tantra/review/css/studio-reset.css';
+import '@/components/tantra/review/css/studio-review.css';
 import '@/components/tantra/review/css/studio-x.css';
 
 import { renderPhone } from '@/components/tantra/review/studioRender';
@@ -170,13 +173,13 @@ onBeforeUnmount(() => {
 <template>
     <div
         ref="root"
-        class="tantra-studio tantra-phone w-full"
+        class="tantra-studio tantra-phone"
         :style="{ '--s': scale }"
         data-testid="tantra-phone"
         @click="onClick"
     >
         <!-- eslint-disable-next-line vue/no-v-html -- every value is escaped in studioRender.ts -->
-        <div class="flex justify-center" v-html="html" />
+        <div style="display: flex; justify-content: center" v-html="html" />
 
         <div
             v-if="lightbox && current"

@@ -1,0 +1,36 @@
+/* tantra: the static studio rendered on plain browser defaults. Inside the app,
+   Tailwind's base layer (preflight) would change line height, image, svg,
+   button and list styles in the phone. This puts every element inside
+   .tantra-studio back on browser defaults; the studio CSS loaded after it then
+   applies exactly as it did in the studio. Unlayered, so it beats @layer base. */
+.tantra-studio,
+.tantra-studio :where(*:not(svg, svg *)),
+.tantra-studio :where(*:not(svg, svg *))::before,
+.tantra-studio :where(*:not(svg, svg *))::after {
+    all: revert;
+}
+
+/* SVG internals keep their presentation attributes (fill, stroke); a full
+   revert would wipe them. Preflight only changes these two on svg. */
+.tantra-studio :where(svg) {
+    display: revert;
+    vertical-align: revert;
+}
+
+/* Inherited values the studio took from a bare <html>. */
+.tantra-studio {
+    display: block;
+    font-size: 16px;
+    font-weight: 400;
+    font-style: normal;
+    font-feature-settings: normal;
+    font-variation-settings: normal;
+    line-height: normal;
+    letter-spacing: normal;
+    word-spacing: normal;
+    text-align: start;
+    text-transform: none;
+    text-indent: 0;
+    white-space: normal;
+    tab-size: 8;
+}

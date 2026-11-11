@@ -1,0 +1,174 @@
+/* tantra: studio styles from tantra-content kits/content/studio, scoped under .tantra-studio. Do not edit by hand. */
+.tantra-studio{--brand:#5b4bd6}
+.tantra-studio .brand-mark{background:#0a66c2}
+.tantra-studio .btn{border:1px solid #141414;background:#141414;color:#fff;border-radius:999px;padding:6px 14px;font-size:12.5px;cursor:pointer}
+.tantra-studio .btn.ghost{background:#fff;color:#141414;border-color:#cfccc5}
+.tantra-studio .btn:hover{opacity:.88}
+.tantra-studio .tally{font-size:12px;color:#444;background:#f1efea;border-radius:999px;padding:6px 12px;white-space:nowrap}
+.tantra-studio .tally b{color:#141414}
+.tantra-studio .banner{position:sticky;top:56px;z-index:15;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 20px;background:#ecebfb;border-bottom:1px solid #d9ccff;font-size:13px}
+.tantra-studio .banner .btn{padding:5px 12px}
+.tantra-studio .profile{padding:22px 26px 10px;border-bottom:1px solid #e3e1dc}
+.tantra-studio .phead{display:flex;align-items:center;gap:14px;margin-bottom:6px}
+.tantra-studio .phead img{width:52px;height:52px;border-radius:50%;object-fit:cover;background:#ddd}
+.tantra-studio .phead img.sq{border-radius:10px}
+.tantra-studio .phead h2{margin:0;font-size:21px;letter-spacing:-.2px}
+.tantra-studio .phead p{margin:2px 0 0;font-size:13px;color:#6b6b6b}
+.tantra-studio .phead .pwho{min-width:0;flex:1}
+.tantra-studio .phead .phl{color:#3d3d3d;max-width:720px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tantra-studio .phead .pmeta{margin-top:3px}
+.tantra-studio .phead .order{margin-left:auto;font-size:12px;color:#6b6b6b;background:#fff;border:1px solid #e3e1dc;border-radius:999px;padding:4px 10px}
+.tantra-studio .pnote{margin:4px 0 12px;font-size:12.5px;color:#8a6d00;background:#fff7d6;border-radius:8px;padding:8px 12px;max-width:1100px}
+.tantra-studio .pgrid{display:grid;grid-template-columns:repeat(auto-fill, calc(var(--pw) * var(--s)));gap:30px 34px;padding:10px 0 20px}
+.tantra-studio .pcard{width:calc(var(--pw) * var(--s))}
+.tantra-studio .pcard.hide{display:none}
+.tantra-studio .chead{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.tantra-studio .crow{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.tantra-studio .pid{font-weight:800;font-size:12px;background:#141414;color:#fff;border-radius:6px;padding:3px 8px}
+.tantra-studio .when{font-size:12.5px;font-weight:700;color:#141414}
+.tantra-studio .when span{font-weight:500;color:#6b6b6b}
+.tantra-studio .badge{font-size:10.5px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;border-radius:6px;padding:3px 7px}
+.tantra-studio .badge.cta{background:#d7f5ec;color:#0b5e4a}
+.tantra-studio .badge.fmt{background:#ecebfb;color:#3f32a8}
+.tantra-studio .badge.wip{background:#fff1dc;color:#a15c00}
+.tantra-studio .cidea{font-size:12.5px;color:#333;line-height:1.35}
+.tantra-studio .rev{margin-top:12px;background:#fff;border:1px solid #e6e3dd;border-radius:12px;padding:12px 12px 10px;font-size:12.5px}
+.tantra-studio .rev .appr{display:flex;gap:14px;flex-wrap:wrap}
+.tantra-studio .rev label.ck{display:inline-flex;align-items:center;gap:7px;font-weight:600;cursor:pointer;user-select:none;padding:6px 10px;border-radius:8px;border:1px solid #e3e1dc}
+.tantra-studio .rev label.ck input{width:16px;height:16px;accent-color:#00A85A}
+.tantra-studio .rev label.ck.on{background:#E1F8EC;border-color:#9fe2bd;color:#0b6e4f}
+.tantra-studio .rev textarea{width:100%;min-height:62px;margin-top:10px;border:1px solid #d6d3cc;border-radius:8px;padding:8px 10px;font:inherit;font-size:12.5px;resize:vertical}
+.tantra-studio .rev .fbrow{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px}
+.tantra-studio .rev .saved{font-size:11.5px;color:#6b6b6b}
+.tantra-studio .rev .btn{padding:5px 12px;font-size:12px}
+.tantra-studio .dl{margin-top:10px;background:#fff;border:1px solid #e6e3dd;border-radius:12px;padding:10px 12px;font-size:12.5px;display:flex;flex-direction:column;gap:8px}
+.tantra-studio .dl .dlrow{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.tantra-studio .dl .btn{padding:7px 10px;font-size:12px;line-height:1.25;text-decoration:none;display:flex;align-items:center;justify-content:center;text-align:center}
+.tantra-studio .dl .dlb{grid-column:1 / -1;background:var(--brand);border-color:var(--brand);font-weight:600}
+.tantra-studio .dl .dlm{grid-column:1 / -1;font-size:11px;color:#6b6b6b;text-align:center}
+.tantra-studio .dl .btn.done{background:#E1F8EC;border-color:#9fe2bd;color:#0b6e4f}
+.tantra-studio .dl .btn:disabled{opacity:.45;cursor:default}
+.tantra-studio details.info{margin-top:10px;background:#fbfaf8;border:1px solid #e6e3dd;border-radius:12px;padding:8px 12px;font-size:12.5px;line-height:1.45}
+.tantra-studio details.info summary{cursor:pointer;font-weight:700;color:#141414}
+.tantra-studio details.info dl{margin:8px 0 0}
+.tantra-studio details.info dt{font-weight:700;font-size:11px;letter-spacing:.4px;text-transform:uppercase;color:#6b6b6b;margin-top:8px}
+.tantra-studio details.info dd{margin:2px 0 0;color:#222}
+.tantra-studio details.info a{color:#5b4bd6}
+.tantra-studio details.info .fc{white-space:pre-wrap;background:#fff;border:1px dashed #cfccc5;border-radius:8px;padding:8px 10px}
+.tantra-studio details.info .row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.tantra-studio .sthumb{display:block;width:120px;border-radius:6px;margin-top:6px;border:1px solid #e3e1dc}
+.tantra-studio .sidenav a .dots{display:inline-flex;gap:3px;flex:0 0 auto;align-items:center}
+.tantra-studio .sidenav a .dots i{width:7px;height:7px;border-radius:50%;background:#d6d3cc}
+.tantra-studio .sidenav a .dots i.on{background:#00A85A}
+.tantra-studio .sidenav a small{display:block;color:#6b6b6b;font-size:11px}
+.tantra-studio .li-imgpost{position:relative;background:#000}
+.tantra-studio .li-imgpost img{display:block;width:100%;height:auto}
+.tantra-studio .li-imgpost.tall{aspect-ratio:4/5;overflow:hidden}
+.tantra-studio .li-imgpost.tall img{width:100%;height:100%;object-fit:cover}
+.tantra-studio .li-cmts{padding:6px 12px 12px;border-top:1px solid rgba(0,0,0,.08)}
+.tantra-studio .li-cm-sort{font-size:12px;font-weight:600;color:rgba(0,0,0,.6);padding:4px 0 8px}
+.tantra-studio .li-cm{display:flex;gap:8px}
+.tantra-studio .li-cm-b{flex:1;min-width:0}
+.tantra-studio .li-cm-bubble{background:#f2f2f2;border-radius:0 8px 8px 8px;padding:8px 10px}
+.tantra-studio .li-cm-n{font-size:13px;font-weight:600;color:rgba(0,0,0,.9);display:flex;align-items:center;gap:6px}
+.tantra-studio .li-auth{font-size:10px;font-weight:600;background:#56687a;color:#fff;border-radius:3px;padding:1px 4px}
+.tantra-studio .li-cm-h{font-size:11.5px;color:rgba(0,0,0,.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tantra-studio .li-cm-t{font-size:13.5px;line-height:19px;color:rgba(0,0,0,.9);margin-top:4px;word-wrap:break-word}
+.tantra-studio .li-cm-a{font-size:12px;font-weight:600;color:rgba(0,0,0,.6);padding:4px 10px 0}
+.tantra-studio .li-poll{margin:6px 12px 10px;border:1px solid rgba(0,0,0,.15);border-radius:8px;padding:12px}
+.tantra-studio .li-poll-q{font-size:14px;font-weight:600;color:rgba(0,0,0,.9);line-height:19px}
+.tantra-studio .li-poll-s{font-size:12px;color:rgba(0,0,0,.6);margin:4px 0 10px}
+.tantra-studio .li-poll-o{display:block;width:100%;border:1.5px solid #0a66c2;color:#0a66c2;background:#fff;border-radius:18px;padding:7px 12px;font-size:14px;font-weight:600;margin-top:8px;text-align:center;cursor:pointer}
+.tantra-studio .li-poll-o.voted{background:#e8f1fb}
+.tantra-studio .li-poll-f{font-size:12px;color:rgba(0,0,0,.6);margin-top:10px}
+.tantra-studio .li-sched{display:inline-flex;align-items:center;gap:3px}
+.tantra-studio .wipbox{margin:16px 12px;padding:18px;border:2px dashed #d6d3cc;border-radius:10px;color:#6b6b6b;font-size:13px;text-align:center}
+@media (max-width:900px){.tantra-studio .profile{padding:18px 16px}
+.tantra-studio .pgrid{justify-content:center}
+.tantra-studio .phead{align-items:flex-start}
+.tantra-studio .phead img{width:44px;height:44px}
+.tantra-studio .phead h2{font-size:19px}
+.tantra-studio .phead .order{padding:3px 8px;white-space:nowrap}}
+.tantra-studio .seg2{display:inline-flex;border:1px solid #d6d3cc;border-radius:999px;overflow:hidden;background:#fff}
+.tantra-studio .seg2 button{border:0;background:transparent;padding:6px 12px;font-size:12.5px;color:#333;cursor:pointer}
+.tantra-studio .seg2 button.on{background:#1d1d1f;color:#fff}
+.tantra-studio .banner[hidden]{display:none!important}
+.tantra-studio #fit3.on{background:#141414;color:#fff;border-color:#141414}
+.tantra-studio .pgrid{gap:28px 28px!important}
+@media (min-width:901px){.tantra-studio .layout{grid-template-columns:210px 1fr!important}}
+@media (max-width:900px){.tantra-studio .layout{grid-template-columns:minmax(0,1fr)!important}}
+.tantra-studio .chead{min-height:104px}
+.tantra-studio .cidea{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tantra-studio .when{white-space:nowrap}
+.tantra-studio .syncb{font-size:11.5px;font-weight:700;border-radius:999px;padding:5px 10px;background:#f1efea;color:#444}
+.tantra-studio .syncb.ok{background:#E1F8EC;color:#0b6e4f}
+.tantra-studio .syncb.warn{background:#fff1dc;color:#a15c00}
+.tantra-studio .rev label.ck{align-items:flex-start}
+.tantra-studio .rev label.ck span small{display:block;font-weight:500;font-size:11px;color:#0b6e4f;margin-top:2px}
+.tantra-studio .feed{margin-top:10px;display:flex;flex-direction:column;gap:8px;max-height:260px;overflow:auto}
+.tantra-studio .fbi{display:flex;gap:8px}
+.tantra-studio .fav{flex:none;width:26px;height:26px;border-radius:50%;background:#5b4bd6;color:#fff;display:grid;place-items:center;font-size:12px;font-weight:700}
+.tantra-studio .fbi > div{flex:1;min-width:0;background:#f4f2ee;border-radius:0 10px 10px 10px;padding:7px 10px}
+.tantra-studio .fbh{display:flex;justify-content:space-between;gap:8px;font-size:12px}
+.tantra-studio .fbh span{color:#6b6b6b;font-size:11px;white-space:nowrap}
+.tantra-studio .fbt{font-size:12.5px;line-height:1.4;margin-top:2px;color:#222;word-wrap:break-word}
+.tantra-studio .fbe{font-size:12px;color:#8a8a8a;padding:4px 0}
+.tantra-studio .fbin input{width:100%;margin-top:10px;border:1px solid #d6d3cc;border-radius:8px;padding:7px 10px;font:inherit;font-size:12.5px}
+.tantra-studio .fbin textarea{margin-top:6px!important}
+.tantra-studio .batch{border-bottom:3px solid #e3e1dc}
+.tantra-studio .bhead{padding:22px 26px 4px}
+.tantra-studio .bhead h1{margin:0;font-size:26px;letter-spacing:-.3px}
+.tantra-studio .bhead p{margin:4px 0 0;font-size:13px;color:#6b6b6b}
+.tantra-studio details.bnav{margin:4px 0 10px}
+.tantra-studio details.bnav summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;padding:8px 8px;border-radius:8px;font-weight:800;font-size:14px;background:#efece6}
+.tantra-studio details.bnav summary::-webkit-details-marker{display:none}
+.tantra-studio details.bnav summary::before{content:"▸";margin-right:8px;transition:transform .15s}
+.tantra-studio details.bnav[open] summary::before{transform:rotate(90deg)}
+.tantra-studio details.bnav summary small{margin-left:auto;font-weight:500;color:#6b6b6b;font-size:11.5px}
+.tantra-studio details.bnav a{margin-left:14px;align-items:center}
+.tantra-studio details.bnav a .cnt{font-size:11px;color:#0b6e4f;background:#E1F8EC;border-radius:999px;padding:1px 7px}
+.tantra-studio .sv{font-style:normal;font-size:10.5px;font-weight:700;margin-left:4px;white-space:nowrap}
+.tantra-studio .sv.ok{color:#0b6e4f}
+.tantra-studio .sv.wait{color:#a15c00}
+.tantra-studio details.bnav.act summary{background:#e4e1fa}
+.tantra-studio details.info .vcopy{margin:4px 0 0;padding-left:18px}
+.tantra-studio details.info .vcopy li{margin:2px 0}
+.tantra-studio .wipbox b{display:block;color:#3a3a3a}
+.tantra-studio .wipbox span{display:block;margin-top:2px;font-size:12px}
+.tantra-studio .wipbox ol{margin:10px 0 0;padding-left:18px;text-align:left;font-size:12px;line-height:1.4}
+.tantra-studio .wipbox li{margin:3px 0}
+.tantra-studio .dl .dlb.half{grid-column:auto}
+.tantra-studio .li-imgpost video{display:block;width:100%;height:100%;object-fit:cover}
+.tantra-studio .li-gif{position:absolute;left:8px;bottom:8px;background:rgba(0,0,0,.6);color:#fff;font:700 10px/1 system-ui;padding:4px 6px;border-radius:4px;letter-spacing:.04em}
+.tantra-studio .dl.res .resh{display:flex;flex-direction:column;gap:1px}
+.tantra-studio .dl.res .resh b{font-size:13px}
+.tantra-studio .dl.res .resh span{font-size:11px;color:#6b6b6b}
+.tantra-studio .dl.res .resw{height:480px;overflow:hidden;border:1px solid #e6e3dd;border-radius:8px;background:#f4f3fb}
+.tantra-studio .dl.res .resf{width:100%;height:480px;border:0;display:block;transform-origin:0 0}
+.tantra-studio .dl.res .dlm{text-align:left}
+.tantra-studio .dl.res .plink{display:flex;flex-direction:column;gap:4px;font-size:11px;color:#6b6b6b}
+.tantra-studio .dl.res .plink input{border:1px solid #d6d3cc;border-radius:8px;padding:7px 9px;font:inherit;font-size:12px;color:#141414;width:100%}
+.tantra-studio .dl.res .msg{border:1px solid #e6e3dd;border-radius:10px;overflow:hidden}
+.tantra-studio .dl.res .msgh{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 10px;background:#faf9f6;border-bottom:1px solid #e6e3dd}
+.tantra-studio .dl.res .msgh .btn{padding:4px 12px;font-size:11.5px}
+.tantra-studio .dl.res .msg pre{margin:0;padding:10px;font:inherit;font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-word;max-height:230px;overflow:auto}
+.tantra-studio .dl.res .msg .dlm{padding:0 10px 8px}
+.tantra-studio .li-cm+.li-cm{margin-top:8px}
+.tantra-studio .li-cm.li-rep{margin-left:40px}
+.tantra-studio .li-cm-more{font-size:12.5px;font-weight:600;color:rgba(0,0,0,.6);padding:10px 0 2px}
+.tantra-studio .tcm details>summary{cursor:pointer;list-style:none}
+.tantra-studio .tcm details>summary::-webkit-details-marker{display:none}
+.tantra-studio .tcm details>summary b::after{content:" ▸";color:#8a8a8a}
+.tantra-studio .tcm details[open]>summary b::after{content:" ▾"}
+.tantra-studio .tc{display:flex;gap:8px;padding:8px 0;border-top:1px solid #efede8}
+.tantra-studio .tc.rep{margin-left:28px}
+.tantra-studio .tcb{flex:1;min-width:0}
+.tantra-studio .tch{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12.5px}
+.tantra-studio .tch .btn{margin-left:auto;padding:3px 10px;font-size:11px}
+.tantra-studio .tcr{color:#6b6b6b;font-size:11.5px}
+.tantra-studio .tct{font-size:10.5px;font-weight:700;letter-spacing:.02em;padding:2px 7px;border-radius:999px;background:#eef1f6;color:#3b4a63}
+.tantra-studio .tct.positive{background:#e7f4ec;color:#1f6b3d}
+.tantra-studio .tct.feedback{background:#fdf1e3;color:#8a4b0f}
+.tantra-studio .tct.question{background:#eef1f6;color:#3b4a63}
+.tantra-studio .tct.differs{background:#f6e9ef;color:#8a2450}
+.tantra-studio .tcx{font-size:12.5px;line-height:1.5;margin-top:4px;white-space:normal;word-break:break-word}
