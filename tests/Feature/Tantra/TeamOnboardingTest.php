@@ -35,7 +35,7 @@ beforeEach(function () {
     WorkspaceSettings::query()->create(['workspace_id' => $this->nelbin->id, 'brand_profile_key' => 'nelbin', 'review_owner_user_id' => $this->owner->id]);
 });
 
-function pushNelbinPost(object $test): ReviewItem
+function tantraPushNelbinPost(object $test): ReviewItem
 {
     $token = $test->withHeaders($test->headers)
         ->post(route('tantra.api.uploads.store', ['workspace_id' => $test->nelbin->id]), ['media' => UploadedFile::fake()->image('n1.png', 1080, 1350)])
@@ -60,7 +60,7 @@ function pushNelbinPost(object $test): ReviewItem
     return ReviewItem::query()->where('engine_post_id', 'NA1')->sole();
 }
 
-function connectLinkedIn(Workspace $workspace): SocialAccount
+function tantraConnectLinkedIn(Workspace $workspace): SocialAccount
 {
     $weekdays = PostingSchedule::empty();
     foreach ([1, 2, 3, 4, 5] as $day) {
@@ -76,7 +76,7 @@ function connectLinkedIn(Workspace $workspace): SocialAccount
 }
 
 it('holds the media of a post with no channel so the upload pruning cannot remove it', function () {
-    $item = pushNelbinPost($this);
+    $item = tantraPushNelbinPost($this);
 
     expect($item->post_group_id)->toBeNull()
         ->and($item->flags)->toContain(DraftMaker::NO_CHANNEL_FLAG)
@@ -84,9 +84,9 @@ it('holds the media of a post with no channel so the upload pruning cannot remov
 });
 
 it('makes the drafts, with the held media, as soon as LinkedIn is connected', function () {
-    $item = pushNelbinPost($this);
+    $item = tantraPushNelbinPost($this);
 
-    connectLinkedIn($this->nelbin);
+    tantraConnectLinkedIn($this->nelbin);
 
     $item->refresh();
     $post = Post::query()->where('post_group_id', $item->post_group_id)->sole();
@@ -99,8 +99,8 @@ it('makes the drafts, with the held media, as soon as LinkedIn is connected', fu
 
 it('lets Adi approve until the teammate joins, then only the teammate', function () {
     Mail::fake();
-    $item = pushNelbinPost($this);
-    connectLinkedIn($this->nelbin);
+    $item = tantraPushNelbinPost($this);
+    tantraConnectLinkedIn($this->nelbin);
 
     $this->artisan('tantra:invite', ['workspace' => 'Nelbin', 'email' => 'nelbin@example.com', 'name' => 'Nelbin Joseph', '--send' => true])
         ->assertSuccessful();
@@ -132,9 +132,9 @@ it('sends a joining teammate to the set-password page', function () {
 });
 
 it('makes the drafts at approval when the channel was connected before the import', function () {
-    $item = pushNelbinPost($this);
+    $item = tantraPushNelbinPost($this);
     // A channel that exists without having triggered the listener (e.g. connected in another request).
-    SocialAccount::withoutEvents(fn () => connectLinkedIn($this->nelbin));
+    SocialAccount::withoutEvents(fn () => tantraConnectLinkedIn($this->nelbin));
 
     expect($item->refresh()->post_group_id)->toBeNull()
         ->and(ReviewActions::approve($this->owner, $item)['status'])->toBe('scheduled')
