@@ -6,6 +6,7 @@ namespace App\Tantra\Review\Actions;
 
 use App\Actions\Post\CreatePosts;
 use App\Actions\Post\DeletePost;
+use App\Actions\Post\HostInlineMedia;
 use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\SocialAccount\Platform;
@@ -262,7 +263,9 @@ final class ImportBatch
             ['color' => self::LABEL_COLOR],
         );
 
-        $created = CreatePosts::execute($workspace, $owner, [
+        // Upload tokens become hosted media items first, the way upstream's
+        // POST /api/posts/batch does before CreatePosts.
+        $created = CreatePosts::execute($workspace, $owner, HostInlineMedia::forBatch($workspace, [
             'status' => PostStatus::Draft->value,
             'content' => (string) ($post['text'] ?? ''),
             'media' => array_values(array_map(fn (string $t): array => ['upload_token' => $t], (array) ($post['upload_tokens'] ?? []))),
@@ -273,7 +276,7 @@ final class ImportBatch
                 'content_type' => 'linkedin_post',
                 'meta' => $meta,
             ]],
-        ]);
+        ]));
 
         /** @var Post $first */
         $first = $created->first();
