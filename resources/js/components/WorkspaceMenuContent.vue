@@ -6,13 +6,13 @@ import {
     IconBulb,
     IconCheck,
     IconCoin,
+    IconDeviceDesktop,
     IconHelpCircle,
+    IconLanguage,
     IconLayoutGrid,
     IconLifebuoy,
-    IconMessageChatbot,
-    IconDeviceDesktop,
-    IconLanguage,
     IconLogout,
+    IconMessageChatbot,
     IconMoon,
     IconPlus,
     IconSettings,
@@ -36,6 +36,7 @@ import {
     DropdownMenuSubContent,
     DropdownMenuSubTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useTantraBrand } from '@/composables/tantra/useTantraBrand';
 import { useChangelogDialog } from '@/composables/useChangelogDialog';
 import { clearAllComposerAutosaves } from '@/composables/useComposerAutosave';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
@@ -73,9 +74,7 @@ const page = usePage();
 const { canManageBilling, canManageTeam, canManageWorkspace } =
     useWorkspaceAbilities();
 const selfHosted = computed(() => Boolean(page.props.selfHosted));
-const showBilling = computed(
-    () => canManageBilling.value && !selfHosted.value,
-);
+const showBilling = computed(() => canManageBilling.value && !selfHosted.value);
 const showChannels = computed(() => canManageWorkspace.value);
 const planName = computed(() =>
     showBilling.value ? (page.props.auth.plan?.name ?? null) : null,
@@ -102,8 +101,7 @@ const themes = [
 const currentTheme = ref<Theme>(props.user.theme);
 const currentThemeOption = computed(
     () =>
-        themes.find((theme) => theme.value === currentTheme.value) ??
-        themes[2],
+        themes.find((theme) => theme.value === currentTheme.value) ?? themes[2],
 );
 
 const switchTheme = (theme: Theme): void => {
@@ -156,7 +154,7 @@ const statusTheme = computed(() =>
         : 'light',
 );
 
-const supportLinks = [
+const upstreamSupportLinks = [
     {
         key: 'help-center',
         label: 'sidebar.support.help_center',
@@ -182,6 +180,22 @@ const supportLinks = [
         icon: IconBrandGithub,
     },
 ];
+
+// tantra: with Tantra branding the menu links to this fork's public source
+// (AGPL) instead of TryPost's help centre, Discord and GitHub.
+const { brand, isTantraBranded } = useTantraBrand();
+const supportLinks = computed(() =>
+    isTantraBranded.value && brand.value
+        ? [
+              {
+                  key: 'source-code',
+                  label: 'tantra.source_code',
+                  href: brand.value.sourceUrl,
+                  icon: IconBrandGithub,
+              },
+          ]
+        : upstreamSupportLinks,
+);
 </script>
 
 <template>
@@ -248,7 +262,9 @@ const supportLinks = [
                     class="size-4 shrink-0 rounded-sm"
                     fallback-class="text-[8px] bg-primary-subtle text-primary-text font-bold"
                 />
-                <span class="min-w-0 truncate">{{ currentWorkspace?.name }}</span>
+                <span class="min-w-0 truncate">{{
+                    currentWorkspace?.name
+                }}</span>
             </DropdownMenuSubTrigger>
             <DropdownMenuPortal>
                 <DropdownMenuSubContent class="w-64">
@@ -459,13 +475,15 @@ const supportLinks = [
                         <IconSparkles />
                         {{ $t('sidebar.support.changelog') }}
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuLabel
-                        class="px-2 py-1.5 text-xs font-medium tracking-normal text-muted-foreground normal-case"
-                        data-testid="sidebar-support-community-title"
-                    >
-                        {{ $t('sidebar.support.community') }}
-                    </DropdownMenuLabel>
+                    <template v-if="supportLinks.length > 1">
+                        <DropdownMenuSeparator />
+                        <DropdownMenuLabel
+                            class="px-2 py-1.5 text-xs font-medium tracking-normal text-muted-foreground normal-case"
+                            data-testid="sidebar-support-community-title"
+                        >
+                            {{ $t('sidebar.support.community') }}
+                        </DropdownMenuLabel>
+                    </template>
                     <DropdownMenuItem
                         v-for="link in supportLinks.slice(1)"
                         :key="link.key"
@@ -515,7 +533,6 @@ const supportLinks = [
             </DropdownMenuPortal>
         </DropdownMenuSub>
     </DropdownMenuGroup>
-
 
     <DropdownMenuSeparator />
 

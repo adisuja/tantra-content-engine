@@ -7,7 +7,9 @@ import AppLogo from '@/components/AppLogo.vue';
 import LanguageSelect from '@/components/LanguageSelect.vue';
 import G2ReviewsLink from '@/components/reviews/G2ReviewsLink.vue';
 import ReviewCard from '@/components/reviews/ReviewCard.vue';
+import SourceCodeLink from '@/components/tantra/SourceCodeLink.vue';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useTantraBrand } from '@/composables/tantra/useTantraBrand';
 import { useGuestLocale } from '@/composables/useGuestLocale';
 import { REVIEWS } from '@/lib/reviews';
 import type { Auth } from '@/types';
@@ -17,7 +19,7 @@ const widthClass = {
     md: 'max-w-xl',
 } as const;
 
-withDefaults(
+const props = withDefaults(
     defineProps<{
         title?: string;
         description?: string;
@@ -35,6 +37,11 @@ withDefaults(
 );
 
 const page = usePage();
+
+// tantra: TryPost's customer reviews and G2 badge are its marketing, so the
+// panel stays off under Tantra branding and the login shows the AGPL source link.
+const { isTantraBranded } = useTantraBrand();
+const showPanel = computed(() => props.panel && !isTantraBranded.value);
 
 const isGuest = computed(() => !(page.props.auth as Auth).user);
 const { locale, languages } = useGuestLocale();
@@ -57,7 +64,7 @@ const loopedReviews = [
     <div
         :class="[
             'grid min-h-svh grid-cols-1 bg-muted',
-            panel ? 'lg:grid-cols-2' : '',
+            showPanel ? 'lg:grid-cols-2' : '',
         ]"
     >
         <div
@@ -75,7 +82,10 @@ const loopedReviews = [
             </div>
 
             <div
-                :class="['my-auto flex w-full flex-col gap-6', widthClass[width]]"
+                :class="[
+                    'my-auto flex w-full flex-col gap-6',
+                    widthClass[width],
+                ]"
                 data-testid="auth-content"
             >
                 <div class="flex flex-col items-center gap-4 text-center">
@@ -114,6 +124,8 @@ const loopedReviews = [
                 </Alert>
 
                 <slot />
+
+                <SourceCodeLink class="self-center" />
             </div>
 
             <div
@@ -126,13 +138,12 @@ const loopedReviews = [
         </div>
 
         <div
-            v-if="panel"
+            v-if="showPanel"
             class="hidden p-8 ps-0 lg:sticky lg:top-0 lg:block lg:h-svh lg:self-start"
         >
             <div
                 class="relative flex h-full flex-col items-center overflow-hidden rounded-[20px] bg-primary-subtle px-12 pt-14 text-center xl:px-16"
             >
-
                 <h2
                     class="motion-auth-reveal max-w-lg font-heading text-[clamp(30px,3.2vw,48px)] leading-[1.12] font-normal tracking-[-0.03em] text-balance text-foreground"
                 >
