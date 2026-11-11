@@ -6,6 +6,9 @@ namespace App\Tantra;
 
 use App\Enums\SocialAccount\Platform;
 use App\Tantra\Console\CreateOwnerCommand;
+use App\Tantra\Console\MapProfileCommand;
+use App\Tantra\Http\Middleware\EnsureOwnerToken;
+use Illuminate\Routing\Router;
 use App\Tantra\Ops\LeanHorizon;
 use Illuminate\Support\ServiceProvider;
 use Inertia\Inertia;
@@ -23,8 +26,11 @@ class TantraServiceProvider extends ServiceProvider
         // Our migrations live apart from upstream's, in database/migrations/tantra.
         $this->loadMigrationsFrom(database_path('migrations/tantra'));
 
+        $this->app->make(Router::class)->aliasMiddleware('tantra.owner-token', EnsureOwnerToken::class);
+        $this->loadRoutesFrom(__DIR__.'/Http/routes-api.php');
+
         if ($this->app->runningInConsole()) {
-            $this->commands([CreateOwnerCommand::class]);
+            $this->commands([CreateOwnerCommand::class, MapProfileCommand::class]);
         }
 
         if ($this->app->environment('production') && config('tantra.lean_workers.enabled')) {

@@ -7,6 +7,7 @@ namespace App\Tantra\Console;
 use App\Actions\User\CreateUser;
 use App\Actions\Workspace\CreateWorkspace;
 use App\Models\User;
+use App\Tantra\Review\Models\WorkspaceSettings;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -71,6 +72,15 @@ class CreateOwnerCommand extends Command
             }
 
             $user->switchWorkspace($first->refresh());
+
+            // tantra: each workspace maps to the engine profile of the same name
+            // (Adi -> adi, Tantra -> tantra), approved by the owner.
+            foreach ($user->workspaces()->get() as $workspace) {
+                WorkspaceSettings::query()->firstOrCreate(
+                    ['workspace_id' => $workspace->id],
+                    ['brand_profile_key' => Str::lower(Str::slug($workspace->name)), 'review_owner_user_id' => $user->id],
+                );
+            }
 
             return $user;
         });
