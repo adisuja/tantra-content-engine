@@ -27,14 +27,14 @@ class ReconnectChannel extends Mailable implements ShouldQueue
     {
         return new Envelope(subject: $this->state === 'dropped'
             ? 'Reconnect LinkedIn so your posts can go out'
-            : 'Your LinkedIn connection runs out '.$this->when());
+            : 'Your LinkedIn connection runs out '.$this->dueText());
     }
 
     public function content(): Content
     {
         $intro = $this->state === 'dropped'
             ? "The LinkedIn connection for {$this->channelName} in {$this->workspaceName} has stopped working. Scheduled posts there will not go out until you connect it again. It takes about a minute."
-            : "The LinkedIn connection for {$this->channelName} in {$this->workspaceName} runs out {$this->when()}. LinkedIn asks everyone to sign in again every 60 days. Reconnect now and your scheduled posts carry on as planned.";
+            : "The LinkedIn connection for {$this->channelName} in {$this->workspaceName} runs out {$this->dueText()}. LinkedIn asks everyone to sign in again every 60 days. Reconnect now and your scheduled posts carry on as planned.";
 
         return new Content(view: 'tantra::mail.review-ready', with: [
             'heading' => $this->state === 'dropped' ? 'Your LinkedIn needs reconnecting' : 'Time to reconnect LinkedIn',
@@ -45,7 +45,7 @@ class ReconnectChannel extends Mailable implements ShouldQueue
         ]);
     }
 
-    private function when(): string
+    private function dueText(): string
     {
         return match (true) {
             $this->daysLeft === null, $this->daysLeft <= 0 => 'today',
