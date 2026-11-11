@@ -10,12 +10,8 @@ import {
     watch,
 } from 'vue';
 
-// Browser defaults first, then the studio's own order: core, x, linkedin, studio.
-import '@/components/tantra/review/css/studio-core.css';
-import '@/components/tantra/review/css/studio-linkedin.css';
-import '@/components/tantra/review/css/studio-reset.css';
-import '@/components/tantra/review/css/studio-review.css';
-import '@/components/tantra/review/css/studio-x.css';
+// One entry file keeps the studio's CSS in cascade order.
+import '@/components/tantra/review/css/studio.css';
 
 import { renderPhone } from '@/components/tantra/review/studioRender';
 import type { ReviewItemRow } from '@/components/tantra/review/types';

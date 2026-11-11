@@ -1,0 +1,7 @@
+/* tantra: the studio phone styles in cascade order. Browser defaults first,
+   then the studio's own order from its index.html: core, x, linkedin, studio. */
+@import './studio-reset.css';
+@import './studio-core.css';
+@import './studio-x.css';
+@import './studio-linkedin.css';
+@import './studio-review.css';

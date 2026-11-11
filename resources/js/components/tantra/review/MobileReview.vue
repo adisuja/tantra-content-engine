@@ -9,7 +9,6 @@ import { toast } from 'vue-sonner';
 import PhonePreview from '@/components/tantra/review/PhonePreview.vue';
 import { sendReviewAction } from '@/components/tantra/review/reviewApi';
 import type { ReviewItemRow } from '@/components/tantra/review/types';
-
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 
