@@ -141,7 +141,7 @@ it('posts nothing while boosting is switched off', function () {
 });
 
 it('reads the LinkedIn id of a published post from its id or URL', function () {
-    $post = new Post(['platform_post_id' => 'zp_1', 'platform_url' => 'https://www.linkedin.com/feed/update/urn:li:share:7526183703878864896']);
+    $post = (new Post)->forceFill(['platform_post_id' => 'zp_1', 'platform_url' => 'https://www.linkedin.com/feed/update/urn:li:share:7526183703878864896']);
 
     expect(Boost::nativeRef($post))->toBe('urn:li:share:7526183703878864896');
 });
