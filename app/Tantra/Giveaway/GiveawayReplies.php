@@ -14,6 +14,7 @@ use App\Tantra\Review\Models\ReviewItem;
 use App\Tantra\Review\Models\WorkspaceSettings;
 use App\Tantra\Unipile\UnipileClient;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 /**
@@ -85,10 +86,12 @@ final class GiveawayReplies
             return 0;
         }
 
-        $ownId = $unipile->ownId($account);
+        // Spike S7: a comment carries `is_sender` and an author with only `id` and
+        // `profile_url`, no name. Team members are known by their LinkedIn ids.
         $teamComments = BoostAction::query()->whereIn('run_id', fn ($q) => $q->select('id')->from('tantra_boost_runs')->where('post_id', $post->id))
             ->whereNotNull('unipile_ref')->pluck('unipile_ref')->all();
-        $teamAccounts = MemberProfile::query()->whereNotNull('unipile_account_id')->pluck('unipile_name')->filter()->map(fn ($n) => Str::lower($n))->all();
+        $teamIds = self::teamLinkedInIds($unipile);
+        $teamNames = MemberProfile::query()->whereNotNull('unipile_account_id')->pluck('unipile_name')->filter()->map(fn ($n) => Str::lower($n))->all();
 
         $templates = array_values(array_filter((array) (data_get($item->payload, 'autoreply_templates') ?: $config['templates']), 'is_string'));
         $delay = 0;
@@ -102,18 +105,16 @@ final class GiveawayReplies
             $commentId = (string) ($comment['id'] ?? '');
             $authorId = (string) (data_get($comment, 'author.id') ?? data_get($comment, 'author_details.id') ?? '');
             $name = (string) (data_get($comment, 'author.name') ?? data_get($comment, 'author_details.name') ?? '');
+            $own = isset($comment['is_sender']) ? (bool) $comment['is_sender'] : $authorId === self::linkedInId($unipile, $account);
 
-            if ($commentId === '' || ($ownId !== null && $authorId === $ownId)
-                || in_array($commentId, $teamComments, true) || in_array(Str::lower($name), $teamAccounts, true)
+            if ($commentId === '' || $own
+                || in_array($commentId, $teamComments, true) || ($authorId !== '' && in_array($authorId, $teamIds, true))
+                || ($name !== '' && in_array(Str::lower($name), $teamNames, true))
                 || GiveawayReply::query()->where('post_id', $post->id)->where('comment_id', $commentId)->exists()) {
                 continue;
             }
 
-            $first = Str::of($name)->before(' ')->trim()->value() ?: 'there';
-            $text = strtr($templates[($queued + crc32($commentId)) % count($templates)], [
-                '{first_name}' => $first,
-                '{resource}' => (string) ($resource['name'] ?? 'resource'),
-            ]);
+            $text = self::render($templates[($queued + crc32($commentId)) % count($templates)], Str::of($name)->before(' ')->trim()->value(), (string) ($resource['name'] ?? 'resource'));
 
             $reply = GiveawayReply::query()->create([
                 'post_id' => $post->id,
@@ -132,6 +133,39 @@ final class GiveawayReplies
         }
 
         return $queued;
+    }
+
+    /** Fills a template. With no name (LinkedIn often gives none) the greeting drops out cleanly. */
+    public static function render(string $template, string $firstName, string $resource): string
+    {
+        $text = str_replace('{resource}', $resource, $template);
+        if ($firstName !== '') {
+            return str_replace('{first_name}', $firstName, $text);
+        }
+
+        $text = (string) preg_replace('/,?\s*\{first_name\}/', '', $text);
+        $text = ltrim((string) preg_replace('/^[,:]\s*/', '', $text));
+
+        return Str::ucfirst($text);
+    }
+
+    /** @return list<string> the LinkedIn ids of everyone with a confirmed Unipile account */
+    private static function teamLinkedInIds(UnipileClient $unipile): array
+    {
+        return MemberProfile::query()->whereNotNull('unipile_confirmed_at')->pluck('unipile_account_id')->filter()
+            ->map(fn (string $acc): ?string => self::linkedInId($unipile, $acc))->filter()->values()->all();
+    }
+
+    /** An account's own LinkedIn id, kept once read: users/me is rate limited (S7 got a 429). */
+    private static function linkedInId(UnipileClient $unipile, string $account): ?string
+    {
+        $key = "tantra:unipile:own:{$account}";
+        $id = Cache::get($key);
+        if ($id === null && ($id = $unipile->ownId($account)) !== null) {
+            Cache::forever($key, $id);
+        }
+
+        return $id;
     }
 
     /** @param array{0: int, 1: int} $hours */

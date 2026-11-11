@@ -130,7 +130,7 @@ function commentHtml(p: ReviewItemRow, pr: ReviewProfile): string {
         /\n/g,
         '<br>',
     );
-    const tc = p.team_comments;
+    const tc = p.team_comments.filter((c) => !c.excluded);
     const shown = tc.slice(0, 3);
     const one = (c: TeamComment): string => {
         const rep = c.reply_to !== null && c.reply_to !== undefined;

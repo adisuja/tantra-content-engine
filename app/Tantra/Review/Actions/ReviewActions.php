@@ -166,6 +166,43 @@ final class ReviewActions
         $item->record(EventKind::Comment, $user, $body);
     }
 
+    /**
+     * Edit, remove or restore one entry of the team thread (PRD 10.5 step 2).
+     * Removing a comment also removes the replies under it.
+     */
+    public static function editThreadEntry(User $user, ReviewItem $item, int $index, ?string $text, ?bool $excluded): void
+    {
+        ReviewGate::assertReviewOwner($user, $item);
+        if (in_array($item->review_status, [ReviewStatus::Published, ReviewStatus::Rejected, ReviewStatus::Superseded], true)) {
+            throw ValidationException::withMessages(['thread' => 'This post is '.str_replace('_', ' ', $item->review_status->value).'.']);
+        }
+
+        $entries = (array) data_get($item->payload, 'engagement_comments', []);
+        if (! isset($entries[$index])) {
+            throw ValidationException::withMessages(['index' => 'No such comment.']);
+        }
+        if ($text !== null && (blank($text) || preg_match('/[\x{2013}\x{2014}]/u', $text))) {
+            throw ValidationException::withMessages(['text' => blank($text) ? 'Write the comment, or remove it instead.' : 'No en or em dashes, please.']);
+        }
+
+        $overrides = (array) ($item->thread_overrides ?? []);
+        $current = (array) ($overrides[(string) $index] ?? []);
+        if ($text !== null) {
+            $current['text'] = trim($text);
+        }
+        if ($excluded !== null) {
+            $current['excluded'] = $excluded;
+        }
+        $overrides[(string) $index] = $current;
+
+        DB::transaction(function () use ($item, $overrides, $user, $index, $text, $excluded): void {
+            $item->thread_overrides = $overrides;
+            $item->save();
+            $what = $excluded === true ? 'removed' : ($excluded === false ? 'restored' : 'edited');
+            $item->record(EventKind::Comment, $user, 'Team comment '.($index + 1)." {$what}.", ['thread_index' => $index, 'text' => $text, 'excluded' => $excluded]);
+        });
+    }
+
     public static function signOff(User $user, ReviewItem $item, int $index): void
     {
         $numbers = $item->numbers_for_signoff ?? [];

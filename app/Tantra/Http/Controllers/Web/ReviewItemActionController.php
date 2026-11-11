@@ -67,6 +67,15 @@ class ReviewItemActionController extends Controller
         return $this->ok($item, 'Signed off.');
     }
 
+    public function thread(Request $request, ReviewItem $item, int $index): JsonResponse
+    {
+        $this->authorizeView($request, $item);
+        $data = $request->validate(['text' => ['nullable', 'string', 'max:1500'], 'excluded' => ['nullable', 'boolean']]);
+        ReviewActions::editThreadEntry($request->user(), $item, $index, $data['text'] ?? null, array_key_exists('excluded', $data) ? (bool) $data['excluded'] : null);
+
+        return $this->ok($item, 'Saved.');
+    }
+
     /** tantra: tick a commenter off the "DMs to send" list once the resource is sent. */
     public function dmSent(Request $request, ReviewItem $item, GiveawayReply $reply): JsonResponse
     {

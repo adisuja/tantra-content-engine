@@ -29,6 +29,7 @@ Route::middleware(['web', 'auth'])
             Route::post('/comments', [ReviewItemActionController::class, 'comment'])->name('comment');
             Route::post('/sign-off', [ReviewItemActionController::class, 'signOff'])->name('sign-off');
             Route::post('/dms/{reply}', [ReviewItemActionController::class, 'dmSent'])->whereUuid('reply')->name('dm-sent');
+            Route::post('/thread/{index}', [ReviewItemActionController::class, 'thread'])->whereNumber('index')->name('thread');
         });
     });
 

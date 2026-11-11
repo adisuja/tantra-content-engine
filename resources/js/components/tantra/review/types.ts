@@ -20,6 +20,9 @@ export interface SignoffNumber {
 }
 
 export interface TeamComment {
+    index?: number;
+    edited?: boolean;
+    excluded?: boolean;
     by: string;
     name?: string;
     headline?: string;

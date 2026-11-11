@@ -56,6 +56,7 @@ class ReviewItem extends Model
             'flags' => 'array',
             'media_manifest' => 'array',
             'payload' => 'array',
+            'thread_overrides' => 'array',
             'review_status' => ReviewStatus::class,
             'approved_at' => 'datetime',
             'revision' => 'integer',
@@ -93,6 +94,36 @@ class ReviewItem extends Model
         return $this->post_group_id === null
             ? new Collection
             : Post::query()->where('post_group_id', $this->post_group_id)->get();
+    }
+
+    /**
+     * The team thread as it will be posted: the engine's entries with the review
+     * owner's edits, each with its index, edited flag and excluded flag. An entry
+     * whose comment was removed is excluded too.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function thread(): array
+    {
+        $overrides = (array) ($this->thread_overrides ?? []);
+        // Indexes are the positions in the pushed list, the same ones reply_to points at.
+        $out = [];
+        foreach (array_values((array) data_get($this->payload, 'engagement_comments', [])) as $index => $entry) {
+            if (! is_array($entry) || blank($entry['text'] ?? null)) {
+                continue;
+            }
+            $o = (array) ($overrides[(string) $index] ?? []);
+            $parent = $entry['reply_to'] ?? null;
+            $out[] = [
+                ...$entry,
+                'index' => $index,
+                'text' => (string) ($o['text'] ?? $entry['text']),
+                'edited' => isset($o['text']) && $o['text'] !== $entry['text'],
+                'excluded' => (bool) ($o['excluded'] ?? false) || ($parent !== null && (bool) data_get($overrides, $parent.'.excluded', false)),
+            ];
+        }
+
+        return $out;
     }
 
     /** @param array<string, mixed>|null $value */

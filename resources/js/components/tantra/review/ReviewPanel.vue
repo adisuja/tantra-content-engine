@@ -7,6 +7,7 @@ import { toast } from 'vue-sonner';
 
 import type { ReviewAction } from '@/components/tantra/review/reviewApi';
 import { sendReviewAction } from '@/components/tantra/review/reviewApi';
+import ThreadEntry from '@/components/tantra/review/ThreadEntry.vue';
 import type { ReviewItemRow } from '@/components/tantra/review/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -51,6 +52,26 @@ const threads = computed(() => {
             replies: all.filter((c) => c.comment.reply_to === top.index),
         }));
 });
+
+const editing = ref<number | null>(null);
+const draft = ref('');
+const canEditThread = computed(
+    () =>
+        props.item.can_review &&
+        !['published', 'rejected', 'superseded'].includes(status.value),
+);
+const startEdit = (index: number, text: string): void => {
+    editing.value = index;
+    draft.value = text;
+};
+const saveEntry = async (
+    index: number,
+    body: { text?: string; excluded?: boolean },
+): Promise<void> => {
+    if (await run(`thread/${index}`, body)) {
+        editing.value = null;
+    }
+};
 
 const formatDate = (iso: string | null): string =>
     iso
@@ -503,39 +524,59 @@ const statusVariant = (
                     :key="thread.index"
                     class="flex flex-col gap-1.5"
                 >
-                    <div class="rounded-lg bg-muted/60 p-2">
-                        <div class="text-xs text-muted-foreground">
-                            <b class="text-foreground">{{
-                                thread.comment.name || thread.comment.by
-                            }}</b>
-                            <template v-if="thread.comment.tone">
-                                · {{ thread.comment.tone }}</template
-                            >
-                        </div>
-                        <div class="whitespace-pre-line">
-                            {{ thread.comment.text }}
-                        </div>
-                    </div>
-                    <div
+                    <ThreadEntry
+                        :entry="thread.comment"
+                        :editable="canEditThread"
+                        :editing="editing === thread.comment.index"
+                        :draft="draft"
+                        :busy="busy !== null"
+                        @edit="
+                            startEdit(
+                                thread.comment.index ?? 0,
+                                thread.comment.text,
+                            )
+                        "
+                        @cancel="editing = null"
+                        @update:draft="draft = $event"
+                        @save="
+                            saveEntry(thread.comment.index ?? 0, {
+                                text: draft,
+                            })
+                        "
+                        @toggle="
+                            saveEntry(thread.comment.index ?? 0, {
+                                excluded: !thread.comment.excluded,
+                            })
+                        "
+                    />
+                    <ThreadEntry
                         v-for="reply in thread.replies"
                         :key="reply.index"
-                        class="ml-5 rounded-lg border border-border p-2"
-                    >
-                        <div class="text-xs text-muted-foreground">
-                            <b class="text-foreground">{{
-                                reply.comment.name || reply.comment.by
-                            }}</b>
-                            <span
-                                v-if="reply.comment.by === item.author_key"
-                                class="ml-1 rounded bg-foreground px-1 text-[10px] text-background"
-                                >{{ $t('tantra.review.author') }}</span
-                            >
-                            · {{ $t('tantra.review.reply') }}
-                        </div>
-                        <div class="whitespace-pre-line">
-                            {{ reply.comment.text }}
-                        </div>
-                    </div>
+                        class="ml-5"
+                        :entry="reply.comment"
+                        :is-author="reply.comment.by === item.author_key"
+                        is-reply
+                        :editable="canEditThread"
+                        :editing="editing === reply.comment.index"
+                        :draft="draft"
+                        :busy="busy !== null"
+                        @edit="
+                            startEdit(
+                                reply.comment.index ?? 0,
+                                reply.comment.text,
+                            )
+                        "
+                        @cancel="editing = null"
+                        @update:draft="draft = $event"
+                        @save="
+                            saveEntry(reply.comment.index ?? 0, { text: draft })
+                        "
+                        @toggle="
+                            saveEntry(reply.comment.index ?? 0, {
+                                excluded: !reply.comment.excluded,
+                            })
+                        "
+                    />
                 </li>
             </ol>
         </details>

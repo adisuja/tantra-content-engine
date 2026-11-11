@@ -7,7 +7,8 @@ export type ReviewAction =
     | 'reject'
     | 'comments'
     | 'sign-off'
-    | `dms/${string}`;
+    | `dms/${string}`
+    | `thread/${number}`;
 
 export interface ReviewActionResult {
     ok: boolean;

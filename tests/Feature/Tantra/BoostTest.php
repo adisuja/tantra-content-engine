@@ -145,3 +145,28 @@ it('reads the LinkedIn id of a published post from its id or URL', function () {
 
     expect(Boost::nativeRef($post))->toBe('urn:li:share:7526183703878864896');
 });
+
+it('boosts the thread as the review owner left it: edits applied, removed comments and their replies left out', function () {
+    $this->actingAs($this->nelbin)->postJson(route('tantra.review.items.thread', [$this->item, 0]), ['text' => 'Adi comment, edited.'])->assertOk();
+    $this->actingAs($this->nelbin)->postJson(route('tantra.review.items.thread', [$this->item, 1]), ['excluded' => true])->assertOk();
+
+    $thread = collect($this->item->refresh()->thread());
+    expect($thread[0]['edited'])->toBeTrue()
+        ->and($thread[1]['excluded'])->toBeTrue()
+        ->and($thread[3]['excluded'])->toBeTrue(); // the reply under the removed comment goes too
+
+    $run = BoostRun::query()->create(['post_id' => $this->post->id, 'review_item_id' => $this->item->id, 'status' => 'running']);
+    $actions = collect((new BoostPlanner(fn (int $min, int $max): int => $min))->plan($run, CarbonImmutable::now()));
+
+    expect($actions->firstWhere('kind', 'comment')->text)->toBe('Adi comment, edited.')
+        ->and($actions->pluck('entry_index')->unique()->sort()->values()->all())->toBe([0, 2])
+        ->and($actions->where('profile_key', 'aquila')->all())->toBe([]);
+});
+
+it('lets only the review owner edit the thread, without dashes', function () {
+    $this->actingAs($this->aquila)->postJson(route('tantra.review.items.thread', [$this->item, 0]), ['text' => 'Mine now.'])->assertClientError();
+    $this->actingAs($this->nelbin)->postJson(route('tantra.review.items.thread', [$this->item, 0]), ['text' => "Good point \u{2014} agreed."])->assertStatus(422);
+    $this->actingAs($this->nelbin)->postJson(route('tantra.review.items.thread', [$this->item, 9]), ['text' => 'Nothing here.'])->assertStatus(422);
+
+    expect($this->item->refresh()->thread()[0]['text'])->toBe('Adi comment.');
+});

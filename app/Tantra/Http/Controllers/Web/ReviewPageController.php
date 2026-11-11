@@ -18,6 +18,7 @@ use App\Tantra\Review\ReviewGate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -170,7 +171,8 @@ class ReviewPageController extends Controller
             'thread' => array_values((array) ($p['thread'] ?? [])),
             'visual_copy' => array_values((array) ($p['visual_copy'] ?? [])),
             'resource' => $p['resource'] ?? null,
-            'team_comments' => collect((array) ($p['engagement_comments'] ?? $p['team_comments'] ?? []))->filter(fn ($c): bool => is_array($c) && filled($c['text'] ?? null))->map(fn (array $c): array => [
+            'team_comments' => collect($i->thread())->map(fn (array $c): array => [
+                'index' => (int) $c['index'],
                 'by' => (string) ($c['by'] ?? ''),
                 'name' => $c['name'] ?? null,
                 'headline' => $c['headline'] ?? null,
@@ -178,10 +180,12 @@ class ReviewPageController extends Controller
                 'text' => (string) $c['text'],
                 'reply_to' => isset($c['reply_to']) ? (int) $c['reply_to'] : null,
                 'tone' => $c['tone'] ?? null,
+                'edited' => (bool) $c['edited'],
+                'excluded' => (bool) $c['excluded'],
             ])->values(),
             'author_key' => (string) ($p['profile'] ?? ''),
             'dm_list' => GiveawayReply::query()->where('review_item_id', $i->id)->where('status', 'replied')->orderBy('replied_at')->get()
-                ->map(fn (GiveawayReply $r): array => ['id' => $r->id, 'name' => $r->commenter_name, 'url' => $r->commenter_url, 'comment' => $r->comment_text, 'sent' => $r->dm_sent_at !== null])->values(),
+                ->map(fn (GiveawayReply $r): array => ['id' => $r->id, 'name' => $r->commenter_name ?: (Str::of((string) $r->commenter_url)->rtrim('/')->afterLast('/')->value() ?: null), 'url' => $r->commenter_url, 'comment' => $r->comment_text, 'sent' => $r->dm_sent_at !== null])->values(),
             'mentions' => array_values(array_filter((array) ($p['mentions'] ?? []), 'is_string')),
             'media' => [
                 'type' => $manifest['type'] ?? ($video ? 'video' : ($images->isNotEmpty() ? 'image' : null)),

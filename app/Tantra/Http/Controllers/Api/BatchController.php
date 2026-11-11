@@ -54,6 +54,8 @@ class BatchController extends Controller
             'posts.*.cta' => ['nullable', 'string', 'max:64'],
             'posts.*.cta_date' => ['nullable', 'date_format:Y-m-d'],
             'posts.*.visual_copy' => ['nullable', 'array'],
+            'posts.*.autoreply_templates' => ['nullable', 'array', 'max:8'],
+            'posts.*.autoreply_templates.*' => ['string', 'max:300'],
             'posts.*.resource' => ['nullable', 'array'],
             'posts.*.mentions' => ['nullable', 'array', 'max:20'],
             'posts.*.mentions.*' => ['string', 'max:120'],

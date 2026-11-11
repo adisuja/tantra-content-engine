@@ -32,7 +32,13 @@ final class BoostPlanner
     public function plan(BoostRun $run, CarbonImmutable $start): array
     {
         $item = $run->item;
-        $thread = array_values(array_filter((array) data_get($item->payload, 'engagement_comments', []), fn ($c): bool => is_array($c) && filled($c['text'] ?? null)));
+        // The thread as approved: the review owner's edits applied, removed entries left out.
+        $thread = [];
+        foreach ($item->thread() as $entry) {
+            if (! $entry['excluded']) {
+                $thread[$entry['index']] = $entry;
+            }
+        }
         $people = $this->people($item->account_id, array_unique(array_map(fn (array $c): string => (string) ($c['by'] ?? ''), $thread)));
 
         $config = config('tantra.boost');
