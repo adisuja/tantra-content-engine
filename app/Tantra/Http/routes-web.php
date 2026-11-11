@@ -28,6 +28,7 @@ Route::middleware(['web', 'auth'])
             Route::post('/reject', [ReviewItemActionController::class, 'reject'])->name('reject');
             Route::post('/comments', [ReviewItemActionController::class, 'comment'])->name('comment');
             Route::post('/sign-off', [ReviewItemActionController::class, 'signOff'])->name('sign-off');
+            Route::post('/dms/{reply}', [ReviewItemActionController::class, 'dmSent'])->whereUuid('reply')->name('dm-sent');
         });
     });
 

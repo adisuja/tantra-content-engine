@@ -9,6 +9,7 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Tantra\Giveaway\GiveawayReply;
 use App\Tantra\Review\Enums\ReviewStatus;
 use App\Tantra\Review\Models\Batch;
 use App\Tantra\Review\Models\ReviewEvent;
@@ -179,6 +180,8 @@ class ReviewPageController extends Controller
                 'tone' => $c['tone'] ?? null,
             ])->values(),
             'author_key' => (string) ($p['profile'] ?? ''),
+            'dm_list' => GiveawayReply::query()->where('review_item_id', $i->id)->where('status', 'replied')->orderBy('replied_at')->get()
+                ->map(fn (GiveawayReply $r): array => ['id' => $r->id, 'name' => $r->commenter_name, 'url' => $r->commenter_url, 'comment' => $r->comment_text, 'sent' => $r->dm_sent_at !== null])->values(),
             'mentions' => array_values(array_filter((array) ($p['mentions'] ?? []), 'is_string')),
             'media' => [
                 'type' => $manifest['type'] ?? ($video ? 'video' : ($images->isNotEmpty() ? 'image' : null)),

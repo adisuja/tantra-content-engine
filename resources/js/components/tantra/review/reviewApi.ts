@@ -6,7 +6,8 @@ export type ReviewAction =
     | 'request-changes'
     | 'reject'
     | 'comments'
-    | 'sign-off';
+    | 'sign-off'
+    | `dms/${string}`;
 
 export interface ReviewActionResult {
     ok: boolean;

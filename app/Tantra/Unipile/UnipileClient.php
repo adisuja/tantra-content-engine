@@ -57,6 +57,14 @@ class UnipileClient
         return (string) $this->post("/{$accountId}/posts/{$postId}/comments/{$commentId}", ['text' => $text])->json('id');
     }
 
+    /** The LinkedIn member id of the account itself, to tell its own comments apart. */
+    public function ownId(string $accountId): ?string
+    {
+        $response = $this->get("/{$accountId}/users/me", allowFailure: true);
+
+        return $response->successful() ? ((string) ($response->json('provider_id') ?? $response->json('id')) ?: null) : null;
+    }
+
     /** @return list<array<string, mixed>> */
     public function comments(string $accountId, string $postId, int $limit = 100): array
     {

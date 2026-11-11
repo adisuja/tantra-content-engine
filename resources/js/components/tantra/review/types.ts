@@ -97,6 +97,13 @@ export interface ReviewItemRow {
     } | null;
     team_comments: TeamComment[];
     author_key: string;
+    dm_list: {
+        id: string;
+        name: string | null;
+        url: string | null;
+        comment: string | null;
+        sent: boolean;
+    }[];
     mentions: string[];
     media: ReviewMedia;
     profile: ReviewProfile;

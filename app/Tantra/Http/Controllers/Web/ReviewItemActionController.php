@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tantra\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
+use App\Tantra\Giveaway\GiveawayReply;
 use App\Tantra\Review\Actions\ReviewActions;
 use App\Tantra\Review\Models\ReviewItem;
 use App\Tantra\Review\ReviewGate;
@@ -64,6 +65,17 @@ class ReviewItemActionController extends Controller
         ReviewActions::signOff($request->user(), $item, $index);
 
         return $this->ok($item, 'Signed off.');
+    }
+
+    /** tantra: tick a commenter off the "DMs to send" list once the resource is sent. */
+    public function dmSent(Request $request, ReviewItem $item, GiveawayReply $reply): JsonResponse
+    {
+        $this->authorizeView($request, $item);
+        abort_unless($reply->review_item_id === $item->id, 404);
+        $sent = (bool) $request->validate(['sent' => ['required', 'boolean']])['sent'];
+        $reply->forceFill(['dm_sent_at' => $sent ? now() : null])->save();
+
+        return $this->ok($item, $sent ? 'Marked as sent.' : 'Marked as not sent.');
     }
 
     private function authorizeView(Request $request, ReviewItem $item): void

@@ -441,6 +441,50 @@ const statusVariant = (
             </div>
         </form>
 
+        <details v-if="item.dm_list.length" open data-testid="tantra-dms">
+            <summary class="cursor-pointer font-medium">
+                {{ $t('tantra.review.dms') }} ·
+                {{ item.dm_list.filter((d) => !d.sent).length }} /
+                {{ item.dm_list.length }}
+            </summary>
+            <p class="mt-1 text-xs text-muted-foreground">
+                {{ $t('tantra.review.dms_help') }}
+            </p>
+            <ul class="mt-2 flex flex-col gap-1.5">
+                <li
+                    v-for="dm in item.dm_list"
+                    :key="dm.id"
+                    class="flex items-center gap-2"
+                >
+                    <input
+                        type="checkbox"
+                        :checked="dm.sent"
+                        :aria-label="$t('tantra.review.dm_sent')"
+                        @change="
+                            run(`dms/${dm.id}`, {
+                                sent: ($event.target as HTMLInputElement)
+                                    .checked,
+                            })
+                        "
+                    />
+                    <a
+                        v-if="dm.url"
+                        :href="dm.url"
+                        target="_blank"
+                        rel="noopener"
+                        class="underline"
+                        >{{ dm.name }}</a
+                    >
+                    <span v-else>{{ dm.name }}</span>
+                    <span
+                        class="truncate text-xs text-muted-foreground"
+                        :title="dm.comment ?? ''"
+                        >{{ dm.comment }}</span
+                    >
+                </li>
+            </ul>
+        </details>
+
         <details
             v-if="item.team_comments.length"
             open

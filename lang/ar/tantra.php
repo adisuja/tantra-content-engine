@@ -105,6 +105,9 @@ return [
         'team_comments' => 'Team comments',
         'team_comments_help' => 'Posted from each person\'s own profile when the post goes live; replies land in their comment\'s thread a few minutes later.',
         'author' => 'Author',
+        'dms' => 'DMs to send',
+        'dms_help' => 'Everyone who commented got a reply saying the resource is on its way. Tick each person once you have sent it.',
+        'dm_sent' => 'Sent',
         'reply' => 'reply',
     ],
     'tasks' => [

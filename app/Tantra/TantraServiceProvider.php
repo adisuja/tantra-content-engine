@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Tantra\Boost\Boost;
 use App\Tantra\Boost\StartBoostRun;
 use App\Tantra\Console\CreateOwnerCommand;
+use App\Tantra\Console\GiveawayRepliesCommand;
 use App\Tantra\Console\InviteTeammateCommand;
 use App\Tantra\Console\ManualTasksCommand;
 use App\Tantra\Console\MapProfileCommand;
@@ -87,10 +88,11 @@ class TantraServiceProvider extends ServiceProvider
         // Manual tasks (X, personal polls): time them, mark due, expire (PRD 12).
         $this->callAfterResolving(Schedule::class, function (Schedule $schedule): void {
             $schedule->command('tantra:manual-tasks')->everyFiveMinutes()->withoutOverlapping();
+            $schedule->command('tantra:giveaway-replies')->hourly()->withoutOverlapping();
         });
 
                 if ($this->app->runningInConsole()) {
-            $this->commands([CreateOwnerCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class, TeamAccountsCommand::class]);
+            $this->commands([CreateOwnerCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class, TeamAccountsCommand::class, GiveawayRepliesCommand::class]);
         }
 
         if ($this->app->environment('production') && config('tantra.lean_workers.enabled')) {
