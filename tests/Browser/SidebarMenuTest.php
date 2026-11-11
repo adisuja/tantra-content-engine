@@ -260,7 +260,8 @@ test('the main sidebar navigation is ordered and the logo is the vector mark wit
 
     $paths = array_map(
         fn (string $url): string => (string) parse_url($url, PHP_URL_PATH),
-        [route('app.create.ideas.index'), route('app.posts.index'), route('app.insights'), route('app.repurposes.index')],
+        // tantra: the Review studio leads the main navigation.
+        [route('tantra.review.index'), route('app.create.ideas.index'), route('app.posts.index'), route('app.insights'), route('app.repurposes.index')],
     );
 
     expect($page->script(<<<'JS'

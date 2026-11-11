@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Tantra\Review\Models\WorkspaceSettings;
 use Illuminate\Console\Command;
+use Illuminate\Support\Str;
 
 /** tantra: link a workspace to an engine profile key (posts.json `profile`) and set its review owner. */
 class MapProfileCommand extends Command
@@ -27,7 +28,8 @@ class MapProfileCommand extends Command
     public function handle(): int
     {
         $ref = (string) $this->argument('workspace');
-        $workspace = Workspace::query()->whereKey($ref)->first() ?? Workspace::query()->where('name', $ref)->first();
+        $workspace = (Str::isUuid($ref) ? Workspace::query()->whereKey($ref)->first() : null)
+            ?? Workspace::query()->where('name', $ref)->first();
 
         if ($workspace === null && $this->option('create')) {
             $workspace = $this->createWorkspace($ref);
