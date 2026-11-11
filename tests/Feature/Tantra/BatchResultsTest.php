@@ -46,7 +46,7 @@ it('returns the batch in the results.json shape, with a reason for every missing
         ->and($a2['reactions'])->toBeNull()
         ->and(implode(' ', $a2['source_notes']))->toContain('not published yet')
         ->and($json['by_format']['carousel']['posts'])->toBe(2)
-        ->and($json['by_format']['carousel']['reactions'])->toBe(['total' => 30, 'per_post' => 30.0, 'posts_with_it' => 1])
+        ->and($json['by_format']['carousel']['reactions'])->toEqual(['total' => 30, 'per_post' => 30, 'posts_with_it' => 1])
         ->and($json['by_pillar'])->toHaveKeys(['proof', 'story']);
 });
 
