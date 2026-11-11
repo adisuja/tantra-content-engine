@@ -8,6 +8,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Tantra\Console\CreateOwnerCommand;
 use App\Tantra\Ops\LeanHorizon;
 use Illuminate\Support\ServiceProvider;
+use Inertia\Inertia;
 
 /**
  * Entry point for everything Tantra adds to the TryPost fork.
@@ -29,6 +30,40 @@ class TantraServiceProvider extends ServiceProvider
         if ($this->app->environment('production') && config('tantra.lean_workers.enabled')) {
             $this->useLeanHorizon();
         }
+
+        if (config('tantra.branding.enabled')) {
+            $this->useTantraBranding();
+        }
+    }
+
+    /**
+     * Swaps TryPost's name and outward links for Tantra's wherever upstream
+     * still holds its own default, so an explicit env value always wins.
+     */
+    private function useTantraBranding(): void
+    {
+        $name = (string) config('tantra.branding.name');
+        $defaults = [
+            'app.name' => ['TryPost.it', $name],
+            'mail.from.name' => ['TryPost', $name],
+            'trypost.user_agent' => ['TryPost.it/1.0 (+https://trypost.it)', (string) config('tantra.branding.user_agent')],
+            // No Tantra terms or privacy pages exist for the Engine yet, so the
+            // auth screens hide the sentence instead of linking to TryPost's.
+            'trypost.legal.terms_url' => ['https://trypost.it/terms', ''],
+            'trypost.legal.privacy_url' => ['https://trypost.it/privacy', ''],
+        ];
+
+        foreach ($defaults as $key => [$upstream, $tantra]) {
+            if (config($key) === $upstream) {
+                config([$key => $tantra]);
+            }
+        }
+
+        Inertia::share('tantra', fn (): array => [
+            'branding' => true,
+            'name' => $name,
+            'sourceUrl' => (string) config('tantra.branding.source_url'),
+        ]);
     }
 
     private function useLeanHorizon(): void

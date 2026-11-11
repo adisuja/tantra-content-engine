@@ -472,7 +472,10 @@ final class SafeHttpFetcher
      */
     private function pinnedHttp(ArrayObject $vetted): PendingRequest
     {
-        return Http::withUserAgent(self::USER_AGENT)->withMiddleware(
+        // tantra: our own user agent when Tantra branding is on (config/tantra.php).
+        $userAgent = config('tantra.branding.enabled') ? (string) config('tantra.branding.user_agent') : self::USER_AGENT;
+
+        return Http::withUserAgent($userAgent)->withMiddleware(
             fn (callable $handler): Closure => function (RequestInterface $request, array $options) use ($handler, $vetted) {
                 $uri = $request->getUri();
                 $addresses = $this->vettedAddresses((string) $uri, $vetted);
