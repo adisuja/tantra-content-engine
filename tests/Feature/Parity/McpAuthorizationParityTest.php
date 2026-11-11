@@ -355,7 +355,10 @@ test('every mcp tool allows and refuses each role exactly like its web route', f
 })->with(mcpAuthParityTools())->with(['owner', 'admin', 'member', 'approval', 'outsider']);
 
 test('the mcp tool list in the parity dataset covers every registered tool', function () {
-    $registered = collect((new ReflectionProperty(TryPostServer::class, 'tools'))->getDefaultValue())->sort()->values()->all();
+    $registered = collect((new ReflectionProperty(TryPostServer::class, 'tools'))->getDefaultValue())
+        // tantra: the Tantra tools answer with the review rules' own messages; their parity is in tests/Feature/Tantra/TantraMcpToolsTest.php.
+        ->reject(fn (string $tool): bool => str_starts_with($tool, 'App\\Tantra\\'))
+        ->sort()->values()->all();
     $covered = collect(mcpAuthParityTools())->pluck(0)->sort()->values()->all();
 
     expect($covered)->toBe($registered);
