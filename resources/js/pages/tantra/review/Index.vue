@@ -103,6 +103,9 @@ const statuses = ['all', 'waiting', 'changes', 'done'] as const;
                     <Link href="/tantra/team" class="text-sm underline">{{
                         $t('tantra.team.title')
                     }}</Link>
+                    <Link href="/tantra/insights" class="text-sm underline">{{
+                        $t('tantra.insights.nav')
+                    }}</Link>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
                     <Button

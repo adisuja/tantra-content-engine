@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Middleware\App\EnsureAccountReady;
 use App\Http\Middleware\App\EnsureHasWorkspace;
+use App\Tantra\Http\Controllers\Web\InsightsController;
 use App\Tantra\Http\Controllers\Web\JoinController;
 use App\Tantra\Http\Controllers\Web\ManualTaskController;
 use App\Tantra\Http\Controllers\Web\ReconnectController;
@@ -58,6 +59,11 @@ Route::middleware(['web', 'auth'])
         Route::post('/expertise', [TeamController::class, 'expertise'])->name('expertise');
         Route::post('/match', [TeamController::class, 'match'])->name('match');
     });
+
+// tantra: the team dashboard (PRD 10.6).
+Route::middleware(['web', 'auth', EnsureAccountReady::class, EnsureHasWorkspace::class])
+    ->get('tantra/insights', [InsightsController::class, 'index'])
+    ->name('tantra.insights');
 
 // tantra: reconnect a LinkedIn channel from the reminder (PRD M3).
 Route::middleware(['web', 'auth'])
