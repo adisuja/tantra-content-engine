@@ -14,6 +14,12 @@ return [
         'all_workspaces' => 'All workspaces',
         'empty_title' => 'Nothing to review yet',
         'empty_body' => 'Batches from the content engine land here.',
+        'composer' => [
+            'title' => 'Written in the composer, waiting for you',
+            'one' => '1 post in :workspace',
+            'many' => ':count posts in :workspace',
+            'action' => 'Approve or send back',
+        ],
         'reconnect' => [
             'title' => 'Reconnect LinkedIn',
             'expiring' => ':name in :workspace runs out in :days days.',

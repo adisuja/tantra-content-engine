@@ -19,9 +19,16 @@ type Reconnect = {
     days_left: number | null;
 };
 
+type ComposerWaiting = {
+    workspace_id: string;
+    workspace: string | null;
+    count: number;
+};
+
 const props = defineProps<{
     batches: BatchSummary[];
     reconnect: Reconnect[];
+    composer: ComposerWaiting[];
 }>();
 
 const reconnectLine = (r: Reconnect): string => {
@@ -146,6 +153,38 @@ const statuses = ['all', 'waiting', 'changes', 'done'] as const;
                 </div>
                 <div class="text-xs opacity-80">
                     {{ $t('tantra.review.reconnect.help') }}
+                </div>
+            </section>
+
+            <section
+                v-if="composer.length"
+                class="flex flex-col gap-3 rounded-xl border border-border bg-card p-4"
+                data-testid="tantra-composer-waiting"
+            >
+                <div class="font-medium">
+                    {{ $t('tantra.review.composer.title') }}
+                </div>
+                <div
+                    v-for="c in composer"
+                    :key="c.workspace_id"
+                    class="flex flex-wrap items-center gap-3 text-sm"
+                >
+                    <span class="min-w-0 flex-1">{{
+                        $t(
+                            c.count === 1
+                                ? 'tantra.review.composer.one'
+                                : 'tantra.review.composer.many',
+                            {
+                                count: String(c.count),
+                                workspace: c.workspace ?? '',
+                            },
+                        )
+                    }}</span>
+                    <Button size="sm" variant="outline" as-child>
+                        <a :href="`/tantra/approvals/${c.workspace_id}`">{{
+                            $t('tantra.review.composer.action')
+                        }}</a>
+                    </Button>
                 </div>
             </section>
 

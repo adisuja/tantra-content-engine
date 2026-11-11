@@ -64,6 +64,10 @@ Route::middleware(['web', 'auth'])
     ->get('tantra/reconnect/{account}', ReconnectController::class)
     ->whereUuid('account')
     ->name('tantra.reconnect');
+Route::middleware(['web', 'auth'])
+    ->get('tantra/approvals/{workspace}', [ReconnectController::class, 'approvals'])
+    ->whereUuid('workspace')
+    ->name('tantra.approvals');
 
 // tantra: a teammate's welcome link (signed, 14 days) opens the set-password page.
 Route::middleware(['web', 'signed', 'throttle:6,1'])

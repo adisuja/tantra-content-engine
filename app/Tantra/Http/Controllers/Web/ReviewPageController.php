@@ -59,7 +59,7 @@ class ReviewPageController extends Controller
                 ],
             ]);
 
-        return Inertia::render('tantra/review/Index', ['batches' => $batches, 'reconnect' => ReconnectReminders::forUser($user)]);
+        return Inertia::render('tantra/review/Index', ['batches' => $batches, 'reconnect' => ReconnectReminders::forUser($user), 'composer' => ReviewGate::composerWaiting($user)]);
     }
 
     public function show(Request $request, Batch $batch): Response

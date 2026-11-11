@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tantra\Review;
 
+use App\Models\Post;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Tantra\Review\Enums\ReviewStatus;
@@ -84,11 +85,50 @@ final class ReviewGate
 
     public static function waitingCount(User $user): int
     {
+        $workspaceIds = self::reviewedWorkspaceIds($user);
+
         return ReviewItem::query()
             ->where('account_id', $user->account_id)
-            ->whereIn('workspace_id', self::reviewedWorkspaceIds($user))
+            ->whereIn('workspace_id', $workspaceIds)
             ->where('review_status', ReviewStatus::InReview->value)
-            ->count();
+            ->count()
+            + array_sum(array_column(self::composerWaiting($user, $workspaceIds), 'count'));
+    }
+
+    /**
+     * Posts written in the composer by someone else and waiting for this user's
+     * approval (PRD 10.8), per workspace. One post going to several channels counts once.
+     *
+     * @param  list<string>|null  $workspaceIds
+     * @return list<array{workspace_id: string, workspace: ?string, count: int}>
+     */
+    public static function composerWaiting(User $user, ?array $workspaceIds = null): array
+    {
+        $workspaceIds ??= self::reviewedWorkspaceIds($user);
+        if ($workspaceIds === []) {
+            return [];
+        }
+
+        // Not asked for by this user. Spelled out so a NULL requester does not drop the row.
+        $posts = Post::query()
+            ->whereIn('workspace_id', $workspaceIds)
+            ->pendingApproval()
+            ->where(fn ($q) => $q
+                ->where(fn ($a) => $a->whereNotNull('posts.approval_requested_by')->where('posts.approval_requested_by', '!=', $user->id))
+                ->orWhere(fn ($b) => $b->whereNull('posts.approval_requested_by')->where('posts.user_id', '!=', $user->id)))
+            ->get(['id', 'post_group_id', 'workspace_id']);
+        if ($posts->isEmpty()) {
+            return [];
+        }
+
+        $names = Workspace::query()->whereKey($posts->pluck('workspace_id')->unique()->all())->pluck('name', 'id');
+
+        return $posts->groupBy('workspace_id')
+            ->map(fn ($group, string $id): array => [
+                'workspace_id' => $id,
+                'workspace' => $names[$id] ?? null,
+                'count' => $group->unique(fn (Post $p): string => (string) ($p->post_group_id ?? $p->id))->count(),
+            ])->values()->all();
     }
 
     public static function canSign(User $user, ReviewItem $item, string $signer): bool

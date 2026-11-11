@@ -72,3 +72,20 @@ it('changes nothing in a workspace with no Tantra review owner', function () {
     expect($this->adi->canPublishDirectlyIn($plain))->toBeTrue()
         ->and($this->adi->requiresApprovalIn($plain))->toBeFalse();
 });
+
+it('puts the Account owner\'s composer post in the teammate\'s Review inbox and badge', function () {
+    tantraScheduleAs($this, $this->adi);
+    $this->nelbin->update(['current_workspace_id' => $this->ws->id]);
+
+    $this->actingAs($this->nelbin)->get(route('tantra.review.index'))
+        ->assertInertia(fn (Inertia\Testing\AssertableInertia $page) => $page
+            ->where('composer.0.workspace_id', $this->ws->id)
+            ->where('composer.0.count', 1)
+            ->where('tantraReview.waiting', 1));
+
+    $this->actingAs($this->nelbin)->get(route('tantra.approvals', $this->ws))
+        ->assertRedirect(route('app.posts.index', ['tab' => 'approvals']));
+
+    // The one who asked does not see their own request as waiting for them.
+    expect(App\Tantra\Review\ReviewGate::composerWaiting($this->adi))->toBe([]);
+});
