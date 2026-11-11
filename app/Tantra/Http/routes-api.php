@@ -6,6 +6,7 @@ use App\Tantra\Http\Controllers\Api\BatchController;
 use App\Tantra\Http\Controllers\Api\ProfileController;
 use App\Tantra\Http\Controllers\Api\ResultsController;
 use App\Tantra\Http\Controllers\Api\UploadController;
+use App\Tantra\Http\Controllers\HealthController;
 use App\Tantra\Http\Controllers\ZernioWebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -26,3 +27,8 @@ Route::middleware(['api', 'auth:api', 'tantra.owner-token', 'throttle:api'])
 Route::middleware(['api', 'throttle:120,1'])
     ->post('tantra/webhooks/zernio', ZernioWebhookController::class)
     ->name('tantra.webhooks.zernio');
+
+// tantra: the pingers' health report (PRD 8.5).
+Route::middleware(['api', 'throttle:30,1'])
+    ->get('tantra/health', HealthController::class)
+    ->name('tantra.health');

@@ -28,6 +28,11 @@ return [
     // The Tantra LinkedIn page publishes through Zernio (PRD 10.4). One key for
     // the Account, only ever on the server. The webhook secret signs Zernio's
     // post.published / post.failed / post.partial events.
+    // The pingers' bearer token for /tantra/health (PRD 8.5). Unset: the route answers 404.
+    'health' => [
+        'token' => env('TANTRA_HEALTH_TOKEN'),
+    ],
+
     'zernio' => [
         'key' => env('ZERNIO_API_KEY'),
         'url' => env('ZERNIO_API_URL', 'https://zernio.com/api/v1'),
