@@ -35,4 +35,18 @@ return [
         'max_accounts' => 2,
     ],
 
+    // Team engagement through Unipile V2 (PRD 10.5). Off until Adi turns it on.
+    'unipile' => [
+        'dsn' => env('UNIPILE_DSN'),
+        'key' => env('UNIPILE_API_KEY'),
+    ],
+    'boost' => [
+        'enabled' => (bool) env('TANTRA_BOOST_ENABLED', false),
+        'window_min' => (int) env('TANTRA_BOOST_WINDOW_MIN', 60),
+        'window_max' => (int) env('TANTRA_BOOST_WINDOW_MAX', 180),
+        'reply_min' => 120,
+        'reply_max' => 480,
+        'daily_cap' => 15,
+    ],
+
 ];

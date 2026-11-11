@@ -4,14 +4,19 @@ declare(strict_types=1);
 
 namespace App\Tantra;
 
+use App\Enums\Post\Status as PostStatus;
 use App\Enums\SocialAccount\Platform;
+use App\Events\PostStatusChanged;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
+use App\Tantra\Boost\Boost;
+use App\Tantra\Boost\StartBoostRun;
 use App\Tantra\Console\CreateOwnerCommand;
 use App\Tantra\Console\InviteTeammateCommand;
 use App\Tantra\Console\ManualTasksCommand;
 use App\Tantra\Console\MapProfileCommand;
+use App\Tantra\Console\TeamAccountsCommand;
 use App\Tantra\Console\ZernioConnectCommand;
 use App\Tantra\Http\Controllers\Web\ReviewPageController;
 use App\Tantra\Http\Middleware\EnsureOwnerToken;
@@ -26,6 +31,7 @@ use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Broadcast;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Inertia\Inertia;
 
@@ -58,7 +64,14 @@ class TantraServiceProvider extends ServiceProvider
             ->whereIn('workspace_id', ReviewPageController::visibleWorkspaceIds($user))
             ->exists());
 
-        // A teammate connecting LinkedIn turns their waiting posts into drafts.
+        // A published post with an approved team thread starts its boost run (PRD 10.5).
+        Event::listen(PostStatusChanged::class, function (PostStatusChanged $event): void {
+            if ($event->post->status === PostStatus::Published && Boost::enabled()) {
+                StartBoostRun::dispatch($event->post->id);
+            }
+        });
+
+                // A teammate connecting LinkedIn turns their waiting posts into drafts.
         SocialAccount::created(fn (SocialAccount $channel) => DraftMaker::forWorkspace($channel));
 
                 // An edit in the composer is a new version of the post under review.
@@ -77,7 +90,7 @@ class TantraServiceProvider extends ServiceProvider
         });
 
                 if ($this->app->runningInConsole()) {
-            $this->commands([CreateOwnerCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class]);
+            $this->commands([CreateOwnerCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class, TeamAccountsCommand::class]);
         }
 
         if ($this->app->environment('production') && config('tantra.lean_workers.enabled')) {
@@ -123,7 +136,8 @@ class TantraServiceProvider extends ServiceProvider
     {
         $plan = LeanHorizon::plan(
             (array) config('horizon.defaults', []),
-            Platform::enabledQueues(),
+            // Team engagement first: its comments have to land within minutes.
+            [Boost::QUEUE, ...Platform::enabledQueues()],
             (int) config('tantra.lean_workers.processes', 3),
         );
 
