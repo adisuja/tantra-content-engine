@@ -30,6 +30,7 @@ use App\Tantra\Console\TeamAccountsCommand;
 use App\Tantra\Console\ZernioConnectCommand;
 use App\Tantra\Http\Controllers\Web\ReviewPageController;
 use App\Tantra\Http\Middleware\EnsureOwnerToken;
+use App\Tantra\Http\Middleware\LandOnReview;
 use App\Tantra\Manual\ManualTask;
 use App\Tantra\Ops\LeanHorizon;
 use App\Tantra\Review\Actions\DraftMaker;
@@ -70,6 +71,8 @@ class TantraServiceProvider extends ServiceProvider
         $this->loadViewsFrom(__DIR__.'/views', 'tantra');
 
         $this->app->make(Router::class)->aliasMiddleware('tantra.owner-token', EnsureOwnerToken::class);
+        // People land on Review, not the calendar, in Tantra workspaces (PRD 10.2).
+        $this->app->make(Router::class)->pushMiddlewareToGroup('web', LandOnReview::class);
         $this->loadRoutesFrom(__DIR__.'/Http/routes-api.php');
         $this->loadRoutesFrom(__DIR__.'/Http/routes-web.php');
 

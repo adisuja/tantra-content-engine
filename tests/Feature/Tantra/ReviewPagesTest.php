@@ -77,25 +77,13 @@ beforeEach(function () {
     ]);
 });
 
-it('lists batches with their counts in the inbox', function () {
+it('shows the posts this person approves as phone cards, waiting first', function () {
     $this->actingAs($this->owner)
         ->get(route('tantra.review.index'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('tantra/review/Index')
-            ->has('batches', 2)
-            ->where('batches.0.counts.waiting', 1)
-            ->where('tantraReview.waiting', 1));
-});
-
-it('renders each post with its phone card, sign-off and permissions', function () {
-    $batch = Batch::query()->where('workspace_id', $this->adi->id)->sole();
-
-    $this->actingAs($this->owner)
-        ->get(route('tantra.review.show', $batch))
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('tantra/review/Batch')
+            ->where('tab', 'review')
             ->has('items', 1)
             ->where('items.0.engine_post_id', 'A1')
             ->where('items.0.profile.headline', 'CEO at Tantra')
@@ -103,26 +91,51 @@ it('renders each post with its phone card, sign-off and permissions', function (
             ->where('items.0.can_review', true)
             ->where('items.0.numbers_for_signoff.0.can_sign', true)
             ->where('items.0.team_comments.0.name', 'Aquila Eldho')
-            ->where('items.0.review_status', 'in_review'));
+            ->where('items.0.review_status', 'in_review')
+            ->where('counts.review', 1)
+            ->where('tantraReview.waiting', 1));
 });
 
-it('hides a batch from a teammate outside its workspace', function () {
+it('keeps a batch from a teammate outside its workspace, and shows them only their own posts', function () {
     $batch = Batch::query()->where('workspace_id', $this->adi->id)->sole();
 
     $this->actingAs($this->teammate)->get(route('tantra.review.show', $batch))->assertNotFound();
 
     $this->actingAs($this->teammate)
         ->get(route('tantra.review.index'))
-        ->assertInertia(fn (Assert $page) => $page->has('batches', 1)->where('tantraReview.waiting', 1));
+        ->assertInertia(fn (Assert $page) => $page->has('items', 1)->where('items.0.engine_post_id', 'M1')->where('tantraReview.waiting', 1));
 });
 
-it('lets the Account owner open a teammate batch but not approve it', function () {
+it('opens a batch link from an email on the review screen; the Account owner sees a teammate post but cannot approve it', function () {
     $batch = Batch::query()->where('workspace_id', $this->team->id)->sole();
 
+    $this->actingAs($this->owner)->get(route('tantra.review.show', $batch))
+        ->assertRedirect(route('tantra.review.index', ['batch' => $batch->id]));
+
     $this->actingAs($this->owner)
-        ->get(route('tantra.review.show', $batch))
+        ->get(route('tantra.review.index', ['batch' => $batch->id]))
         ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->where('items.0.can_review', false));
+        ->assertInertia(fn (Assert $page) => $page->where('batch.id', $batch->id)->where('items.0.engine_post_id', 'M1')->where('items.0.can_review', false));
+});
+
+it('lists published posts with their link on the Published tab', function () {
+    $item = ReviewItem::query()->where('engine_post_id', 'A1')->sole();
+    $item->forceFill(['review_status' => App\Tantra\Review\Enums\ReviewStatus::Published])->save();
+    App\Models\Post::query()->where('post_group_id', $item->post_group_id)->update(['platform_url' => 'https://www.linkedin.com/feed/update/urn:li:share:1/', 'published_at' => now()]);
+
+    $this->actingAs($this->owner)->get(route('tantra.review.index', ['tab' => 'published']))
+        ->assertInertia(fn (Assert $page) => $page->where('tab', 'published')
+            ->has('items', 1)
+            ->where('items.0.post_url', 'https://www.linkedin.com/feed/update/urn:li:share:1/')
+            ->where('counts.published', 1)
+            ->where('counts.review', 0));
+});
+
+it('lands people in a Tantra workspace on Review the first time they open the calendar', function () {
+    $this->owner->update(['current_workspace_id' => $this->adi->id]);
+
+    $this->actingAs($this->owner)->get(route('app.calendar'))->assertRedirect(route('tantra.review.index'));
+    $this->actingAs($this->owner)->get(route('app.calendar'))->assertOk();
 });
 
 it('tells open review screens when an item changes', function () {

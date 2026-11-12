@@ -154,7 +154,7 @@ export function linkedinScreen(p: ReviewItemRow, viewer: AvatarSource): string {
     const top = `<div class="li-top">${avatar(viewer, 32)}<div class="li-search">${LI_I.search}<span>Search</span></div><span class="li-ic">${LI_I.msg}</span></div>`;
     const tabs = `<div class="li-tabs"><div class="li-tab on">${LI_I.home}<span>Home</span></div><div class="li-tab">${LI_I.net}<span>My Network</span></div><div class="li-tab">${LI_I.post}<span>Post</span></div><div class="li-tab">${LI_I.bell}<span>Notifications</span></div><div class="li-tab">${LI_I.jobs}<span>Jobs</span></div></div>`;
     const post = `<article class="li-post">
-      <div class="li-head">${avatar(pr, 48)}<div class="li-who"><div class="li-name">${esc(pr.name)}${isCo ? '' : ' <span class="li-deg">· 1st</span>'}</div><div class="li-sub">${esc(isCo ? pr.followers_line || pr.headline || '' : pr.headline || '')}</div><div class="li-sub">Now · ${LI_I.globe}</div></div><span class="li-ic">${LI_I.more}</span><span class="li-ic">${LI_I.x}</span></div>
+      <div class="li-head">${avatar(pr, 48)}<div class="li-who"><div class="li-name">${esc(pr.name)}${isCo ? '' : ' <span class="li-deg">· 1st</span>'}</div><div class="li-sub">${esc(isCo ? pr.followers_line || pr.headline || '' : pr.headline || '')}</div><div class="li-sub">Now · ${LI_I.globe}</div></div>${isCo ? '<span class="li-follow" style="color:#0a66c2;font-weight:600;font-size:15px;white-space:nowrap;align-self:flex-start;padding-top:2px">+ Follow</span>' : `<span class="li-ic">${LI_I.more}</span><span class="li-ic">${LI_I.x}</span>`}</div>
       ${postText(p)}${mediaHtml(p)}
       <div class="li-actions"><span>${LI_I.like}Like</span><span>${LI_I.comment}Comment</span><span>${LI_I.repost}Repost</span><span>${LI_I.send}Send</span></div>
       ${commentHtml(p, pr)}
@@ -265,9 +265,15 @@ export function xScreen(p: ReviewItemRow): string {
     return `${statusBar()}${top}<div class="scroll x-feed">${posts.map((t, i) => xOne(p, t, i, posts.length)).join('')}<div class="x-endpad"></div></div><span class="x-fab">${X_I.plus}</span>${tabs}${homeBar()}`;
 }
 
-/** The whole phone for one review item. */
-export function renderPhone(p: ReviewItemRow, viewer: AvatarSource): string {
-    return p.platform === 'x'
-        ? phone(xScreen(p), 'x')
-        : phone(linkedinScreen(p, viewer), 'linkedin');
+/* ---------- Any other network, until its own look is built ---------- */
+
+export function plainScreen(p: ReviewItemRow): string {
+    const pr = p.profile;
+    const files = p.media.files ?? [];
+
+    return `${statusBar()}<div class="scroll" style="background:#fff;padding:16px;font:15px/1.45 -apple-system,system-ui,sans-serif;color:#111">
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px">${avatar(pr, 40)}<b>${esc(pr.name)}</b></div>
+      <div>${esc(p.text).replace(/\n/g, '<br>')}</div>
+      ${files[0] ? `<img src="${esc(files[0])}" alt="" style="width:100%;border-radius:10px;margin-top:12px" data-lb="${esc(files[0])}">` : ''}
+    </div>${homeBar()}`;
 }

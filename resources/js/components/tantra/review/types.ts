@@ -112,20 +112,14 @@ export interface ReviewItemRow {
     profile: ReviewProfile;
     can_review: boolean;
     events: ReviewEventRow[];
-}
-
-export interface BatchSummary {
-    id: string;
-    engine_batch_id: string;
-    title: string;
-    dates_label: string | null;
-    workspace: string | null;
-    imported_at: string | null;
-    counts: {
-        waiting: number;
-        changes: number;
-        approved: number;
-        scheduled: number;
-        total: number;
-    };
+    batch_id?: string;
+    workspace?: string | null;
+    published_at?: string | null;
+    metrics?: {
+        impressions: number | null;
+        reactions: number | null;
+        comments: number | null;
+        shares: number | null;
+        clicks: number | null;
+    } | null;
 }

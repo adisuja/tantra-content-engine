@@ -9,6 +9,7 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Tantra\Analytics\MetricSnapshot;
 use App\Tantra\Channels\ReconnectReminders;
 use App\Tantra\Giveaway\GiveawayReply;
 use App\Tantra\Review\Enums\ReviewStatus;
@@ -16,6 +17,7 @@ use App\Tantra\Review\Models\Batch;
 use App\Tantra\Review\Models\ReviewEvent;
 use App\Tantra\Review\Models\ReviewItem;
 use App\Tantra\Review\ReviewGate;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
@@ -26,68 +28,73 @@ use Inertia\Response;
 /** tantra: the review studio pages (PRD 10.2). */
 class ReviewPageController extends Controller
 {
+    /**
+     * The one review screen (PRD 10.2, redesigned 2026-11-12): every post shown
+     * as its phone preview with Approve and a feedback box. "To review" holds
+     * the posts this user approves, waiting first, then the ones already in
+     * their slot. "Published" holds what went out, with its numbers. A batch
+     * link from an email (?batch=) shows that batch's posts.
+     */
     public function index(Request $request): Response
     {
         $user = $request->user();
-        $workspaceIds = self::visibleWorkspaceIds($user);
+        $tab = $request->query('tab') === 'published' ? 'published' : 'review';
+        $batch = $request->filled('batch') && Str::isUuid((string) $request->query('batch'))
+            ? Batch::query()->whereIn('workspace_id', self::visibleWorkspaceIds($user))->find($request->query('batch'))
+            : null;
 
-        $batches = Batch::query()
-            ->whereIn('workspace_id', $workspaceIds)
-            ->with('workspace:id,name')
-            ->withCount([
-                'items as waiting_count' => fn ($q) => $q->whereIn('review_status', [ReviewStatus::InReview->value, ReviewStatus::ChangesRequested->value]),
-                'items as changes_count' => fn ($q) => $q->where('review_status', ReviewStatus::ChangesRequested->value),
-                'items as approved_count' => fn ($q) => $q->where('review_status', ReviewStatus::Approved->value),
-                'items as scheduled_count' => fn ($q) => $q->whereIn('review_status', [ReviewStatus::Scheduled->value, ReviewStatus::Published->value]),
-                'items as total_count' => fn ($q) => $q->where('review_status', '!=', ReviewStatus::Superseded->value),
-            ])
-            ->orderByDesc('imported_at')
-            ->get()
-            ->map(fn (Batch $b): array => [
-                'id' => $b->id,
-                'engine_batch_id' => $b->engine_batch_id,
-                'title' => $b->title ?: 'Batch '.$b->engine_batch_id,
-                'dates_label' => $b->dates_label,
-                'workspace' => $b->workspace?->name,
-                'imported_at' => $b->imported_at?->toIso8601String(),
-                'counts' => [
-                    'waiting' => $b->waiting_count,
-                    'changes' => $b->changes_count,
-                    'approved' => $b->approved_count,
-                    'scheduled' => $b->scheduled_count,
-                    'total' => $b->total_count,
-                ],
-            ]);
+        $reviewStatuses = [ReviewStatus::InReview, ReviewStatus::ChangesRequested, ReviewStatus::Approved, ReviewStatus::Scheduled];
+        $base = fn () => ReviewItem::query()->where('account_id', $user->account_id)->where('review_status', '!=', ReviewStatus::Superseded->value);
+        $mine = fn () => $base()->whereIn('workspace_id', ReviewGate::reviewedWorkspaceIds($user));
 
-        return Inertia::render('tantra/review/Index', ['batches' => $batches, 'reconnect' => ReconnectReminders::forUser($user), 'composer' => ReviewGate::composerWaiting($user)]);
-    }
+        $query = match (true) {
+            $batch !== null => $base()->where('batch_id', $batch->id)
+                ->whereIn('review_status', array_map(fn (ReviewStatus $s): string => $s->value, $tab === 'published' ? [ReviewStatus::Published] : $reviewStatuses)),
+            $tab === 'published' => $base()->whereIn('workspace_id', self::visibleWorkspaceIds($user))->where('review_status', ReviewStatus::Published->value),
+            default => $mine()->whereIn('review_status', array_map(fn (ReviewStatus $s): string => $s->value, $reviewStatuses)),
+        };
 
-    public function show(Request $request, Batch $batch): Response
-    {
-        $user = $request->user();
-        abort_unless(in_array($batch->workspace_id, self::visibleWorkspaceIds($user)->all(), true), 404);
-
-        $channel = SocialAccount::query()->where('workspace_id', $batch->workspace_id)->orderBy('created_at')->first();
-        $items = ReviewItem::query()
-            ->where('batch_id', $batch->id)
-            ->where('review_status', '!=', ReviewStatus::Superseded->value)
-            ->with(['events.user:id,name'])
-            ->get()
-            ->sortBy(fn (ReviewItem $i): string => ($i->planned_date?->toDateString() ?? '9999').' '.($i->planned_time ?? '').' '.$i->engine_post_id)
+        $items = $query->with(['events.user:id,name', 'workspace:id,name'])->limit(200)->get();
+        $order = [ReviewStatus::InReview->value => 0, ReviewStatus::ChangesRequested->value => 1, ReviewStatus::Approved->value => 2, ReviewStatus::Scheduled->value => 2];
+        $items = ($tab === 'published'
+            ? $items->sortByDesc(fn (ReviewItem $i): string => ($i->planned_date?->toDateString() ?? '').' '.$i->engine_post_id)
+            : $items->sortBy(fn (ReviewItem $i): string => ($order[$i->review_status->value] ?? 3).' '.($i->planned_date?->toDateString() ?? '9999').' '.($i->planned_time ?? '').' '.$i->engine_post_id))
             ->values();
 
+        $channels = SocialAccount::query()->whereIn('workspace_id', $items->pluck('workspace_id')->unique())->orderBy('created_at')->get()->unique('workspace_id')->keyBy('workspace_id');
         $posts = Post::query()->whereIn('post_group_id', $items->pluck('post_group_id')->filter())->get()->groupBy('post_group_id');
 
-        return Inertia::render('tantra/review/Batch', [
-            'batch' => [
-                'id' => $batch->id,
-                'title' => $batch->title ?: 'Batch '.$batch->engine_batch_id,
-                'engine_batch_id' => $batch->engine_batch_id,
-                'dates_label' => $batch->dates_label,
-                'workspace' => $batch->workspace?->name,
+        $rows = $items->map(function (ReviewItem $i) use ($user, $channels, $posts): array {
+            $group = $posts->get($i->post_group_id, new Collection);
+            $row = self::item($i, $user, $channels->get($i->workspace_id), $group);
+            $row['workspace'] = $i->workspace?->name;
+            $row['batch_id'] = $i->batch_id;
+            $row['published_at'] = $group->pluck('published_at')->filter()->sort()->first()?->toIso8601String();
+            $snap = $group->isEmpty() ? null : MetricSnapshot::query()->whereIn('post_id', $group->modelKeys())->latest('captured_at')->first();
+            $row['metrics'] = $snap ? ['impressions' => $snap->impressions, 'reactions' => $snap->reactions, 'comments' => $snap->comments, 'shares' => $snap->shares, 'clicks' => $snap->clicks] : null;
+
+            return $row;
+        });
+
+        return Inertia::render('tantra/review/Index', [
+            'tab' => $tab,
+            'items' => $rows,
+            'batch' => $batch ? ['id' => $batch->id, 'title' => $batch->title ?: 'Batch '.$batch->engine_batch_id] : null,
+            'counts' => [
+                'review' => $mine()->whereIn('review_status', [ReviewStatus::InReview->value, ReviewStatus::ChangesRequested->value])->count(),
+                'published' => $base()->whereIn('workspace_id', self::visibleWorkspaceIds($user))->where('review_status', ReviewStatus::Published->value)->count(),
             ],
-            'items' => $items->map(fn (ReviewItem $i): array => self::item($i, $user, $channel, $posts->get($i->post_group_id, new Collection))),
+            'reconnect' => ReconnectReminders::forUser($user),
+            'composer' => ReviewGate::composerWaiting($user),
         ]);
+    }
+
+    /** Old batch links (review emails) open the one review screen on that batch. */
+    public function show(Request $request, Batch $batch): RedirectResponse
+    {
+        abort_unless(in_array($batch->workspace_id, self::visibleWorkspaceIds($request->user())->all(), true), 404);
+
+        return redirect()->route('tantra.review.index', ['batch' => $batch->id]);
     }
 
     /** @return Collection<int, string> */

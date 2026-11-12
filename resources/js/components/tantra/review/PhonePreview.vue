@@ -13,7 +13,7 @@ import {
 // One entry file keeps the studio's CSS in cascade order.
 import '@/components/tantra/review/css/studio.css';
 
-import { renderPhone } from '@/components/tantra/review/studioRender';
+import { renderPreview } from '@/components/tantra/review/platforms';
 import type { ReviewItemRow } from '@/components/tantra/review/types';
 
 const props = withDefaults(
@@ -31,7 +31,7 @@ const PHONE_HEIGHT = 876;
 
 const root = ref<HTMLElement | null>(null);
 const width = ref(PHONE_WIDTH);
-const html = computed(() => renderPhone(props.item, props.viewer));
+const html = computed(() => renderPreview(props.item, props.viewer));
 
 const scale = computed(() => {
     let s = Math.min(props.maxScale, width.value / PHONE_WIDTH);

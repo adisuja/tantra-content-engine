@@ -76,7 +76,7 @@ it('answers each organic comment once, from the author, and lists them for the D
     // A second pass does not answer anyone twice.
     expect(GiveawayReplies::run(app(UnipileClient::class)))->toBe(0);
 
-    $this->actingAs($this->adi)->get(route('tantra.review.show', $this->item->batch_id))
+    $this->actingAs($this->adi)->get(route('tantra.review.index', ['batch' => $this->item->batch_id]))
         ->assertInertia(fn ($page) => $page->where('items.0.dm_list', fn ($list): bool => collect($list)->pluck('name')->sort()->values()->all() === ['Jane Doe', 'nayana-b-sen']
             && collect($list)->every(fn (array $dm): bool => $dm['sent'] === false)));
 
