@@ -16,7 +16,7 @@ class BoostAction extends Model
     protected $table = 'tantra_boost_actions';
 
     protected $fillable = [
-        'run_id', 'entry_index', 'parent_action_id', 'user_id', 'profile_key', 'unipile_account_id', 'kind', 'reaction_type',
+        'run_id', 'entry_index', 'parent_action_id', 'user_id', 'profile_key', 'unipile_account_id', 'via', 'kind', 'reaction_type',
         'text', 'offset_seconds', 'run_at', 'status', 'unipile_ref', 'error', 'posted_at',
     ];
 

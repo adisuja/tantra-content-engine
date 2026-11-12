@@ -85,6 +85,14 @@ class UnipileClient
         return array_values((array) ($this->get("/{$accountId}/posts/{$postId}/comments?limit={$limit}")->json('data') ?? []));
     }
 
+    /** @return list<array<string, mixed>> the replies under one comment */
+    public function replies(string $accountId, string $postId, string $commentId): array
+    {
+        $response = $this->get("/{$accountId}/posts/{$postId}/comments/{$commentId}/replies", allowFailure: true);
+
+        return $response->successful() ? array_values((array) ($response->json('data') ?? [])) : [];
+    }
+
     private function get(string $path, bool $allowFailure = false): Response
     {
         return $this->send('get', $path, null, $allowFailure);

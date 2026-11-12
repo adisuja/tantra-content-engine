@@ -71,6 +71,38 @@ class ZernioClient
         ]), allowFailure: true);
     }
 
+    /**
+     * The comments under one of the page's LinkedIn posts, each with its replies
+     * nested and `from.isOwner` set on the page's own (Spike S6, 2026-11-12).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function linkedInComments(string $accountId, string $urn): array
+    {
+        $response = $this->send('get', '/inbox/comments/'.rawurlencode($urn).'?'.http_build_query(['accountId' => $accountId, 'limit' => 100]), allowFailure: true);
+
+        return $response->successful() ? array_values((array) $response->json('comments')) : [];
+    }
+
+    /**
+     * Comment on the page's post as the page, or reply in a comment's thread when
+     * $commentUrn is given (urn:li:comment:(<post urn>,<comment id>)).
+     */
+    public function commentAsPage(string $accountId, string $urn, ?string $commentUrn, string $message, string $idempotencyKey): Response
+    {
+        return $this->send('post', '/inbox/comments/'.rawurlencode($urn), array_filter([
+            'accountId' => $accountId,
+            'message' => $message,
+            'commentId' => $commentUrn,
+        ]), ['Idempotency-Key' => $idempotencyKey], allowFailure: true);
+    }
+
+    /** The composite id LinkedIn and Zernio use for a comment on a post. */
+    public static function commentUrn(string $postUrn, string $commentId): string
+    {
+        return str_starts_with($commentId, 'urn:li:comment:') ? $commentId : "urn:li:comment:({$postUrn},{$commentId})";
+    }
+
     public function retryPost(string $postId): Response
     {
         return $this->send('post', "/posts/{$postId}/retry", [], allowFailure: true);

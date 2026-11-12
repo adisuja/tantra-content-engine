@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Tantra\Boost;
 
+use App\Enums\SocialAccount\Platform;
 use App\Models\User;
 use App\Tantra\Review\Models\WorkspaceSettings;
+use App\Tantra\Zernio\ZernioClient;
 use Carbon\CarbonImmutable;
 use Closure;
 
@@ -19,6 +21,7 @@ use Closure;
  *   at least 30 seconds after the previous reply on the post.
  * - An entry whose person has no confirmed Unipile account or no consent is
  *   skipped with the reason, and so are the replies under it.
+ * - On a Tantra page post the author is the page: its entries go through Zernio.
  */
 final class BoostPlanner
 {
@@ -39,7 +42,11 @@ final class BoostPlanner
                 $thread[$entry['index']] = $entry;
             }
         }
-        $people = $this->people($item->account_id, array_unique(array_map(fn (array $c): string => (string) ($c['by'] ?? ''), $thread)));
+        // On a Tantra page post the page itself answers, through Zernio (Spike S6).
+        $pageKey = $run->post?->platform === Platform::ZernioLinkedInPage
+            ? WorkspaceSettings::query()->find($item->workspace_id)?->brand_profile_key
+            : null;
+        $people = $this->people($item->account_id, array_unique(array_map(fn (array $c): string => (string) ($c['by'] ?? ''), $thread)), $pageKey);
 
         $config = config('tantra.boost');
         $window = ($this->random)((int) $config['window_min'], (int) $config['window_max']);
@@ -58,7 +65,7 @@ final class BoostPlanner
             $offset = $offsets[$k++];
             $blocker = $person['blocker'];
 
-            if ($blocker === null && ! isset($reacted[$entry['by']])) {
+            if ($blocker === null && ($person['via'] ?? 'unipile') === 'unipile' && ! isset($reacted[$entry['by']])) {
                 $reacted[$entry['by']] = true;
                 $actions[] = $this->action($run, $start, null, $index, $person, $entry['by'], 'reaction', null, max(0, $offset - ($this->random)(5, 20)), $this->reaction());
             }
@@ -96,12 +103,18 @@ final class BoostPlanner
      * profile and its named review owner.
      *
      * @param  list<string>  $keys
-     * @return array<string, array{user: ?User, profile: ?MemberProfile, blocker: ?string}>
+     * @return array<string, array{user: ?User, profile: ?MemberProfile, blocker: ?string, via?: string}>
      */
-    private function people(string $accountId, array $keys): array
+    private function people(string $accountId, array $keys, ?string $pageKey = null): array
     {
         $out = [];
         foreach ($keys as $key) {
+            if ($pageKey !== null && $key === $pageKey) {
+                $out[$key] = ['user' => null, 'profile' => null, 'via' => 'zernio', 'blocker' => ZernioClient::configured() ? null : 'Zernio is not set up'];
+
+                continue;
+            }
+
             $settings = WorkspaceSettings::query()->where('brand_profile_key', $key)
                 ->whereHas('workspace', fn ($q) => $q->where('account_id', $accountId))->first();
             $user = $settings?->review_owner_user_id ? User::query()->find($settings->review_owner_user_id) : null;
@@ -122,7 +135,7 @@ final class BoostPlanner
     }
 
     /**
-     * @param  array{user: ?User, profile: ?MemberProfile, blocker: ?string}|null  $person
+     * @param  array{user: ?User, profile: ?MemberProfile, blocker: ?string, via?: string}|null  $person
      */
     private function action(BoostRun $run, CarbonImmutable $start, ?BoostAction $parent, int $index, ?array $person, string $key, string $kind, ?string $text, int $offset, ?string $reaction, ?string $blocker = null): BoostAction
     {
@@ -133,6 +146,7 @@ final class BoostPlanner
             'user_id' => $person['user']?->id,
             'profile_key' => $key,
             'unipile_account_id' => $person['profile']?->unipile_account_id,
+            'via' => $person['via'] ?? 'unipile',
             'kind' => $kind,
             'reaction_type' => $reaction,
             'text' => $text,

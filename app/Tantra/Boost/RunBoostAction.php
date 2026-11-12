@@ -6,16 +6,18 @@ namespace App\Tantra\Boost;
 
 use App\Tantra\Unipile\UnipileClient;
 use App\Tantra\Unipile\UnipileException;
+use App\Tantra\Zernio\ZernioClient;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use RuntimeException;
 use Throwable;
 
 /**
  * tantra: posts one reaction, comment or reply from the person's own Unipile
- * account (PRD 10.5). Each action posts at most once; a failure is retried once
+ * account (PRD 10.5), or, on a Tantra page post, the page's own reply through Zernio. Each action posts at most once; a failure is retried once
  * after 15 seconds, then recorded. A restriction pauses that account for 72 hours.
  */
 class RunBoostAction implements ShouldQueue
@@ -29,7 +31,7 @@ class RunBoostAction implements ShouldQueue
         $this->onQueue(Boost::QUEUE);
     }
 
-    public function handle(UnipileClient $unipile): void
+    public function handle(UnipileClient $unipile, ?ZernioClient $zernio = null): void
     {
         $action = BoostAction::query()->with('run.post')->find($this->actionId);
         if ($action === null || $action->status !== 'queued') {
@@ -37,6 +39,11 @@ class RunBoostAction implements ShouldQueue
         }
         if (! Boost::enabled()) {
             $this->settle($action, 'skipped', 'boosting is switched off');
+
+            return;
+        }
+        if ($action->via === 'zernio') {
+            $this->asPage($action, $zernio ?? app(ZernioClient::class));
 
             return;
         }
@@ -104,6 +111,47 @@ class RunBoostAction implements ShouldQueue
             $this->retryOnce($action, $e);
         }
 
+        $this->finishRun($run);
+    }
+
+    /** The Tantra page answers on its own post through Zernio, in the comment's thread. */
+    private function asPage(BoostAction $action, ZernioClient $zernio): void
+    {
+        $run = $action->run;
+        $post = $run->post;
+        $urn = $post ? Boost::nativeRef($post) : null;
+        $accountId = (string) $post?->socialAccount?->platform_user_id;
+        if ($urn === null || $accountId === '') {
+            $this->settle($action, 'failed', 'the page post has no LinkedIn id yet');
+
+            return;
+        }
+
+        $commentUrn = null;
+        if ($action->kind === 'reply') {
+            $parent = $action->parent;
+            if ($parent === null || in_array($parent->status, ['skipped', 'failed'], true)) {
+                $this->settle($action, 'skipped', 'its comment was not posted');
+
+                return;
+            }
+            if ($parent->status !== 'posted') {
+                $this->release(30);
+
+                return;
+            }
+            $commentUrn = ZernioClient::commentUrn($urn, (string) $parent->unipile_ref);
+        }
+
+        $response = $zernio->commentAsPage($accountId, $urn, $commentUrn, (string) $action->text, 'tantra-boost-'.$action->id);
+        if ($response->successful() && $response->json('success') !== false) {
+            $action->forceFill(['status' => 'posted', 'unipile_ref' => (string) $response->json('data.commentId'), 'posted_at' => now(), 'error' => null])->save();
+            $this->finishRun($run);
+
+            return;
+        }
+
+        $this->retryOnce($action, new RuntimeException('Zernio answered '.$response->status().': '.mb_substr((string) $response->body(), 0, 200)));
         $this->finishRun($run);
     }
 

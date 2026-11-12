@@ -15,6 +15,7 @@ class GiveawayReply extends Model
     protected $table = 'tantra_giveaway_replies';
 
     protected $fillable = [
+        'via',
         'post_id', 'review_item_id', 'comment_id', 'commenter_name', 'commenter_url', 'comment_text', 'reply_text', 'reply_id',
         'status', 'error', 'replied_at', 'dm_sent_at',
     ];
