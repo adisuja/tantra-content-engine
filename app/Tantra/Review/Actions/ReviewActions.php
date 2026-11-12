@@ -37,10 +37,20 @@ final class ReviewActions
      *
      * @return array{status: string, scheduled_at: string|null, slot_fallback: bool, message: string}
      */
-    public static function approve(User $user, ReviewItem $item, ?string $note = null): array
+    public static function approve(User $user, ReviewItem $item, ?string $note = null, bool $confirmNumbers = false): array
     {
         ReviewGate::assertReviewOwner($user, $item);
         self::assertStatus($item, [ReviewStatus::InReview, ReviewStatus::ChangesRequested]);
+
+        // On the review screen approving also confirms the numbers this person may sign off.
+        if ($confirmNumbers) {
+            foreach ((array) ($item->numbers_for_signoff ?? []) as $index => $n) {
+                if (blank($n['signed_at'] ?? null) && ReviewGate::canSign($user, $item, (string) ($n['signer'] ?? 'owner'))) {
+                    self::signOff($user, $item, (int) $index);
+                    $item->refresh();
+                }
+            }
+        }
 
         $open = collect($item->numbers_for_signoff ?? [])->first(fn (array $n): bool => blank($n['signed_at'] ?? null));
         if ($open !== null) {

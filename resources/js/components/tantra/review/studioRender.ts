@@ -91,6 +91,10 @@ function mediaHtml(p: ReviewItemRow): string {
     if (m.type === 'video' && m.video) {
         return `<div class="li-imgpost li-vid${m.tall ? ' tall' : ''}"><video src="${esc(m.video)}"${files[0] ? ` poster="${esc(files[0])}"` : ''} autoplay loop muted playsinline preload="metadata" aria-label="${esc(p.engine_post_id)} animation"></video><span class="li-gif">GIF</span></div>`;
     }
+    // A video whose file is not reachable yet still shows its first frame.
+    if (m.type === 'video' && files.length) {
+        return `<div class="li-imgpost${m.tall ? ' tall' : ''}"><img loading="lazy" src="${esc(files[0])}" alt="${esc(p.engine_post_id)}" data-lb="${esc(files[0])}"></div>`;
+    }
     if (m.type === 'carousel' && files.length) {
         const g = 'car-' + p.id;
         const n = files.length;

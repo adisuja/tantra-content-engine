@@ -20,7 +20,7 @@ class ReviewItemActionController extends Controller
         $this->authorizeView($request, $item);
         $note = $request->validate(['note' => ['nullable', 'string', 'max:2000']])['note'] ?? null;
 
-        return $this->ok($item, ReviewActions::approve($request->user(), $item, $note)['message']);
+        return $this->ok($item, ReviewActions::approve($request->user(), $item, $note, confirmNumbers: true)['message']);
     }
 
     public function unapprove(Request $request, ReviewItem $item): JsonResponse

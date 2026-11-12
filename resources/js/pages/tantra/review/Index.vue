@@ -121,10 +121,6 @@ const onTouchEnd = (e: TouchEvent): void => {
 onMounted(() => window.addEventListener('keydown', onKey));
 onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
 
-const showWorkspace = computed(
-    () => new Set(props.items.map((i) => i.workspace)).size > 1,
-);
-
 const reload = (): void => {
     router.reload({ only: ['items', 'counts', 'tantraReview'] });
 };
@@ -280,21 +276,23 @@ const reconnectLine = (r: Reconnect): string => {
                 </div>
 
                 <div
-                    class="relative flex items-start justify-center gap-2 md:gap-4"
+                    class="relative flex items-center justify-center gap-3 md:gap-6"
                     @touchstart.passive="onTouchStart"
                     @touchend.passive="onTouchEnd"
                 >
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        class="sticky top-1/2 z-10 mt-[40vh] size-10 shrink-0 rounded-full max-sm:absolute max-sm:top-[38vh] max-sm:left-0 max-sm:mt-0 max-sm:bg-background/90 max-sm:shadow"
+                    <button
+                        type="button"
+                        class="z-10 flex size-14 shrink-0 items-center justify-center self-center rounded-full bg-gradient-to-br from-violet-500 via-indigo-500 to-sky-500 text-white shadow-lg ring-4 shadow-indigo-500/30 ring-white/70 transition hover:scale-105 hover:shadow-xl disabled:pointer-events-none disabled:opacity-25 max-sm:absolute max-sm:top-[30vh] max-sm:left-1 md:size-16 dark:ring-black/40"
                         :disabled="index === 0"
                         :aria-label="$t('tantra.review.feed.previous')"
                         data-testid="tantra-prev"
                         @click="go(-1)"
                     >
-                        <IconChevronLeft class="size-5" />
-                    </Button>
+                        <IconChevronLeft
+                            class="size-8 md:size-9"
+                            stroke-width="2.5"
+                        />
+                    </button>
 
                     <Transition
                         mode="out-in"
@@ -308,22 +306,23 @@ const reconnectLine = (r: Reconnect): string => {
                             :item="current"
                             :viewer="viewer"
                             :mode="tab"
-                            :show-workspace="showWorkspace"
                             @changed="reload"
                         />
                     </Transition>
 
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        class="sticky top-1/2 z-10 mt-[40vh] size-10 shrink-0 rounded-full max-sm:absolute max-sm:top-[38vh] max-sm:right-0 max-sm:mt-0 max-sm:bg-background/90 max-sm:shadow"
+                    <button
+                        type="button"
+                        class="z-10 flex size-14 shrink-0 items-center justify-center self-center rounded-full bg-gradient-to-br from-violet-500 via-indigo-500 to-sky-500 text-white shadow-lg ring-4 shadow-indigo-500/30 ring-white/70 transition hover:scale-105 hover:shadow-xl disabled:pointer-events-none disabled:opacity-25 max-sm:absolute max-sm:top-[30vh] max-sm:right-1 md:size-16 dark:ring-black/40"
                         :disabled="index >= items.length - 1"
                         :aria-label="$t('tantra.review.feed.next')"
                         data-testid="tantra-next"
                         @click="go(1)"
                     >
-                        <IconChevronRight class="size-5" />
-                    </Button>
+                        <IconChevronRight
+                            class="size-8 md:size-9"
+                            stroke-width="2.5"
+                        />
+                    </button>
                 </div>
             </template>
         </div>

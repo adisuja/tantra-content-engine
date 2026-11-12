@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tantra\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
+use App\Models\Media;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -17,6 +18,7 @@ use App\Tantra\Review\Enums\ReviewStatus;
 use App\Tantra\Review\Models\Batch;
 use App\Tantra\Review\Models\ReviewEvent;
 use App\Tantra\Review\Models\ReviewItem;
+use App\Tantra\Review\Models\WorkspaceSettings;
 use App\Tantra\Review\ReviewGate;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -39,6 +41,7 @@ class ReviewPageController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
+        self::$avatars = [];
         $tab = in_array($request->query('tab'), ['scheduled', 'published'], true) ? (string) $request->query('tab') : 'review';
         $batch = $request->filled('batch') && Str::isUuid((string) $request->query('batch'))
             ? Batch::query()->whereIn('workspace_id', self::visibleWorkspaceIds($user))->find($request->query('batch'))
@@ -98,6 +101,33 @@ class ReviewPageController extends Controller
         return redirect()->route('tantra.review.index', ['batch' => $batch->id]);
     }
 
+    /** @var array<string, ?string> */
+    private static array $avatars = [];
+
+    /**
+     * A person's picture by profile key, when the batch did not carry one: their
+     * connected LinkedIn's picture, else their Engine profile photo (filled from
+     * LinkedIn by tantra:team-photos).
+     */
+    private static function avatarFor(string $accountId, string $key): ?string
+    {
+        if ($key === '') {
+            return null;
+        }
+
+        return self::$avatars["{$accountId}|{$key}"] ??= (function () use ($accountId, $key): ?string {
+            $settings = WorkspaceSettings::query()->where('brand_profile_key', $key)
+                ->whereHas('workspace', fn ($q) => $q->where('account_id', $accountId))->first();
+            if ($settings === null) {
+                return null;
+            }
+            $channel = SocialAccount::query()->where('workspace_id', $settings->workspace_id)->whereNotNull('avatar_url')->orderBy('created_at')->value('avatar_url');
+            $owner = $settings->review_owner_user_id ? User::query()->find($settings->review_owner_user_id) : null;
+
+            return $channel ?: $owner?->photo_url;
+        })();
+    }
+
     /** @return Collection<int, string> */
     public static function visibleWorkspaceIds(User $user): Collection
     {
@@ -142,6 +172,13 @@ class ReviewPageController extends Controller
         $p = $i->payload ?? [];
         $manifest = $i->media_manifest ?? [];
         $postMedia = collect($posts->first()?->media ?? []);
+        // Before the drafts exist (the teammate has not connected LinkedIn yet) the
+        // files wait as held uploads: show those, so a video or image still plays.
+        $held = array_values(array_filter((array) ($manifest['held_tokens'] ?? []), 'is_string'));
+        if ($postMedia->isEmpty() && $held !== []) {
+            $postMedia = Media::query()->where('workspace_id', $i->workspace_id)->whereIn('upload_token', $held)->orderBy('order')->get()
+                ->map(fn (Media $m): array => ['url' => $m->url, 'mime_type' => $m->mime_type]);
+        }
         $previews = collect($manifest['previews'] ?? [])->map(fn (string $path): string => Storage::url($path))->values();
         $images = $postMedia->filter(fn (array $m): bool => str_starts_with((string) ($m['mime_type'] ?? ''), 'image/'))->pluck('url')->filter()->values();
         $video = $postMedia->first(fn (array $m): bool => str_starts_with((string) ($m['mime_type'] ?? ''), 'video/'));
@@ -185,7 +222,7 @@ class ReviewPageController extends Controller
                 'by' => (string) ($c['by'] ?? ''),
                 'name' => $c['name'] ?? null,
                 'headline' => $c['headline'] ?? null,
-                'avatar' => $c['avatar'] ?? null,
+                'avatar' => $c['avatar'] ?? self::avatarFor((string) $i->account_id, (string) ($c['by'] ?? '')),
                 'text' => (string) $c['text'],
                 'reply_to' => isset($c['reply_to']) ? (int) $c['reply_to'] : null,
                 'tone' => $c['tone'] ?? null,
@@ -209,7 +246,7 @@ class ReviewPageController extends Controller
             'profile' => [
                 'name' => (string) ($card['name'] ?? $channel?->display_name ?? $i->workspace?->name ?? ''),
                 'headline' => (string) ($card['headline'] ?? ''),
-                'avatar' => $card['avatar'] ?? $channel?->avatar_url ?? null,
+                'avatar' => $card['avatar'] ?? $channel?->avatar_url ?? self::avatarFor((string) $i->account_id, (string) ($p['profile'] ?? '')),
                 'kind' => ($card['kind'] ?? null) === 'company' ? 'company' : 'person',
                 'followers_line' => $card['followers_line'] ?? null,
                 'x_handle' => $card['x_handle'] ?? null,

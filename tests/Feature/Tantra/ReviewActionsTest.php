@@ -118,6 +118,18 @@ it('blocks approval until every number is signed off by its signer', function ()
     expect(ReviewActions::approve($this->teammate, $item->refresh())['status'])->toBe('scheduled');
 });
 
+it('confirms the approver\'s own numbers when approving on the review screen, and still waits for Adi\'s', function () {
+    $item = tantraItem($this, 'M5', ['numbers_for_signoff' => [['text' => '400+ brands', 'signer' => 'adi'], 'six stages']], 'mate');
+
+    $this->actingAs($this->teammate)->postJson(route('tantra.review.items.approve', $item))
+        ->assertStatus(422)->assertJsonPath('message', fn (string $m): bool => str_contains($m, '400+ brands'));
+    expect($item->refresh()->numbers_for_signoff[1]['signed_at'])->not->toBeNull()
+        ->and($item->numbers_for_signoff[0]['signed_at'] ?? null)->toBeNull();
+
+    ReviewActions::signOff($this->owner, $item, 0);
+    $this->actingAs($this->teammate)->postJson(route('tantra.review.items.approve', $item))->assertOk()->assertJsonPath('item.review_status', 'scheduled');
+});
+
 it('lets only the workspace review owner approve', function () {
     $teammatePost = tantraItem($this, 'M2', [], 'mate');
     $adiPost = tantraItem($this, 'A3');
