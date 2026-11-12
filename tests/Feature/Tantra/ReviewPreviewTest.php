@@ -27,11 +27,12 @@ beforeEach(function () {
     ]]]);
     $this->item = ReviewItem::query()->where('engine_post_id', 'EA1')->sole();
 
+    $token = (string) str()->uuid();
     $media = Media::factory()->temporaryUpload($this->ws)->create([
         'collection' => 'tantra_held', 'type' => 'video', 'path' => 'medias/ea1.mp4',
-        'original_filename' => 'ea1.mp4', 'mime_type' => 'video/mp4', 'upload_token' => 'tok-ea1',
+        'original_filename' => 'ea1.mp4', 'mime_type' => 'video/mp4', 'upload_token' => $token,
     ]);
-    $this->item->forceFill(['media_manifest' => ['type' => 'video', 'previews' => ['tantra/previews/EA1/poster.jpg'], 'held_tokens' => ['tok-ea1']]])->save();
+    $this->item->forceFill(['media_manifest' => ['type' => 'video', 'previews' => ['tantra/previews/EA1/poster.jpg'], 'held_tokens' => [$token]]])->save();
     $this->videoUrl = $media->url;
 });
 
