@@ -170,7 +170,7 @@ const reconnectLine = (r: Reconnect): string => {
     <AppLayout full-width>
         <Head :title="$t('tantra.review.title')" />
         <div
-            class="mx-auto flex min-h-full w-full max-w-5xl min-w-0 flex-col gap-4 px-3 pt-4 pb-12 md:px-8 md:pt-6"
+            class="mx-auto flex min-h-full w-full max-w-7xl min-w-0 flex-col gap-4 px-3 pt-4 pb-12 md:px-8 md:pt-6"
         >
             <nav
                 class="flex items-center gap-1 self-center rounded-full border border-border bg-card p-1"

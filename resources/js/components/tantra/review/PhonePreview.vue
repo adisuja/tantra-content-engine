@@ -23,11 +23,12 @@ const props = withDefaults(
         maxScale?: number;
         fitHeight?: number | null;
     }>(),
-    { maxScale: 0.85, fitHeight: null },
+    { maxScale: 1, fitHeight: null },
 );
 
-const PHONE_WIDTH = 417;
-const PHONE_HEIGHT = 876;
+// iPhone 16 Pro Max: a 440 x 956 point screen in a 12 px bezel (css/studio-device.css).
+const PHONE_WIDTH = 464;
+const PHONE_HEIGHT = 980;
 
 const root = ref<HTMLElement | null>(null);
 const width = ref(PHONE_WIDTH);

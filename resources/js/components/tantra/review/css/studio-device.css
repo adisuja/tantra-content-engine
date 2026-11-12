@@ -1,0 +1,10 @@
+/* tantra: the review phone at the size of a real iPhone 16 Pro Max (2026-11-12).
+   Its screen is 440 x 956 points, which a browser draws as 440 x 956 CSS pixels
+   at 100% zoom, so the preview shows at the device's own size. Bezel 12 px. */
+.tantra-studio {
+  --pw: 464px;
+  --ph: 980px;
+}
+.tantra-studio .phone { border-radius: 68px; }
+.tantra-studio .phone::before { border-radius: 65px; }
+.tantra-studio .screen { width: 440px; height: 956px; border-radius: 56px; }

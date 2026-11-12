@@ -65,14 +65,16 @@ const confirmNumbers = async (): Promise<void> => {
 
 <template>
     <article
-        class="flex w-full flex-col items-center gap-4 lg:flex-row lg:items-center lg:justify-center lg:gap-8"
+        class="flex w-full flex-col items-center gap-5 xl:flex-row xl:items-center xl:justify-center xl:gap-10"
         :data-testid="`tantra-card-${item.engine_post_id}`"
     >
-        <div class="w-full max-w-[372px] shrink-0">
+        <div class="w-full max-w-[464px] shrink-0">
             <PhonePreview :item="item" :viewer="viewer" />
         </div>
 
-        <aside class="flex w-full max-w-[372px] flex-col gap-3 lg:max-w-xs">
+        <aside
+            class="flex w-full max-w-[464px] flex-col gap-3 xl:w-80 xl:max-w-80"
+        >
             <template v-if="mode === 'review' && item.can_review">
                 <Button
                     size="lg"
