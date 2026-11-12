@@ -54,7 +54,7 @@ class ReviewPageController extends Controller
             default => $mine()->whereIn('review_status', array_map(fn (ReviewStatus $s): string => $s->value, $reviewStatuses)),
         };
 
-        $items = $query->with(['events.user:id,name', 'workspace:id,name'])->limit(200)->get();
+        $items = $query->with(['events.user:id,name', 'workspace'])->limit(200)->get();
         $order = [ReviewStatus::InReview->value => 0, ReviewStatus::ChangesRequested->value => 1, ReviewStatus::Approved->value => 2, ReviewStatus::Scheduled->value => 2];
         $items = ($tab === 'published'
             ? $items->sortByDesc(fn (ReviewItem $i): string => ($i->planned_date?->toDateString() ?? '').' '.$i->engine_post_id)

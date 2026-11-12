@@ -42,6 +42,8 @@ use App\Tantra\Review\ReviewChips;
 use App\Tantra\Review\ReviewGate;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Events\Dispatcher;
+use Illuminate\Contracts\Http\Kernel as HttpKernel;
+use Illuminate\Foundation\Http\Kernel as FoundationHttpKernel;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Broadcast;
@@ -72,7 +74,10 @@ class TantraServiceProvider extends ServiceProvider
 
         $this->app->make(Router::class)->aliasMiddleware('tantra.owner-token', EnsureOwnerToken::class);
         // People land on Review, not the calendar, in Tantra workspaces (PRD 10.2).
-        $this->app->make(Router::class)->pushMiddlewareToGroup('web', LandOnReview::class);
+        $kernel = $this->app->make(HttpKernel::class);
+        if ($kernel instanceof FoundationHttpKernel) {
+            $kernel->appendMiddlewareToGroup('web', LandOnReview::class);
+        }
         $this->loadRoutesFrom(__DIR__.'/Http/routes-api.php');
         $this->loadRoutesFrom(__DIR__.'/Http/routes-web.php');
 
