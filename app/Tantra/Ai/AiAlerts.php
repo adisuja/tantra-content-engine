@@ -24,11 +24,8 @@ final class AiAlerts
             $connectors = AiConnector::query()->where('account_id', $accountId)->where('is_active', true)->whereNotNull('secret')->get();
             $alerts = [];
 
-            $ai = $connectors->filter(fn (AiConnector $c): bool => ProviderCatalog::isAi($c->provider));
-            if ($ai->isEmpty() && ! TantraAi::serverProviderConfigured()) {
-                $alerts[] = ['level' => 'warning', 'provider' => null, 'label' => null, 'reason' => 'none', 'message' => 'No AI provider is connected, so AI features will not work.', 'since' => null];
-            }
-
+            // "Nothing connected" is said where the AI is used and on the Connectors tab;
+            // the banner is for a provider or integration that stopped working.
             foreach ($connectors as $c) {
                 if ($c->last_failed_at === null || ($c->last_verified_at !== null && $c->last_verified_at->gt($c->last_failed_at))) {
                     continue;

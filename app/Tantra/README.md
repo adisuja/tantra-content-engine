@@ -42,7 +42,7 @@ Each change is small and marked `// tantra:` (or `<!-- tantra: -->`). After merg
 - Branding: `app/Services/Http/SafeHttpFetcher.php` (our user agent).
 - Tooling: `.prettierignore` (the studio CSS, generated in tantra-content).
 - Copy without a marker: the Zernio entries in `lang/*/posts.php` (16 locales).
-- Tests that pin upstream messages: the failing-provider cases in `tests/Feature/Create/GenerateIdeaTest.php`, `tests/Feature/Ai/MediaAltTextTest.php`, `tests/Feature/Ai/PostAiAssistantTest.php`.
+- Tests that pin upstream messages: the failing-provider cases in `tests/Feature/Create/GenerateIdeaTest.php`, `tests/Browser/CreateIdeaEditorTest.php`, `tests/Feature/Ai/MediaAltTextTest.php`, `tests/Feature/Ai/PostAiAssistantTest.php`.
 - Tests that pin upstream lists: `tests/Unit/Enums/PlatformTest.php`, `tests/Browser/SidebarMenuTest.php`, `tests/Feature/Mcp/ToolAnnotationsTest.php`, `tests/Feature/Parity/McpAuthorizationParityTest.php`.
 
 ## Operations

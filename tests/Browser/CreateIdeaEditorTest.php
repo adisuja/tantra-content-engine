@@ -538,9 +538,10 @@ test('generate ideas shows the failure inline when the provider fails and a retr
     $page->fill('@ideas-generate-business', 'A handmade ceramics studio')
         ->fill('@ideas-generate-audience', 'Home decor lovers')
         ->click('@ideas-generate-submit');
-    waitForCreateIdeaEditorTestId($page, 'ideas-generate-error', __('create.ideas.errors.generate_failed'));
+    // tantra: with no AI connected the error says so and links to the Connectors tab.
+    waitForCreateIdeaEditorTestId($page, 'ideas-generate-error', 'No AI provider is connected');
 
-    $page->assertSeeIn('@ideas-generate-error', __('create.ideas.errors.generate_failed'))
+    $page->assertSeeIn('@ideas-generate-error', 'No AI provider is connected')
         ->assertMissing('@ideas-generate-result')
         ->assertEnabled('@ideas-generate-submit')
         ->click('@ideas-generate-submit');
