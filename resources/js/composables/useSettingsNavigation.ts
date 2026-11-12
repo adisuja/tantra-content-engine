@@ -1,13 +1,14 @@
 import { usePage } from '@inertiajs/vue3';
 import {
-    IconLayoutGrid,
-    IconBell,
-    IconCoin,
-    IconCode,
-    IconSignature,
-    IconMcp,
-    IconBuilding,
     IconAdjustmentsHorizontal,
+    IconBell,
+    IconBuilding,
+    IconCode,
+    IconCoin,
+    IconLayoutGrid,
+    IconMcp,
+    IconPlugConnected,
+    IconSignature,
     IconTag,
     IconUser,
     IconUsers,
@@ -27,7 +28,10 @@ import { edit as profileEdit } from '@/routes/app/profile';
 import { preferences } from '@/routes/app/settings';
 import { index as signatures } from '@/routes/app/signatures';
 import { index as webhooks } from '@/routes/app/webhooks';
-import { channels, settings as workspaceSettings } from '@/routes/app/workspace';
+import {
+    channels,
+    settings as workspaceSettings,
+} from '@/routes/app/workspace';
 import type { NavItem } from '@/types';
 
 export interface SettingsNavGroup {
@@ -148,6 +152,13 @@ export const useSettingsNavigation = () => {
                 key: 'integrations',
                 label: trans('settings.sidebar.groups.integrations'),
                 items: [
+                    // tantra: the Connectors tab (AI providers, Claude and Codex, Tantra API).
+                    ...item(
+                        'connectors',
+                        '/settings/workspace/connectors',
+                        IconPlugConnected,
+                        workspace,
+                    ),
                     ...item(
                         'api_keys',
                         apiKeys.url(),

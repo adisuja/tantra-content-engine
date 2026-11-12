@@ -7,6 +7,7 @@ namespace App\Actions\Idea;
 use App\Ai\Agents\IdeaGenerator;
 use App\Models\User;
 use App\Support\AiPromptRules;
+use App\Tantra\Ai\TantraAi;
 use Illuminate\Support\Str;
 
 class GenerateIdea
@@ -16,8 +17,8 @@ class GenerateIdea
      */
     public static function execute(User $user, string $business, string $audience, ?string $notes): ?array
     {
-        $response = (new IdeaGenerator($user->locale, $business, $audience, $notes))
-            ->prompt('Suggest one content idea.');
+        // tantra: runs on the Account's AI connector (Connectors tab).
+        $response = TantraAi::prompt(new IdeaGenerator($user->locale, $business, $audience, $notes), 'Suggest one content idea.', $user->account_id);
 
         $title = Str::substr(trim((string) data_get($response, 'title')), 0, 255);
 

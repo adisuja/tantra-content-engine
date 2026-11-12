@@ -12,6 +12,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Repurpose\CaptionAdapter;
+use App\Tantra\Ai\TantraAi;
 use Illuminate\Validation\ValidationException;
 
 final class AssistPostContent
@@ -30,8 +31,12 @@ final class AssistPostContent
         $platform = $account->platform ?? $platform;
         $limit = transform($platform, fn (Platform $platform): int => ContentType::maxContentLengthFor($account, $platform, $contentType));
 
-        $response = (new PostWritingAssistant($mode, $currentContent, $user->locale, $platform, $previousContent, $limit))
-            ->prompt($mode->requiresPrompt() ? trim((string) $prompt) : 'Revise the existing caption as instructed.');
+        // tantra: runs on the Account's AI connector (Connectors tab).
+        $response = TantraAi::prompt(
+            new PostWritingAssistant($mode, $currentContent, $user->locale, $platform, $previousContent, $limit),
+            $mode->requiresPrompt() ? trim((string) $prompt) : 'Revise the existing caption as instructed.',
+            $workspace->account_id,
+        );
 
         $text = trim((string) $response);
 

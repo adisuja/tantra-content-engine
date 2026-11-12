@@ -10,6 +10,7 @@ import { trans } from 'laravel-vue-i18n';
 import { computed, onBeforeUnmount, ref } from 'vue';
 
 import CharacterCounter from '@/components/CharacterCounter.vue';
+import AiErrorNotice from '@/components/tantra/connectors/AiErrorNotice.vue';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { extractErrorMessage } from '@/lib/httpError';
@@ -343,16 +344,16 @@ const accept = (): void => {
             </div>
         </template>
 
-        <p
+        <!-- tantra: names the provider and links to Connectors -->
+        <AiErrorNotice
             v-if="error"
-            role="alert"
-            class="text-sm text-destructive"
-            data-testid="writing-assistant-error"
-        >
-            {{ error }}
-        </p>
+            :error="error"
+            testid="writing-assistant-error"
+        />
 
-        <div class="mt-auto space-y-2 border-t pt-4 text-xs text-muted-foreground">
+        <div
+            class="mt-auto space-y-2 border-t pt-4 text-xs text-muted-foreground"
+        >
             <p
                 v-if="channel && channel.limit !== null"
                 data-testid="writing-assistant-channel"

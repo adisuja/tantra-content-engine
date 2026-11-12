@@ -24,7 +24,6 @@ return [
         'processes' => (int) env('TANTRA_LEAN_WORKER_PROCESSES', 3),
     ],
 
-
     // The Tantra LinkedIn page publishes through Zernio (PRD 10.4). One key for
     // the Account, only ever on the server. The webhook secret signs Zernio's
     // post.published / post.failed / post.partial events.
@@ -68,6 +67,17 @@ return [
             'Done, {first_name}: the {resource} is in your DMs. Accept my connection request if you see one.',
             '{first_name}, it is on its way. Look out for my message with the {resource}.',
         ],
+    ],
+
+    // The Connectors tab. Endpoints in a private network are refused unless this is on.
+    'ai' => [
+        'allow_private_endpoints' => (bool) env('TANTRA_AI_ALLOW_PRIVATE_ENDPOINTS', false),
+    ],
+
+    // The Connectors tab: where the official Claude Code and Codex CLIs live in the image.
+    'cli' => [
+        'claude' => env('TANTRA_CLAUDE_CLI', 'claude'),
+        'codex' => env('TANTRA_CODEX_CLI', 'codex'),
     ],
 
 ];

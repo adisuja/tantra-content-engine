@@ -7,6 +7,7 @@ namespace App\Http\Controllers\App;
 use App\Actions\Ai\GenerateMediaAltText;
 use App\Actions\Media\ResolveWorkspaceMedia;
 use App\Http\Requests\App\Ai\GenerateMediaAltTextRequest;
+use App\Tantra\Ai\AiUnavailableException;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
@@ -33,6 +34,9 @@ class MediaAltTextController extends Controller
 
         try {
             $altText = GenerateMediaAltText::execute($request->user(), $asset);
+        } catch (AiUnavailableException $e) {
+            // tantra: say which provider failed and why (Connectors tab).
+            return response()->json($e->payload(), Response::HTTP_BAD_GATEWAY);
         } catch (AiException|RequestException|ConnectionException) {
             return response()->json(['message' => __('posts.composer.media_editor.alt_generate_error')], Response::HTTP_BAD_GATEWAY);
         }

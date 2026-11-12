@@ -25,6 +25,7 @@ return [
             'labels' => 'Etykiety',
             'webhooks' => 'Webhooki',
             'api_keys' => 'API',
+            'connectors' => 'Connectors',
             'mcp' => 'MCP',
             'billing' => 'Rozliczenia',
         ],

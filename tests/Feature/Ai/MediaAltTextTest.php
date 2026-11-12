@@ -101,5 +101,5 @@ test('a failing provider returns a translated bad gateway', function () {
     $this->actingAs($this->user)
         ->postJson(route('app.posts.ai.alt-text'), ['media_id' => $this->asset->id])
         ->assertStatus(Response::HTTP_BAD_GATEWAY)
-        ->assertJsonPath('message', __('posts.composer.media_editor.alt_generate_error'));
+        ->assertJsonPath('message', fn (string $message) => str_contains($message, 'Connectors')); // tantra: names the provider, points to Connectors
 });

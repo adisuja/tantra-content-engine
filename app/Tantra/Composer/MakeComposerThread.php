@@ -6,6 +6,7 @@ namespace App\Tantra\Composer;
 
 use App\Enums\Post\Status as PostStatus;
 use App\Models\Post;
+use App\Tantra\Ai\TantraAi;
 use App\Tantra\Boost\Boost;
 use App\Tantra\Boost\MemberProfile;
 use App\Tantra\Review\Enums\EventKind;
@@ -59,8 +60,7 @@ class MakeComposerThread implements ShouldQueue
         }
 
         try {
-            $response = (new ComposerThreadWriter($settings->brand_profile_key, $teammates))
-                ->prompt("The post:\n\n".trim((string) $post->content));
+            $response = TantraAi::prompt(new ComposerThreadWriter($settings->brand_profile_key, $teammates), "The post:\n\n".trim((string) $post->content), $post->workspace->account_id);
             $thread = self::thread((array) ($response['comments'] ?? []), array_keys($teammates), $settings->brand_profile_key);
         } catch (Throwable $e) {
             report($e);

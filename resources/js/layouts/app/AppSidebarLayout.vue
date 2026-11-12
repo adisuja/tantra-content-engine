@@ -15,6 +15,7 @@ import CommandPalette from '@/components/command-palette/CommandPalette.vue';
 import McpPromptCard from '@/components/mcp/McpPromptCard.vue';
 import GlobalPostComposer from '@/components/posts/composer/GlobalPostComposer.vue';
 import ReferralSourceSurvey from '@/components/ReferralSourceSurvey.vue';
+import ConnectorAlertsBanner from '@/components/tantra/connectors/ConnectorAlertsBanner.vue';
 import Toast from '@/components/Toast.vue';
 import {
     SidebarInset,
@@ -38,14 +39,14 @@ const readSidebarOpen = (): boolean => {
         return true;
     }
 
-    return !document.cookie.split('; ').includes(`${SIDEBAR_COOKIE_NAME}=false`);
+    return !document.cookie
+        .split('; ')
+        .includes(`${SIDEBAR_COOKIE_NAME}=false`);
 };
 
 const isCompactViewport = useBelowBreakpoint('lg');
 const sidebarOpen = ref(
-    isCompactViewport.value
-        ? (compactSidebarOpen ?? false)
-        : readSidebarOpen(),
+    isCompactViewport.value ? (compactSidebarOpen ?? false) : readSidebarOpen(),
 );
 
 watch(sidebarOpen, (isOpen) => {
@@ -104,6 +105,8 @@ watch(isCompactViewport, (isCompact) => {
                             : 'flex-1 overflow-y-auto'
                     "
                 >
+                    <!-- tantra: AI provider and integration warnings (Connectors tab) -->
+                    <ConnectorAlertsBanner />
                     <div
                         data-testid="app-layout-content"
                         :class="

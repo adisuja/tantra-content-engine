@@ -1,9 +1,15 @@
 <script setup lang="ts">
 import { useHttp } from '@inertiajs/vue3';
-import { IconLoader2, IconRefresh, IconSparkles, IconX } from '@tabler/icons-vue';
+import {
+    IconLoader2,
+    IconRefresh,
+    IconSparkles,
+    IconX,
+} from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
+import AiErrorNotice from '@/components/tantra/connectors/AiErrorNotice.vue';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -137,7 +143,7 @@ const useIdea = (): void => {
             data-testid="ideas-generate-dialog"
         >
             <DialogHeader
-                class="shrink-0 px-6 pt-6 pe-14 pb-4 text-left sm:p-0"
+                class="shrink-0 px-6 pe-14 pt-6 pb-4 text-left sm:p-0"
             >
                 <DialogTitle>{{
                     $t('create.ideas.generate.title')
@@ -147,7 +153,7 @@ const useIdea = (): void => {
                 }}</DialogDescription>
             </DialogHeader>
             <DialogClose
-                class="absolute top-4 end-4 z-20 flex size-8 items-center justify-center rounded-lg text-foreground transition-control hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring sm:hidden"
+                class="absolute end-4 top-4 z-20 flex size-8 items-center justify-center rounded-lg text-foreground transition-control hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring sm:hidden"
                 :aria-label="$t('common.close')"
                 data-testid="ideas-generate-close"
             >
@@ -180,14 +186,12 @@ const useIdea = (): void => {
                         </p>
                     </div>
 
-                    <p
+                    <!-- tantra: names the provider and links to Connectors -->
+                    <AiErrorNotice
                         v-if="error"
-                        role="alert"
-                        class="text-sm text-destructive"
-                        data-testid="ideas-generate-error"
-                    >
-                        {{ error }}
-                    </p>
+                        :error="error"
+                        testid="ideas-generate-error"
+                    />
 
                     <p class="text-xs text-muted-foreground">
                         {{ $t('posts.composer.assistant_disclaimer') }}
@@ -296,14 +300,12 @@ const useIdea = (): void => {
                         />
                     </div>
 
-                    <p
+                    <!-- tantra: names the provider and links to Connectors -->
+                    <AiErrorNotice
                         v-if="error"
-                        role="alert"
-                        class="text-sm text-destructive"
-                        data-testid="ideas-generate-error"
-                    >
-                        {{ error }}
-                    </p>
+                        :error="error"
+                        testid="ideas-generate-error"
+                    />
 
                     <p class="text-xs text-muted-foreground">
                         {{ $t('posts.composer.assistant_disclaimer') }}

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Middleware\App\EnsureAccountReady;
 use App\Http\Middleware\App\EnsureHasWorkspace;
+use App\Tantra\Http\Controllers\Web\ConnectorController;
 use App\Tantra\Http\Controllers\Web\InsightsController;
 use App\Tantra\Http\Controllers\Web\JoinController;
 use App\Tantra\Http\Controllers\Web\ManualTaskController;
@@ -80,3 +81,18 @@ Route::middleware(['web', 'signed', 'throttle:6,1'])
     ->get('tantra/join/{user}', JoinController::class)
     ->whereUuid('user')
     ->name('tantra.join');
+
+// tantra: the Connectors tab: AI providers, Claude and Codex subscriptions, the Tantra API.
+Route::middleware(['web', 'auth'])
+    ->prefix('settings/workspace/connectors')
+    ->name('tantra.connectors.')
+    ->group(function (): void {
+        Route::get('/', [ConnectorController::class, 'index'])
+            ->middleware([EnsureAccountReady::class, EnsureHasWorkspace::class])
+            ->name('index');
+        Route::put('/{provider}', [ConnectorController::class, 'update'])->name('update');
+        Route::delete('/{provider}', [ConnectorController::class, 'destroy'])->name('destroy');
+        Route::post('/{provider}/default', [ConnectorController::class, 'makeDefault'])->name('default');
+        Route::post('/{provider}/test', [ConnectorController::class, 'test'])->name('test');
+        Route::post('/{provider}/models', [ConnectorController::class, 'models'])->name('models');
+    });

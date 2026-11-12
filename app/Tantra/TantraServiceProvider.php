@@ -10,9 +10,13 @@ use App\Events\PostStatusChanged;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
+use App\Tantra\Ai\AiAlerts;
+use App\Tantra\Ai\CliTextGateway;
 use App\Tantra\Boost\Boost;
 use App\Tantra\Boost\StartBoostRun;
 use App\Tantra\Composer\MakeComposerThread;
+use App\Tantra\Console\AiConnectorCommand;
+use App\Tantra\Console\CheckConnectorsCommand;
 use App\Tantra\Console\CollectMetricsCommand;
 use App\Tantra\Console\CreateOwnerCommand;
 use App\Tantra\Console\GiveawayRepliesCommand;
@@ -36,12 +40,15 @@ use App\Tantra\Review\OwnerApproval;
 use App\Tantra\Review\ReviewChips;
 use App\Tantra\Review\ReviewGate;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Inertia\Inertia;
+use Laravel\Ai\Ai;
+use Laravel\Ai\Providers\OpenAiCompatibleProvider;
 
 /**
  * Entry point for everything Tantra adds to the TryPost fork.
@@ -83,10 +90,10 @@ class TantraServiceProvider extends ServiceProvider
             }
         });
 
-                // A teammate connecting LinkedIn turns their waiting posts into drafts.
+        // A teammate connecting LinkedIn turns their waiting posts into drafts.
         SocialAccount::created(fn (SocialAccount $channel) => DraftMaker::forWorkspace($channel));
 
-                // An edit in the composer is a new version of the post under review.
+        // An edit in the composer is a new version of the post under review.
         Post::updated(fn (Post $post) => RecordComposerEdit::handle($post));
 
         // Approval by the review owner (PRD 10.8): drop the kept answers when they can change.
@@ -97,6 +104,15 @@ class TantraServiceProvider extends ServiceProvider
                 OwnerApproval::forget();
             }
         });
+
+        // The Connectors tab: Claude Code and Codex run through their official CLIs.
+        foreach (['tantra-claude-cli' => CliTextGateway::CLAUDE, 'tantra-codex-cli' => CliTextGateway::CODEX] as $driver => $cli) {
+            Ai::extend($driver, fn ($app, array $config) => (new OpenAiCompatibleProvider($config + ['url' => 'http://localhost', 'key' => 'cli'], $app->make(Dispatcher::class)))
+                ->useTextGateway(new CliTextGateway($cli, (string) ($config['cli_secret'] ?? ''), $config['connector_id'] ?? null)));
+        }
+
+        // AI and integration warnings for the app banner (Connectors tab).
+        Inertia::share('tantraAlerts', fn (): array => Auth::user() === null ? [] : AiAlerts::forAccount(Auth::user()->account_id));
 
         // The sidebar's Review badge: posts waiting for this user's approval.
         Inertia::share('tantraReview', fn (): ?array => Auth::user() === null ? null : [
@@ -115,11 +131,12 @@ class TantraServiceProvider extends ServiceProvider
             $schedule->command('tantra:heartbeat')->everyMinute();
             $schedule->command('tantra:heartbeat --media')->everyFifteenMinutes()->withoutOverlapping();
             // Post and page numbers (PRD 10.6).
+            $schedule->command('tantra:check-connectors')->hourly()->withoutOverlapping();
             $schedule->command('tantra:collect-metrics')->twiceDaily(6, 18)->withoutOverlapping();
         });
 
-                if ($this->app->runningInConsole()) {
-            $this->commands([CollectMetricsCommand::class, CreateOwnerCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class, TeamAccountsCommand::class, GiveawayRepliesCommand::class, HealthCommand::class, HeartbeatCommand::class, ReconnectRemindersCommand::class]);
+        if ($this->app->runningInConsole()) {
+            $this->commands([AiConnectorCommand::class, CheckConnectorsCommand::class, CollectMetricsCommand::class, CreateOwnerCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class, TeamAccountsCommand::class, GiveawayRepliesCommand::class, HealthCommand::class, HeartbeatCommand::class, ReconnectRemindersCommand::class]);
         }
 
         if ($this->app->environment('production') && config('tantra.lean_workers.enabled')) {

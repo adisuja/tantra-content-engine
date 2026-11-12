@@ -25,6 +25,7 @@ return [
             'labels' => 'Метки',
             'webhooks' => 'Вебхуки',
             'api_keys' => 'API',
+            'connectors' => 'Connectors',
             'mcp' => 'MCP',
             'billing' => 'Оплата',
         ],

@@ -25,6 +25,7 @@ return [
             'labels' => '标签',
             'webhooks' => 'Webhooks',
             'api_keys' => 'API',
+            'connectors' => 'Connectors',
             'mcp' => 'MCP',
             'billing' => '账单',
         ],

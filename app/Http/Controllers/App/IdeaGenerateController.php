@@ -7,6 +7,7 @@ namespace App\Http\Controllers\App;
 use App\Actions\Idea\GenerateIdea;
 use App\Http\Requests\App\Idea\GenerateIdeaRequest;
 use App\Http\Resources\App\GeneratedIdeaResource;
+use App\Tantra\Ai\AiUnavailableException;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
@@ -30,6 +31,9 @@ class IdeaGenerateController extends Controller
                 audience: $request->validated('audience'),
                 notes: $request->validated('notes'),
             );
+        } catch (AiUnavailableException $e) {
+            // tantra: say which provider failed and why (Connectors tab).
+            return response()->json($e->payload(), Response::HTTP_BAD_GATEWAY);
         } catch (AiException|RequestException|ConnectionException) {
             $idea = null;
         }

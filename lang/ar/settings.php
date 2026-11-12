@@ -25,6 +25,7 @@ return [
             'labels' => 'التسميات',
             'webhooks' => 'Webhooks',
             'api_keys' => 'API',
+            'connectors' => 'Connectors',
             'mcp' => 'MCP',
             'billing' => 'الفوترة',
         ],

@@ -162,7 +162,7 @@ test('a failing provider returns a translated bad gateway', function (Throwable 
     $this->actingAs($this->user)
         ->postJson(route('app.create.ideas.generate'), generateIdeaPayload())
         ->assertStatus(Response::HTTP_BAD_GATEWAY)
-        ->assertJsonPath('message', __('create.ideas.errors.generate_failed'));
+        ->assertJsonPath('message', fn (string $message) => str_contains($message, 'Connectors')); // tantra: the message names the provider and points to the Connectors tab
 })->with([
     'overloaded' => fn () => new ProviderOverloadedException('overloaded'),
     'connection' => fn () => new ConnectionException('timeout'),

@@ -25,6 +25,7 @@ return [
             'labels' => 'Etiquetas',
             'webhooks' => 'Webhooks',
             'api_keys' => 'API',
+            'connectors' => 'Connectors',
             'mcp' => 'MCP',
             'billing' => 'Cobrança',
         ],

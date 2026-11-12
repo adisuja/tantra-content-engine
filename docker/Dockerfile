@@ -155,6 +155,9 @@ ARG GID=1000
 # Node + npm for in-container Vite, npm scripts, ad-hoc tooling.
 RUN apk add --no-cache nodejs npm
 
+# tantra: the official Claude Code and Codex CLIs (Connectors tab).
+RUN npm install -g --omit=dev @anthropic-ai/claude-code@2.1.322 @openai/codex@0.167.2 && npm cache clean --force
+
 # Create non-root app user matching host UID/GID for clean bind-mount writes.
 RUN groupmod -g "${GID}" www-data 2>/dev/null || groupadd -g "${GID}" app \
     && (id -u app >/dev/null 2>&1 || useradd -u "${UID}" -g "${GID}" -d /home/app -m -s /bin/bash app) \
@@ -190,6 +193,13 @@ COPY docker/php.prod.ini /usr/local/etc/php/conf.d/99-trypost.ini
 COPY docker/supervisord.prod.conf /etc/supervisor/conf.d/supervisord.conf
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# tantra: the official Claude Code and Codex CLIs, for the Connectors tab's
+# subscription connectors (app/Tantra/Ai/CliTextGateway.php).
+RUN apk add --no-cache nodejs npm \
+    && npm install -g --omit=dev @anthropic-ai/claude-code@2.1.322 @openai/codex@0.167.2 \
+    && npm cache clean --force \
+    && claude --version && codex --version
 
 # Application source + generated wayfinder TS + built assets — all from
 # asset-build (the merged stage that ran php artisan wayfinder:generate,

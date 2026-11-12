@@ -25,6 +25,7 @@ return [
             'labels' => '라벨',
             'webhooks' => '웹훅',
             'api_keys' => 'API',
+            'connectors' => 'Connectors',
             'mcp' => 'MCP',
             'billing' => '결제',
         ],

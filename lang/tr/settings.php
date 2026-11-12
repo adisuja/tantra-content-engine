@@ -25,6 +25,7 @@ return [
             'labels' => 'Etiketler',
             'webhooks' => 'Webhooklar',
             'api_keys' => 'API',
+            'connectors' => 'Connectors',
             'mcp' => 'MCP',
             'billing' => 'Faturalandırma',
         ],

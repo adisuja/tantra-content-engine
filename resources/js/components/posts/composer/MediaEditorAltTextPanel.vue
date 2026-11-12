@@ -4,6 +4,7 @@ import { IconSparkles } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { ref } from 'vue';
 
+import AiErrorNotice from '@/components/tantra/connectors/AiErrorNotice.vue';
 import { Button } from '@/components/ui/button';
 import { extractErrorMessage } from '@/lib/httpError';
 import type { MediaEdit } from '@/lib/mediaEditor';
@@ -71,12 +72,11 @@ const generate = async (): Promise<void> => {
             <IconSparkles class="size-4" />
             {{ $t('posts.composer.media_editor.alt_generate') }}
         </Button>
-        <p
+        <!-- tantra: names the provider and links to Connectors -->
+        <AiErrorNotice
             v-if="error"
-            class="text-sm text-destructive"
-            data-testid="media-editor-alt-error"
-        >
-            {{ error }}
-        </p>
+            :error="error"
+            testid="media-editor-alt-error"
+        />
     </div>
 </template>
