@@ -10,6 +10,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Tantra\Analytics\MetricSnapshot;
+use App\Tantra\Boost\ThreadDelivery;
 use App\Tantra\Channels\ReconnectReminders;
 use App\Tantra\Giveaway\GiveawayReply;
 use App\Tantra\Review\Enums\ReviewStatus;
@@ -29,44 +30,47 @@ use Inertia\Response;
 class ReviewPageController extends Controller
 {
     /**
-     * The one review screen (PRD 10.2, redesigned 2026-11-12): every post shown
-     * as its phone preview with Approve and a feedback box. "To review" holds
-     * the posts this user approves, waiting first, then the ones already in
-     * their slot. "Published" holds what went out, with its numbers. A batch
-     * link from an email (?batch=) shows that batch's posts.
+     * The one review screen (PRD 10.2, redesigned 2026-11-12): one post at a
+     * time as its phone preview. Review holds what this user approves (waiting
+     * first, then revisions pending); Scheduled what is in a slot; Published
+     * what went out, with its numbers. Each post says how every part of it goes
+     * out (ThreadDelivery). A batch link from an email (?batch=) shows that batch.
      */
     public function index(Request $request): Response
     {
         $user = $request->user();
-        $tab = $request->query('tab') === 'published' ? 'published' : 'review';
+        $tab = in_array($request->query('tab'), ['scheduled', 'published'], true) ? (string) $request->query('tab') : 'review';
         $batch = $request->filled('batch') && Str::isUuid((string) $request->query('batch'))
             ? Batch::query()->whereIn('workspace_id', self::visibleWorkspaceIds($user))->find($request->query('batch'))
             : null;
 
-        $reviewStatuses = [ReviewStatus::InReview, ReviewStatus::ChangesRequested, ReviewStatus::Approved, ReviewStatus::Scheduled];
+        $statuses = [
+            'review' => [ReviewStatus::InReview->value, ReviewStatus::ChangesRequested->value],
+            'scheduled' => [ReviewStatus::Approved->value, ReviewStatus::Scheduled->value],
+            'published' => [ReviewStatus::Published->value],
+        ];
         $base = fn () => ReviewItem::query()->where('account_id', $user->account_id)->where('review_status', '!=', ReviewStatus::Superseded->value);
-        $mine = fn () => $base()->whereIn('workspace_id', ReviewGate::reviewedWorkspaceIds($user));
+        // Review: only what this person approves. Scheduled and Published: everything they can see.
+        $scope = fn (string $t) => $t === 'review'
+            ? $base()->whereIn('workspace_id', ReviewGate::reviewedWorkspaceIds($user))
+            : $base()->whereIn('workspace_id', self::visibleWorkspaceIds($user));
 
-        $query = match (true) {
-            $batch !== null => $base()->where('batch_id', $batch->id)
-                ->whereIn('review_status', array_map(fn (ReviewStatus $s): string => $s->value, $tab === 'published' ? [ReviewStatus::Published] : $reviewStatuses)),
-            $tab === 'published' => $base()->whereIn('workspace_id', self::visibleWorkspaceIds($user))->where('review_status', ReviewStatus::Published->value),
-            default => $mine()->whereIn('review_status', array_map(fn (ReviewStatus $s): string => $s->value, $reviewStatuses)),
-        };
+        $query = ($batch !== null ? $base()->where('batch_id', $batch->id) : $scope($tab))->whereIn('review_status', $statuses[$tab]);
 
         $items = $query->with(['events.user:id,name', 'workspace'])->limit(200)->get();
-        $order = [ReviewStatus::InReview->value => 0, ReviewStatus::ChangesRequested->value => 1, ReviewStatus::Approved->value => 2, ReviewStatus::Scheduled->value => 2];
         $items = ($tab === 'published'
             ? $items->sortByDesc(fn (ReviewItem $i): string => ($i->planned_date?->toDateString() ?? '').' '.$i->engine_post_id)
-            : $items->sortBy(fn (ReviewItem $i): string => ($order[$i->review_status->value] ?? 3).' '.($i->planned_date?->toDateString() ?? '9999').' '.($i->planned_time ?? '').' '.$i->engine_post_id))
+            : $items->sortBy(fn (ReviewItem $i): string => ($i->review_status === ReviewStatus::ChangesRequested ? '1' : '0').' '.($i->planned_date?->toDateString() ?? '9999').' '.($i->planned_time ?? '').' '.$i->engine_post_id))
             ->values();
 
         $channels = SocialAccount::query()->whereIn('workspace_id', $items->pluck('workspace_id')->unique())->orderBy('created_at')->get()->unique('workspace_id')->keyBy('workspace_id');
         $posts = Post::query()->whereIn('post_group_id', $items->pluck('post_group_id')->filter())->get()->groupBy('post_group_id');
 
-        $rows = $items->map(function (ReviewItem $i) use ($user, $channels, $posts): array {
+        $cache = [];
+        $rows = $items->map(function (ReviewItem $i) use ($user, $channels, $posts, &$cache): array {
             $group = $posts->get($i->post_group_id, new Collection);
             $row = self::item($i, $user, $channels->get($i->workspace_id), $group);
+            $row['delivery'] = ThreadDelivery::for($i, $group->first(), $channels->get($i->workspace_id), $cache);
             $row['workspace'] = $i->workspace?->name;
             $row['batch_id'] = $i->batch_id;
             $row['published_at'] = $group->pluck('published_at')->filter()->sort()->first()?->toIso8601String();
@@ -80,10 +84,7 @@ class ReviewPageController extends Controller
             'tab' => $tab,
             'items' => $rows,
             'batch' => $batch ? ['id' => $batch->id, 'title' => $batch->title ?: 'Batch '.$batch->engine_batch_id] : null,
-            'counts' => [
-                'review' => $mine()->whereIn('review_status', [ReviewStatus::InReview->value, ReviewStatus::ChangesRequested->value])->count(),
-                'published' => $base()->whereIn('workspace_id', self::visibleWorkspaceIds($user))->where('review_status', ReviewStatus::Published->value)->count(),
-            ],
+            'counts' => collect($statuses)->map(fn (array $st, string $t): int => $scope($t)->whereIn('review_status', $st)->count())->all(),
             'reconnect' => ReconnectReminders::forUser($user),
             'composer' => ReviewGate::composerWaiting($user),
         ]);

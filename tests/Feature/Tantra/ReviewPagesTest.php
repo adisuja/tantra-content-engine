@@ -131,6 +131,30 @@ it('lists published posts with their link on the Published tab', function () {
             ->where('counts.review', 0));
 });
 
+it('moves an approved post from Review to Scheduled', function () {
+    $item = ReviewItem::query()->where('engine_post_id', 'A1')->sole();
+    ReviewActions::signOff($this->owner, $item, 0);
+    ReviewActions::approve($this->owner, $item->refresh());
+
+    $this->actingAs($this->owner)->get(route('tantra.review.index'))
+        ->assertInertia(fn (Assert $page) => $page->has('items', 0)->where('counts.review', 0)->where('counts.scheduled', 1));
+
+    $this->actingAs($this->owner)->get(route('tantra.review.index', ['tab' => 'scheduled']))
+        ->assertInertia(fn (Assert $page) => $page->where('tab', 'scheduled')->where('items.0.engine_post_id', 'A1')->where('items.0.review_status', 'scheduled'));
+});
+
+it('says how each team comment goes out, and why one cannot yet', function () {
+    config(['tantra.boost.enabled' => true, 'tantra.unipile.dsn' => 'https://unipile.test/v2', 'tantra.unipile.key' => 'k']);
+
+    $this->actingAs($this->owner)->get(route('tantra.review.index'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('items.0.delivery.post.via', 'trypost')
+            ->where('items.0.delivery.entries.0.by', 'aquila')
+            ->where('items.0.delivery.entries.0.via', 'unipile')
+            ->where('items.0.delivery.entries.0.state', 'blocked')
+            ->where('items.0.delivery.entries.0.reason', 'no Engine login for aquila yet'));
+});
+
 it('lands people in a Tantra workspace on Review the first time they open the calendar', function () {
     $this->owner->update(['current_workspace_id' => $this->adi->id]);
 

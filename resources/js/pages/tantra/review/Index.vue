@@ -1,18 +1,23 @@
 <script setup lang="ts">
-// tantra: the one review screen (PRD 10.2, redesigned 2026-11-12). People land
-// here. "To review" shows each post as its phone preview with Approve and
-// schedule, or feedback for the next round of the content engine; "Published"
-// shows what went out. Nothing else to learn.
+// tantra: the one review screen (PRD 10.2, 2026-11-12). One post at a time,
+// as its phone preview, with an arrow on each side (or a swipe) to move to the
+// previous or next post. Three tabs: Review, Scheduled and Published.
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { useEcho } from '@laravel/echo-vue';
-import { IconPlugConnectedX } from '@tabler/icons-vue';
+import {
+    IconChevronLeft,
+    IconChevronRight,
+    IconPlugConnectedX,
+} from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
-import { computed } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import ReviewCard from '@/components/tantra/review/ReviewCard.vue';
 import type { ReviewItemRow } from '@/components/tantra/review/types';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/AppLayout.vue';
+
+type Tab = 'review' | 'scheduled' | 'published';
 
 type Reconnect = {
     id: string;
@@ -29,13 +34,15 @@ type ComposerWaiting = {
 };
 
 const props = defineProps<{
-    tab: 'review' | 'published';
+    tab: Tab;
     items: ReviewItemRow[];
     batch: { id: string; title: string } | null;
-    counts: { review: number; published: number };
+    counts: Record<Tab, number>;
     reconnect: Reconnect[];
     composer: ComposerWaiting[];
 }>();
+
+const TABS: Tab[] = ['review', 'scheduled', 'published'];
 
 const page = usePage();
 const viewer = computed(() => {
@@ -48,6 +55,71 @@ const viewer = computed(() => {
 const me = computed(
     () => (page.props.auth?.user as { id?: string } | undefined)?.id,
 );
+
+/* One post at a time. The post's id sits in the address (#EA1) so a refresh
+   or a shared link opens the same post. */
+const startAt = (): number => {
+    const id = window.location.hash.slice(1);
+    const found = props.items.findIndex((i) => i.engine_post_id === id);
+
+    return found >= 0 ? found : 0;
+};
+const index = ref(startAt());
+const current = computed<ReviewItemRow | null>(
+    () => props.items[index.value] ?? null,
+);
+
+watch(
+    () => props.items,
+    (items) => {
+        // After an approval or a revision the post leaves this tab: stay at the
+        // same place, which is now the next post.
+        if (index.value > items.length - 1) {
+            index.value = Math.max(0, items.length - 1);
+        }
+    },
+);
+watch(current, (item) => {
+    if (item) {
+        history.replaceState(history.state, '', `#${item.engine_post_id}`);
+    }
+});
+
+const go = (step: number): void => {
+    const next = index.value + step;
+    if (next >= 0 && next < props.items.length) {
+        index.value = next;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+};
+
+const onKey = (e: KeyboardEvent): void => {
+    const target = e.target as HTMLElement | null;
+    if (target && ['TEXTAREA', 'INPUT', 'SELECT'].includes(target.tagName)) {
+        return;
+    }
+    if (e.key === 'ArrowLeft') go(-1);
+    if (e.key === 'ArrowRight') go(1);
+};
+
+let touchX: number | null = null;
+let touchY = 0;
+const onTouchStart = (e: TouchEvent): void => {
+    touchX = e.touches[0].clientX;
+    touchY = e.touches[0].clientY;
+};
+const onTouchEnd = (e: TouchEvent): void => {
+    if (touchX === null) return;
+    const dx = e.changedTouches[0].clientX - touchX;
+    const dy = e.changedTouches[0].clientY - touchY;
+    touchX = null;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        go(dx < 0 ? 1 : -1);
+    }
+};
+
+onMounted(() => window.addEventListener('keydown', onKey));
+onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
 
 const showWorkspace = computed(
     () => new Set(props.items.map((i) => i.workspace)).size > 1,
@@ -70,9 +142,9 @@ for (const batchId of new Set(
     );
 }
 
-const tabHref = (tab: 'review' | 'published'): string => {
+const tabHref = (tab: Tab): string => {
     const query = new URLSearchParams();
-    if (tab === 'published') query.set('tab', 'published');
+    if (tab !== 'review') query.set('tab', tab);
     if (props.batch) query.set('batch', props.batch.id);
     const q = query.toString();
 
@@ -102,17 +174,17 @@ const reconnectLine = (r: Reconnect): string => {
     <AppLayout full-width>
         <Head :title="$t('tantra.review.title')" />
         <div
-            class="mx-auto flex min-h-full w-full max-w-4xl min-w-0 flex-col gap-6 px-4 pt-6 pb-16 md:px-8"
+            class="mx-auto flex min-h-full w-full max-w-5xl min-w-0 flex-col gap-4 px-3 pt-4 pb-12 md:px-8 md:pt-6"
         >
             <nav
                 class="flex items-center gap-1 self-center rounded-full border border-border bg-card p-1"
                 :aria-label="$t('tantra.review.title')"
             >
                 <Link
-                    v-for="t in ['review', 'published'] as const"
+                    v-for="t in TABS"
                     :key="t"
                     :href="tabHref(t)"
-                    class="rounded-full px-4 py-1.5 text-sm font-medium transition"
+                    class="rounded-full px-3 py-1.5 text-sm font-medium transition sm:px-4"
                     :class="
                         tab === t
                             ? 'bg-foreground text-background'
@@ -134,9 +206,9 @@ const reconnectLine = (r: Reconnect): string => {
                 }}
                 <Link
                     :href="
-                        tab === 'published'
-                            ? '/tantra/review?tab=published'
-                            : '/tantra/review'
+                        tab === 'review'
+                            ? '/tantra/review'
+                            : `/tantra/review?tab=${tab}`
                     "
                     class="underline"
                     >{{ $t('tantra.review.feed.show_all') }}</Link
@@ -183,7 +255,7 @@ const reconnectLine = (r: Reconnect): string => {
             </section>
 
             <div
-                v-if="!items.length"
+                v-if="!current"
                 class="rounded-xl border border-dashed border-border p-10 text-center"
             >
                 <div class="font-medium">
@@ -194,15 +266,66 @@ const reconnectLine = (r: Reconnect): string => {
                 </div>
             </div>
 
-            <ReviewCard
-                v-for="item in items"
-                :key="item.id"
-                :item="item"
-                :viewer="viewer"
-                :mode="tab"
-                :show-workspace="showWorkspace"
-                @changed="reload"
-            />
+            <template v-else>
+                <div
+                    class="text-center text-xs text-muted-foreground"
+                    data-testid="tantra-position"
+                >
+                    {{
+                        $t('tantra.review.feed.position', {
+                            n: String(index + 1),
+                            total: String(items.length),
+                        })
+                    }}
+                </div>
+
+                <div
+                    class="relative flex items-start justify-center gap-2 md:gap-4"
+                    @touchstart.passive="onTouchStart"
+                    @touchend.passive="onTouchEnd"
+                >
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        class="sticky top-1/2 z-10 mt-[40vh] size-10 shrink-0 rounded-full max-sm:absolute max-sm:top-[38vh] max-sm:left-0 max-sm:mt-0 max-sm:bg-background/90 max-sm:shadow"
+                        :disabled="index === 0"
+                        :aria-label="$t('tantra.review.feed.previous')"
+                        data-testid="tantra-prev"
+                        @click="go(-1)"
+                    >
+                        <IconChevronLeft class="size-5" />
+                    </Button>
+
+                    <Transition
+                        mode="out-in"
+                        enter-active-class="transition duration-150 ease-out"
+                        enter-from-class="opacity-0 translate-y-1"
+                        leave-active-class="transition duration-100 ease-in"
+                        leave-to-class="opacity-0"
+                    >
+                        <ReviewCard
+                            :key="current.id"
+                            :item="current"
+                            :viewer="viewer"
+                            :mode="tab"
+                            :show-workspace="showWorkspace"
+                            @changed="reload"
+                        />
+                    </Transition>
+
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        class="sticky top-1/2 z-10 mt-[40vh] size-10 shrink-0 rounded-full max-sm:absolute max-sm:top-[38vh] max-sm:right-0 max-sm:mt-0 max-sm:bg-background/90 max-sm:shadow"
+                        :disabled="index >= items.length - 1"
+                        :aria-label="$t('tantra.review.feed.next')"
+                        data-testid="tantra-next"
+                        @click="go(1)"
+                    >
+                        <IconChevronRight class="size-5" />
+                    </Button>
+                </div>
+            </template>
         </div>
     </AppLayout>
 </template>

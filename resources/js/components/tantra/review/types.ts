@@ -115,6 +115,7 @@ export interface ReviewItemRow {
     batch_id?: string;
     workspace?: string | null;
     published_at?: string | null;
+    delivery?: Delivery;
     metrics?: {
         impressions: number | null;
         reactions: number | null;
@@ -122,4 +123,36 @@ export interface ReviewItemRow {
         shares: number | null;
         clicks: number | null;
     } | null;
+}
+
+/** How each part of a post goes out (App\Tantra\Boost\ThreadDelivery). */
+export interface DeliveryEntry {
+    index: number;
+    kind: 'comment' | 'reply';
+    reply_to: number | null;
+    by: string;
+    poster: string;
+    via: 'unipile' | 'zernio';
+    state:
+        | 'ready'
+        | 'blocked'
+        | 'off'
+        | 'removed'
+        | 'queued'
+        | 'posted'
+        | 'failed'
+        | 'skipped';
+    reason: string | null;
+    posted_at: string | null;
+}
+
+export interface Delivery {
+    post: {
+        via: 'trypost' | 'zernio' | 'by_hand';
+        account: string | null;
+        state: 'ready' | 'blocked';
+        reason: string | null;
+        first_comment: boolean;
+    };
+    entries: DeliveryEntry[];
 }

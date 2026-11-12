@@ -123,29 +123,67 @@ function postText(p: ReviewItemRow): string {
 }
 
 function commentHtml(p: ReviewItemRow, pr: ReviewProfile): string {
-    if (!p.first_comment) {
+    const tc = p.team_comments.filter((c) => !c.excluded);
+    if (!p.first_comment && !tc.length) {
         return '';
     }
-    const txt = rich(p.first_comment, 'li-link', p.mentions).replace(
-        /\n/g,
-        '<br>',
+
+    const bubble = (
+        who: AvatarSource & { headline?: string },
+        isAuthor: boolean,
+        text: string,
+        reply: boolean,
+    ): string =>
+        `<div class="li-cm${reply ? ' li-rep' : ''}">${avatar(who, reply ? 24 : 32)}<div class="li-cm-b"><div class="li-cm-bubble"><div class="li-cm-n">${esc(who.name || '')}${isAuthor ? ' <span class="li-auth">Author</span>' : ' <span class="li-deg">· 1st</span>'}</div><div class="li-cm-h">${esc(who.headline || '')}</div><div class="li-cm-t">${rich(text, 'li-link', p.mentions).replace(/\n/g, '<br>')}</div></div><div class="li-cm-a">Like · Reply</div></div></div>`;
+
+    const person = (c: TeamComment): AvatarSource & { headline?: string } =>
+        c.by === p.author_key
+            ? {
+                  name: pr.name,
+                  avatar: pr.avatar,
+                  kind: pr.kind,
+                  headline: pr.headline,
+              }
+            : {
+                  name: c.name || c.by,
+                  avatar: c.avatar ?? null,
+                  kind: 'person',
+                  headline: c.headline,
+              };
+
+    // Each team comment, then the replies in its thread (the author answers every one, RULES 0c).
+    const tops = tc.filter(
+        (c) => c.reply_to === null || c.reply_to === undefined,
     );
-    const tc = p.team_comments.filter((c) => !c.excluded);
-    const shown = tc.slice(0, 3);
-    const one = (c: TeamComment): string => {
-        const rep = c.reply_to !== null && c.reply_to !== undefined;
-        const cp = {
-            name: c.name || c.by,
-            avatar: c.avatar ?? null,
-            kind: 'person',
-        };
+    const thread = tops
+        .map((c) => {
+            const replies = tc.filter((r) => r.reply_to === c.index);
 
-        const isA = c.by === p.author_key;
+            return (
+                bubble(person(c), c.by === p.author_key, c.text, false) +
+                replies
+                    .map((r) =>
+                        bubble(person(r), r.by === p.author_key, r.text, true),
+                    )
+                    .join('')
+            );
+        })
+        .join('');
+    const first = p.first_comment
+        ? bubble(
+              {
+                  name: pr.name,
+                  avatar: pr.avatar,
+                  kind: pr.kind,
+                  headline: pr.headline,
+              },
+              true,
+              p.first_comment,
+              false,
+          )
+        : '';
 
-        return `<div class="li-cm${rep ? ' li-rep' : ''}">${avatar(cp, rep ? 24 : 32)}<div class="li-cm-b"><div class="li-cm-bubble"><div class="li-cm-n">${esc(cp.name)}${isA ? ' <span class="li-auth">Author</span>' : ' <span class="li-deg">· 1st</span>'}</div><div class="li-cm-h">${esc(c.headline || '')}</div><div class="li-cm-t">${rich(c.text, 'li-link', p.mentions).replace(/\n/g, '<br>')}</div></div><div class="li-cm-a">Like · Reply</div></div></div>`;
-    };
-
-    return `<div class="li-cmts"><div class="li-cm-sort">Most relevant ▾</div><div class="li-cm">${avatar(pr, 32)}<div class="li-cm-b"><div class="li-cm-bubble"><div class="li-cm-n">${esc(pr.name)} <span class="li-auth">Author</span></div><div class="li-cm-h">${esc(pr.headline || '')}</div><div class="li-cm-t">${txt}</div></div><div class="li-cm-a">Like · Reply</div></div></div>${shown.map(one).join('')}${tc.length > shown.length ? `<div class="li-cm-more">Load more comments (${tc.length - shown.length})</div>` : ''}</div>`;
+    return `<div class="li-cmts"><div class="li-cm-sort">Most relevant ▾</div>${first}${thread}</div>`;
 }
 
 export function linkedinScreen(p: ReviewItemRow, viewer: AvatarSource): string {

@@ -172,3 +172,26 @@ it('lets only the review owner edit the thread, without dashes', function () {
 
     expect($this->item->refresh()->thread()[0]['text'])->toBe('Adi comment.');
 });
+
+it('shows on the review screen exactly what the boost will do, before and after go-live', function () {
+    Http::fake([
+        'unipile.test/v2/acc_adi/posts/*/comments' => Http::response(['id' => 'cmt_1'], 201),
+        'unipile.test/v2/*/posts/*' => Http::response(['id' => 'soc_1']),
+    ]);
+
+    $before = collect(App\Tantra\Boost\ThreadDelivery::for($this->item, $this->post, null)['entries'])->keyBy('index');
+    expect($before[0]['state'])->toBe('ready')->and($before[0]['via'])->toBe('unipile')
+        ->and($before[1]['state'])->toBe('blocked')->and($before[1]['reason'])->toBe('no consent to post in their name')
+        ->and($before[2]['kind'])->toBe('reply')->and($before[2]['state'])->toBe('ready')
+        ->and($before[3]['state'])->toBe('blocked')->and($before[3]['reason'])->toBe('its comment cannot be posted');
+
+    $run = BoostRun::query()->create(['post_id' => $this->post->id, 'review_item_id' => $this->item->id, 'status' => 'running']);
+    (new BoostPlanner(fn (int $min, int $max): int => $min))->plan($run, CarbonImmutable::now());
+    $comment = BoostAction::query()->where('kind', 'comment')->where('profile_key', 'adi')->sole();
+    (new RunBoostAction($comment->id))->handle(app(App\Tantra\Unipile\UnipileClient::class));
+
+    $after = collect(App\Tantra\Boost\ThreadDelivery::for($this->item, $this->post, null)['entries'])->keyBy('index');
+    expect($after[0]['state'])->toBe('posted')
+        ->and($after[1]['state'])->toBe('skipped')
+        ->and($after[2]['state'])->toBe('queued');
+});

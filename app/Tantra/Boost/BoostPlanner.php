@@ -7,7 +7,6 @@ namespace App\Tantra\Boost;
 use App\Enums\SocialAccount\Platform;
 use App\Models\User;
 use App\Tantra\Review\Models\WorkspaceSettings;
-use App\Tantra\Zernio\ZernioClient;
 use Carbon\CarbonImmutable;
 use Closure;
 
@@ -99,39 +98,13 @@ final class BoostPlanner
     }
 
     /**
-     * profile key => user and blocker, through the workspace mapped to that
-     * profile and its named review owner.
-     *
      * @param  list<string>  $keys
      * @return array<string, array{user: ?User, profile: ?MemberProfile, blocker: ?string, via?: string}>
      */
     private function people(string $accountId, array $keys, ?string $pageKey = null): array
     {
-        $out = [];
-        foreach ($keys as $key) {
-            if ($pageKey !== null && $key === $pageKey) {
-                $out[$key] = ['user' => null, 'profile' => null, 'via' => 'zernio', 'blocker' => ZernioClient::configured() ? null : 'Zernio is not set up'];
-
-                continue;
-            }
-
-            $settings = WorkspaceSettings::query()->where('brand_profile_key', $key)
-                ->whereHas('workspace', fn ($q) => $q->where('account_id', $accountId))->first();
-            $user = $settings?->review_owner_user_id ? User::query()->find($settings->review_owner_user_id) : null;
-            $profile = $user ? MemberProfile::query()->find($user->id) : null;
-
-            $out[$key] = [
-                'user' => $user,
-                'profile' => $profile,
-                'blocker' => match (true) {
-                    $user === null => "no Engine user for profile {$key}",
-                    $profile === null => 'no confirmed Unipile account',
-                    default => $profile->blocker(),
-                },
-            ];
-        }
-
-        return $out;
+        // The same rules the review screen shows (ThreadDelivery).
+        return ThreadDelivery::people($accountId, $keys, $pageKey);
     }
 
     /**

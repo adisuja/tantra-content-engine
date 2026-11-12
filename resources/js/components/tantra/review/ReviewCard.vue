@@ -1,8 +1,9 @@
 <script setup lang="ts">
 // tantra: one post on the review screen (PRD 10.2, 2026-11-12): the full phone
-// preview as the network will show it, and next to it only what the reviewer
-// needs: Approve and schedule, or feedback for the next round of the content
-// engine. Published posts show their link, numbers and the DMs to send.
+// preview, and beside it only Approve and schedule and a feedback box with
+// Revise. Under the buttons, folded away, how every part of the post goes out:
+// the post and first comment through its channel, each team comment from that
+// teammate's Unipile account, each reply from the author (or the page).
 import { IconDownload, IconExternalLink } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
@@ -12,7 +13,10 @@ import PhonePreview from '@/components/tantra/review/PhonePreview.vue';
 import { previewFor } from '@/components/tantra/review/platforms';
 import type { ReviewAction } from '@/components/tantra/review/reviewApi';
 import { sendReviewAction } from '@/components/tantra/review/reviewApi';
-import type { ReviewItemRow } from '@/components/tantra/review/types';
+import type {
+    DeliveryEntry,
+    ReviewItemRow,
+} from '@/components/tantra/review/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -20,20 +24,17 @@ import { Textarea } from '@/components/ui/textarea';
 const props = defineProps<{
     item: ReviewItemRow;
     viewer: { name?: string; avatar?: string | null };
-    mode: 'review' | 'published';
+    mode: 'review' | 'scheduled' | 'published';
     showWorkspace?: boolean;
 }>();
 const emit = defineEmits<{ changed: [] }>();
 
 const busy = ref(false);
-const feedbackOpen = ref(false);
 const note = ref('');
 
 const platform = computed(() => previewFor(props.item));
-const status = computed(() => props.item.review_status);
-const waiting = computed(() => status.value === 'in_review');
-const scheduled = computed(
-    () => status.value === 'approved' || status.value === 'scheduled',
+const revising = computed(
+    () => props.item.review_status === 'changes_requested',
 );
 const openNumbers = computed(() =>
     props.item.numbers_for_signoff.filter((n) => !n.signed_at),
@@ -90,10 +91,9 @@ const approve = (): Promise<boolean> => run('approve');
 const undo = (): Promise<boolean> => run('unapprove');
 const confirmNumber = (index: number): Promise<boolean> =>
     run('sign-off', { index });
-const sendFeedback = async (): Promise<void> => {
+const revise = async (): Promise<void> => {
     if (await run('request-changes', { note: note.value })) {
         note.value = '';
-        feedbackOpen.value = false;
     }
 };
 const markDm = (id: string, sent: boolean): Promise<boolean> =>
@@ -103,12 +103,43 @@ const metric = (v: number | null | undefined): string =>
     v === null || v === undefined
         ? trans('tantra.review.feed.not_available')
         : v.toLocaleString();
+
+/* How it goes out */
+const delivery = computed(() => props.item.delivery ?? null);
+const textOf = (index: number): string =>
+    props.item.team_comments.find((c) => c.index === index)?.text ?? '';
+const tops = computed(
+    () => delivery.value?.entries.filter((e) => e.kind === 'comment') ?? [],
+);
+const repliesTo = (index: number): DeliveryEntry[] =>
+    delivery.value?.entries.filter((e) => e.reply_to === index) ?? [];
+const counts = computed(() => {
+    const all = delivery.value?.entries ?? [];
+    const good = ['ready', 'queued', 'posted'];
+
+    return {
+        comments: tops.value.length,
+        replies: all.filter((e) => e.kind === 'reply').length,
+        held: all.filter(
+            (e) => !good.includes(e.state) && e.state !== 'removed',
+        ).length,
+    };
+});
+const stateClass: Record<DeliveryEntry['state'], string> = {
+    ready: 'text-emerald-700 dark:text-emerald-400',
+    queued: 'text-emerald-700 dark:text-emerald-400',
+    posted: 'text-emerald-700 dark:text-emerald-400',
+    blocked: 'text-amber-700 dark:text-amber-400',
+    off: 'text-muted-foreground',
+    removed: 'text-muted-foreground line-through',
+    failed: 'text-red-700 dark:text-red-400',
+    skipped: 'text-amber-700 dark:text-amber-400',
+};
 </script>
 
 <template>
     <article
-        :id="item.engine_post_id"
-        class="flex scroll-mt-6 flex-col items-center gap-5 lg:flex-row lg:items-start lg:justify-center"
+        class="flex w-full flex-col items-center gap-5 lg:flex-row lg:items-start lg:justify-center"
         :data-testid="`tantra-card-${item.engine_post_id}`"
     >
         <div class="w-full max-w-[372px] shrink-0">
@@ -116,12 +147,18 @@ const metric = (v: number | null | undefined): string =>
         </div>
 
         <aside
-            class="flex w-full max-w-[372px] flex-col gap-4 rounded-xl border border-border bg-card p-4 text-sm lg:sticky lg:top-6 lg:max-w-sm"
+            class="flex w-full max-w-[372px] flex-col gap-4 text-sm lg:max-w-sm"
         >
             <div class="flex flex-col gap-1">
                 <div class="flex flex-wrap items-center gap-2">
                     <b class="text-base">{{ item.profile.name }}</b>
                     <Badge variant="outline">{{ platform.label }}</Badge>
+                    <Badge
+                        v-if="mode === 'review' && revising"
+                        class="bg-amber-100 text-amber-900 dark:bg-amber-900/50 dark:text-amber-100"
+                        data-testid="tantra-revision-pending"
+                        >{{ $t('tantra.review.feed.revision_pending') }}</Badge
+                    >
                 </div>
                 <div class="text-muted-foreground">
                     {{
@@ -132,33 +169,20 @@ const metric = (v: number | null | undefined): string =>
                 </div>
             </div>
 
-            <!-- To review -->
+            <!-- Review: Approve and schedule, or feedback and Revise -->
             <template v-if="mode === 'review'">
                 <div
-                    v-if="scheduled"
-                    class="rounded-lg bg-emerald-50 p-3 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-100"
-                >
-                    {{
-                        item.assisted_manual
-                            ? $t('tantra.review.feed.approved_manual')
-                            : $t('tantra.review.feed.scheduled_for', {
-                                  when:
-                                      when(item.scheduled_at) || planned || '',
-                              })
-                    }}
-                </div>
-                <div
-                    v-else-if="status === 'changes_requested'"
+                    v-if="revising && lastFeedback"
                     class="rounded-lg bg-amber-50 p-3 text-amber-950 dark:bg-amber-950/40 dark:text-amber-100"
                 >
-                    <div>{{ $t('tantra.review.feed.feedback_sent') }}</div>
-                    <div v-if="lastFeedback" class="mt-1 italic opacity-80">
+                    <div>{{ $t('tantra.review.feed.reworking') }}</div>
+                    <div class="mt-1 italic opacity-80">
                         “{{ lastFeedback }}”
                     </div>
                 </div>
 
                 <div
-                    v-if="item.can_review && openNumbers.length && !scheduled"
+                    v-if="item.can_review && openNumbers.length"
                     class="flex flex-col gap-2"
                 >
                     <div class="font-medium">
@@ -185,79 +209,67 @@ const metric = (v: number | null | undefined): string =>
                 </div>
 
                 <template v-if="item.can_review">
-                    <div v-if="!scheduled" class="flex flex-col gap-2">
-                        <Button
-                            size="lg"
-                            class="w-full"
-                            :disabled="busy"
-                            data-testid="tantra-approve"
-                            @click="approve"
-                        >
-                            {{
-                                item.assisted_manual
-                                    ? $t('tantra.review.feed.approve_manual')
-                                    : $t('tantra.review.feed.approve')
-                            }}
-                        </Button>
-                        <Button
-                            v-if="!feedbackOpen"
-                            variant="outline"
-                            class="w-full"
-                            :disabled="busy"
-                            @click="feedbackOpen = true"
-                        >
-                            {{
-                                waiting
-                                    ? $t('tantra.review.feed.give_feedback')
-                                    : $t('tantra.review.feed.more_feedback')
-                            }}
-                        </Button>
-                        <div v-else class="flex flex-col gap-2">
-                            <Textarea
-                                v-model="note"
-                                rows="4"
-                                :placeholder="
-                                    $t(
-                                        'tantra.review.feed.feedback_placeholder',
-                                    )
-                                "
-                                data-testid="tantra-feedback"
-                            />
-                            <div class="text-xs text-muted-foreground">
-                                {{ $t('tantra.review.feed.feedback_help') }}
-                            </div>
-                            <div class="flex gap-2">
-                                <Button
-                                    class="flex-1"
-                                    :disabled="busy || !note.trim()"
-                                    @click="sendFeedback"
-                                    >{{
-                                        $t('tantra.review.feed.send_feedback')
-                                    }}</Button
-                                >
-                                <Button
-                                    variant="ghost"
-                                    :disabled="busy"
-                                    @click="feedbackOpen = false"
-                                    >{{
-                                        $t('tantra.review.feed.cancel')
-                                    }}</Button
-                                >
-                            </div>
-                        </div>
-                    </div>
                     <Button
-                        v-else
-                        variant="outline"
+                        size="lg"
                         class="w-full"
                         :disabled="busy"
-                        @click="undo"
-                        >{{ $t('tantra.review.feed.undo') }}</Button
+                        data-testid="tantra-approve"
+                        @click="approve"
                     >
+                        {{
+                            item.assisted_manual
+                                ? $t('tantra.review.feed.approve_manual')
+                                : $t('tantra.review.feed.approve')
+                        }}
+                    </Button>
+                    <div class="flex flex-col gap-2">
+                        <Textarea
+                            v-model="note"
+                            rows="4"
+                            :placeholder="
+                                $t('tantra.review.feed.feedback_placeholder')
+                            "
+                            data-testid="tantra-feedback"
+                        />
+                        <Button
+                            variant="outline"
+                            class="w-full"
+                            :disabled="busy || !note.trim()"
+                            data-testid="tantra-revise"
+                            @click="revise"
+                            >{{ $t('tantra.review.feed.revise') }}</Button
+                        >
+                        <div class="text-xs text-muted-foreground">
+                            {{ $t('tantra.review.feed.feedback_help') }}
+                        </div>
+                    </div>
                 </template>
                 <div v-else class="text-muted-foreground">
                     {{ $t('tantra.review.feed.not_yours') }}
                 </div>
+            </template>
+
+            <!-- Scheduled -->
+            <template v-else-if="mode === 'scheduled'">
+                <div
+                    class="rounded-lg bg-emerald-50 p-3 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-100"
+                >
+                    {{
+                        item.assisted_manual
+                            ? $t('tantra.review.feed.approved_manual')
+                            : $t('tantra.review.feed.scheduled_for', {
+                                  when: when(item.scheduled_at) || planned,
+                              })
+                    }}
+                </div>
+                <Button
+                    v-if="item.can_review"
+                    variant="outline"
+                    class="w-full"
+                    :disabled="busy"
+                    @click="undo"
+                    >{{ $t('tantra.review.feed.undo') }}</Button
+                >
             </template>
 
             <!-- Published -->
@@ -282,28 +294,19 @@ const metric = (v: number | null | undefined): string =>
                     >
                 </div>
                 <dl class="grid grid-cols-3 gap-2 text-center">
-                    <div>
+                    <div
+                        v-for="m in [
+                            'reactions',
+                            'comments',
+                            'impressions',
+                        ] as const"
+                        :key="m"
+                    >
                         <dt class="text-xs text-muted-foreground">
-                            {{ $t('tantra.review.feed.reactions') }}
+                            {{ $t(`tantra.review.feed.${m}`) }}
                         </dt>
                         <dd class="font-medium">
-                            {{ metric(item.metrics?.reactions) }}
-                        </dd>
-                    </div>
-                    <div>
-                        <dt class="text-xs text-muted-foreground">
-                            {{ $t('tantra.review.feed.comments') }}
-                        </dt>
-                        <dd class="font-medium">
-                            {{ metric(item.metrics?.comments) }}
-                        </dd>
-                    </div>
-                    <div>
-                        <dt class="text-xs text-muted-foreground">
-                            {{ $t('tantra.review.feed.impressions') }}
-                        </dt>
-                        <dd class="font-medium">
-                            {{ metric(item.metrics?.impressions) }}
+                            {{ metric(item.metrics?.[m]) }}
                         </dd>
                     </div>
                 </dl>
@@ -343,6 +346,110 @@ const metric = (v: number | null | undefined): string =>
                     </label>
                 </div>
             </template>
+
+            <!-- How each part goes out, the same rules the Engine uses at go-live -->
+            <details
+                v-if="delivery"
+                class="rounded-lg border border-border p-3"
+                data-testid="tantra-delivery"
+            >
+                <summary class="cursor-pointer font-medium">
+                    {{
+                        $t('tantra.review.feed.delivery_title', {
+                            comments: String(counts.comments),
+                            replies: String(counts.replies),
+                        })
+                    }}
+                    <span
+                        v-if="counts.held"
+                        class="ml-1 text-amber-700 dark:text-amber-400"
+                        >·
+                        {{
+                            $t('tantra.review.feed.delivery_held', {
+                                count: String(counts.held),
+                            })
+                        }}</span
+                    >
+                </summary>
+                <div class="mt-3 flex flex-col gap-3">
+                    <div>
+                        <div>
+                            {{
+                                $t(
+                                    `tantra.review.feed.post_via.${delivery.post.via}`,
+                                    { account: delivery.post.account ?? '' },
+                                )
+                            }}
+                        </div>
+                        <div
+                            v-if="delivery.post.reason"
+                            class="text-xs text-amber-700 dark:text-amber-400"
+                        >
+                            {{ delivery.post.reason }}
+                        </div>
+                    </div>
+                    <div
+                        v-for="c in tops"
+                        :key="c.index"
+                        class="flex flex-col gap-1"
+                    >
+                        <div>
+                            <b>{{ c.poster }}</b>
+                            <span class="text-muted-foreground">
+                                {{
+                                    $t(
+                                        `tantra.review.feed.via.${c.via}_comment`,
+                                    )
+                                }}</span
+                            >
+                            ·
+                            <span :class="stateClass[c.state]">{{
+                                $t(`tantra.review.feed.state.${c.state}`)
+                            }}</span>
+                        </div>
+                        <div class="line-clamp-2 text-xs text-muted-foreground">
+                            {{ textOf(c.index) }}
+                        </div>
+                        <div
+                            v-if="c.reason"
+                            class="text-xs text-amber-700 dark:text-amber-400"
+                        >
+                            {{ c.reason }}
+                        </div>
+                        <div
+                            v-for="r in repliesTo(c.index)"
+                            :key="r.index"
+                            class="ml-4 flex flex-col gap-1 border-l border-border pl-3"
+                        >
+                            <div>
+                                <b>{{ r.poster }}</b>
+                                <span class="text-muted-foreground">
+                                    {{
+                                        $t(
+                                            `tantra.review.feed.via.${r.via}_reply`,
+                                        )
+                                    }}</span
+                                >
+                                ·
+                                <span :class="stateClass[r.state]">{{
+                                    $t(`tantra.review.feed.state.${r.state}`)
+                                }}</span>
+                            </div>
+                            <div
+                                class="line-clamp-2 text-xs text-muted-foreground"
+                            >
+                                {{ textOf(r.index) }}
+                            </div>
+                            <div
+                                v-if="r.reason"
+                                class="text-xs text-amber-700 dark:text-amber-400"
+                            >
+                                {{ r.reason }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </details>
 
             <a
                 v-if="item.media.download"
