@@ -227,8 +227,8 @@ test('the batch path rejects 25 replies through api and mcp', function () {
 });
 
 test('scheduling replies on a network that cannot chain is rejected through api and mcp', function () {
-    $account = threadsParityPlatform(Platform::Threads);
-    $destination = ['social_account_id' => $account->id, 'content_type' => ContentType::ThreadsPost->value, 'meta' => ['thread_replies' => ['Two']]];
+    $account = threadsParityPlatform(Platform::Telegram);
+    $destination = ['social_account_id' => $account->id, 'content_type' => ContentType::TelegramPost->value, 'meta' => ['thread_replies' => ['Two']]];
     $message = __('posts.form.thread.unsupported');
 
     $response = $this->withHeaders(parityApi($this->token))->postJson(route('api.posts.batch.store'), [

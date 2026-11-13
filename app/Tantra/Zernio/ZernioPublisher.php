@@ -136,6 +136,8 @@ class ZernioPublisher
         $specific = array_filter([
             'firstComment' => ThreadReplies::of($post->meta)[0]['text'] ?? null,
             'organizationUrn' => data_get($account?->meta, 'organization_urn'),
+            // A text post with a link shows its card unless the card was turned off.
+            'disableLinkPreview' => $post->attachesLinkPreview() ? null : true,
         ], fn ($value): bool => filled($value));
 
         $media = $post->mediaItems->map(fn (MediaItem $item): array => [

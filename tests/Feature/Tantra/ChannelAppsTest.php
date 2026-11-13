@@ -148,10 +148,52 @@ it('keeps company pages off until Community Management is switched on', function
         ->and(Platform::LinkedInPage->isEnabled())->toBeFalse();
 
     $this->actingAs($this->owner)
-        ->putJson(route('tantra.connectors.channels.update', 'linkedin'), ['community_management' => true])
+        ->putJson(route('tantra.connectors.channels.update', 'linkedin_page'), ['community_management' => true])
         ->assertOk();
 
+    // No page keys yet: pages use the LinkedIn app's keys.
+    expect(Platform::LinkedInPage->isEnabled())->toBeTrue()
+        ->and(config('services.linkedin-page.client_id'))->toBe('li')
+        ->and(config('services.linkedin-page.client_secret'))->toBe('li-secret');
+});
+
+it('gives company pages their own LinkedIn app, used only for pages', function () {
+    $catalog = ChannelApps::catalog();
+
+    expect($catalog['linkedin']['networks'])->toHaveKeys([Platform::LinkedIn->value])->not->toHaveKey(Platform::LinkedInPage->value)
+        ->and($catalog['linkedin_page']['label'])->toBe('LinkedIn: company pages')
+        ->and($catalog['linkedin_page']['portal'])->toBe('https://www.linkedin.com/developers/apps')
+        ->and(array_keys($catalog['linkedin_page']['fields']))->toBe(['client_id', 'client_secret', 'community_management'])
+        ->and(array_keys($catalog['linkedin_page']['networks']))->toBe([Platform::LinkedInPage->value])
+        ->and(ChannelApps::appFor(Platform::LinkedInPage->value))->toBe('linkedin_page')
+        ->and(ChannelApps::appFor(Platform::LinkedIn->value))->toBe('linkedin');
+
+    $this->actingAs($this->owner)
+        ->putJson(route('tantra.connectors.channels.update', 'linkedin'), ['client_id' => 'li', 'client_secret' => 'li-secret'])
+        ->assertOk();
+    $this->actingAs($this->owner)
+        ->putJson(route('tantra.connectors.channels.update', 'linkedin_page'), ['client_id' => 'page-app', 'client_secret' => 'page-secret', 'community_management' => true])
+        ->assertOk();
+
+    expect(config('services.linkedin-page.client_id'))->toBe('page-app')
+        ->and(config('services.linkedin-page.client_secret'))->toBe('page-secret')
+        ->and(config('services.linkedin.client_id'))->toBe('li')
+        ->and(Platform::LinkedInPage->isEnabled())->toBeTrue();
+});
+
+it('still reads a Community Management switch saved on the LinkedIn app before pages had their own', function () {
+    ChannelApp::query()->create(['app' => 'linkedin', 'credentials' => ['client_id' => 'li', 'client_secret' => 's', 'community_management' => true]]);
+    ChannelApps::forget();
+    ChannelApps::apply();
+
     expect(Platform::LinkedInPage->isEnabled())->toBeTrue();
+});
+
+it('tells the owner the YouTube limits that remain for an unverified app', function () {
+    $catch = ChannelApps::catalog()['google_youtube']['catch'];
+
+    expect($catch)->toContain('100')->toContain('7 days')->toContain('2 November 2026')
+        ->not->toContain('—')->not->toContain('–');
 });
 
 it('shows the setup step owner flag only to the owner', function () {

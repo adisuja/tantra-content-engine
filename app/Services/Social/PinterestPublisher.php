@@ -15,6 +15,7 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
+use App\Tantra\Social\PinterestSections;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\File;
@@ -74,6 +75,13 @@ class PinterestPublisher
 
         if (filled(data_get($post->meta, 'link'))) {
             $payload['link'] = data_get($post->meta, 'link');
+        }
+
+        // tantra: the section of the board the pin goes into, only when it
+        // belongs to that board (a section left from another board is dropped).
+        $section = (string) data_get($post->meta, 'board_section_id', '');
+        if ($section !== '' && PinterestSections::belongs($post->socialAccount, (string) ($payload['board_id'] ?? ''), $section)) {
+            $payload['board_section_id'] = $section;
         }
 
         return $payload;

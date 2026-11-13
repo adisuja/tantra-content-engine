@@ -10,6 +10,7 @@ use App\Enums\YouTube\Category;
 use App\Support\Hashtags;
 use App\Support\Social\XPoll;
 use App\Tantra\Channels\ChannelApps;
+use App\Tantra\LinkedIn\LinkedInPoll;
 use Illuminate\Support\Str;
 
 enum Platform: string
@@ -163,7 +164,8 @@ enum Platform: string
     public function maxImages(): int
     {
         return match ($this) {
-            self::LinkedIn, self::LinkedInPage, self::ZernioLinkedInPage, self::UnipileLinkedIn => 10,
+            self::LinkedIn, self::LinkedInPage, self::ZernioLinkedInPage => 20, // tantra: LinkedIn takes up to 20 images
+            self::UnipileLinkedIn => 10,
             self::X => 4,
             self::TikTok => 0,
             self::YouTube => 0,
@@ -619,6 +621,10 @@ enum Platform: string
             ],
             self::X => [
                 'poll' => XPoll::limits(),
+                'quotesEnabled' => (bool) config('tantra.x.quotes_enabled', false), // tantra:
+            ],
+            self::LinkedIn, self::LinkedInPage => [
+                'linkedinPoll' => LinkedInPoll::limits(), // tantra:
             ],
             default => [],
         };

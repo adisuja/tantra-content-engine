@@ -57,7 +57,7 @@ test('content types say where thread replies are supported and how many', functi
     expect(contentTypesListingType($platforms, 'x', 'x_post'))
         ->toMatchArray(['supports_thread_replies' => true, 'max_thread_replies' => 24])
         ->and(contentTypesListingType($platforms, 'bluesky', 'bluesky_post')['supports_thread_replies'])->toBeTrue()
-        ->and(contentTypesListingType($platforms, 'instagram', 'instagram_feed'))
+        ->and(contentTypesListingType($platforms, 'pinterest', 'pinterest_pin')) // tantra: Instagram takes a first comment now
         ->toMatchArray(['supports_thread_replies' => false, 'max_thread_replies' => null]);
 });
 
