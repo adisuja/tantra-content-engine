@@ -79,14 +79,10 @@ export const useNetworkConnect = (
     const startConnect = (platform: string, reconnectId?: string) => {
         const entry = connectEntry(platform);
 
-        // tantra: no developer app keys yet, so explain what is missing.
+        // tantra: a network that cannot connect yet opens the logo grid,
+        // where it shows as "Coming soon" (Adi 2026-11-14).
         if (!isReady(entry)) {
-            dialog.showSetup(
-                entry === Platform.InstagramFacebook
-                    ? Platform.Instagram
-                    : entry,
-                false,
-            );
+            dialog.open();
             return;
         }
 
@@ -95,8 +91,9 @@ export const useNetworkConnect = (
             return;
         }
 
-        if (entry === Platform.Instagram && !reconnectId) {
-            dialog.openAt('instagram');
+        // A new connection starts on the network's panel in the dialog.
+        if (!reconnectId) {
+            dialog.showNetwork(platform, false);
             return;
         }
 

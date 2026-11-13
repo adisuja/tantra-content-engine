@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { router, usePage } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
+import { toast } from 'vue-sonner';
 
 import ConnectChannelFlow from '@/components/channels/ConnectChannelFlow.vue';
 import PostingGoalFlow from '@/components/channels/PostingGoalFlow.vue';
@@ -39,10 +40,23 @@ const { state, close, openGoal } = useConnectChannelDialog();
 
 const confirmingExit = ref(false);
 
-const inProgressNetwork = computed(() =>
-    state.value?.flow === 'connect'
-        ? IN_PROGRESS_NETWORKS[state.value.step]
-        : undefined,
+const inProgressNetwork = computed(() => {
+    if (state.value?.flow !== 'connect') return undefined;
+    // tantra: Telegram's panel waits for the bot command, like its old step.
+    if (state.value.step === 'network') {
+        return state.value.network === Platform.Telegram
+            ? Platform.Telegram
+            : undefined;
+    }
+
+    return IN_PROGRESS_NETWORKS[state.value.step];
+});
+
+// tantra: a small pop-up for one network's panel, a wide one for the grid.
+const compactPanel = computed(
+    () =>
+        state.value?.step === 'network' &&
+        state.value.network !== Platform.Telegram,
 );
 
 const networkName = ref('');
@@ -81,6 +95,7 @@ const openGoalForNewChannel = (result: ConnectResult | undefined): void => {
 };
 
 const handleConnected = (result: ConnectResult): void => {
+    toast.success('Channel connected.');
     router.reload();
     openGoalForNewChannel(result);
 };
@@ -99,7 +114,15 @@ const connectedChannel = computed(
             ?.connectedChannel,
 );
 
-watch(connectedChannel, openGoalForNewChannel, { immediate: true });
+watch(
+    connectedChannel,
+    (result) => {
+        // tantra: every finished connection says so (Adi 2026-11-14).
+        if (result) toast.success('Channel connected.');
+        openGoalForNewChannel(result);
+    },
+    { immediate: true },
+);
 
 const customize = (accountId: string): void => {
     close();
@@ -108,10 +131,7 @@ const customize = (accountId: string): void => {
 </script>
 
 <template>
-    <Dialog
-        :open="state !== null"
-        @update:open="requestClose"
-    >
+    <Dialog :open="state !== null" @update:open="requestClose">
         <DialogScrollContent
             v-if="state"
             :key="state.id"
@@ -120,12 +140,9 @@ const customize = (accountId: string): void => {
             :class="
                 state.flow === 'goal'
                     ? 'gap-0 overflow-hidden p-0 outline-none sm:max-w-[800px]'
-                    : [
-                          'flex flex-col gap-0 overflow-hidden px-0 pt-4 outline-none pb-0 max-sm:my-0 max-sm:h-dvh max-sm:max-w-full max-sm:rounded-none sm:my-6 sm:h-[min(700px,calc(100dvh-48px))] sm:max-w-[840px] sm:rounded-xl',
-                          state.step === 'grid' || state.step === 'details'
-                              ? 'bg-muted pt-0 sm:border-8 sm:border-card sm:bg-card dark:sm:border-8 dark:sm:border-background dark:sm:bg-background'
-                              : '',
-                      ]
+                    : compactPanel
+                      ? 'flex flex-col gap-0 overflow-hidden p-0 outline-none max-sm:my-0 max-sm:h-dvh max-sm:max-w-full max-sm:rounded-none sm:my-6 sm:max-w-[460px] sm:rounded-2xl'
+                      : 'flex flex-col gap-0 overflow-hidden p-0 outline-none max-sm:my-0 max-sm:h-dvh max-sm:max-w-full max-sm:rounded-none sm:my-6 sm:h-[min(720px,calc(100dvh-48px))] sm:max-w-[860px] sm:rounded-2xl'
             "
             data-testid="connect-channel-dialog"
         >
@@ -148,8 +165,14 @@ const customize = (accountId: string): void => {
                     data-testid="connect-channel-exit-confirm"
                 >
                     <AlertDialogHeader class="gap-3 px-6 pb-4 text-left">
-                        <AlertDialogTitle class="font-sans text-base font-medium">
-                            {{ $t('channels.dialog.exit_confirm.title', { network: networkName }) }}
+                        <AlertDialogTitle
+                            class="font-sans text-base font-medium"
+                        >
+                            {{
+                                $t('channels.dialog.exit_confirm.title', {
+                                    network: networkName,
+                                })
+                            }}
                         </AlertDialogTitle>
                         <AlertDialogDescription class="text-sm text-foreground">
                             {{
@@ -159,9 +182,7 @@ const customize = (accountId: string): void => {
                             }}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter
-                        class="mx-2 mb-2"
-                    >
+                    <AlertDialogFooter class="mx-2 mb-2">
                         <AlertDialogCancel
                             data-testid="connect-channel-exit-continue"
                         >

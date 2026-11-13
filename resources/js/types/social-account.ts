@@ -12,15 +12,20 @@ export interface AvailablePlatform {
     connect_methods?: string[];
     // tantra: false until the network's developer app keys are in.
     ready?: boolean;
-    setup?: ChannelSetup | null;
 }
 
-export interface ChannelSetup {
-    app: string;
-    app_label: string;
-    missing: string[];
-    portal: string;
-    catch: string | null;
+/** tantra: one logo tile of the "Connect a channel" grid (ConnectNetworks.php). */
+export interface ConnectNetwork {
+    value: string;
+    label: string;
+    kind: 'oauth' | 'credentials' | 'server' | 'bot';
+    ready: boolean;
+    methods: string[];
+    connected: boolean;
+    count: number;
+    avatar_url: string | null;
+    // Instance owner only: the developer app to set up on the admin page.
+    setup_app: string | null;
 }
 
 export interface ConnectedAccount {

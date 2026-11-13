@@ -17,6 +17,7 @@ use App\Tantra\Ai\CliTextGateway;
 use App\Tantra\Boost\Boost;
 use App\Tantra\Boost\StartBoostRun;
 use App\Tantra\Channels\ChannelApps;
+use App\Tantra\Channels\ConnectNetworks;
 use App\Tantra\Composer\MakeComposerThread;
 use App\Tantra\Console\AiConnectorCommand;
 use App\Tantra\Console\CheckConnectorsCommand;
@@ -83,9 +84,11 @@ class TantraServiceProvider extends ServiceProvider
         // without a restart.
         ChannelApps::apply();
         Queue::before(fn () => ChannelApps::apply());
-        // The connect dialog offers "Add the keys" only to the Account owner.
+        // The "Connect a channel" grid: one tile per network, ready and
+        // connected flags; the instance owner also gets a "Set up" link.
         Inertia::share('tantraChannels', fn (): array => [
             'canSetUp' => ChannelApps::canManage(Auth::user()),
+            'networks' => Auth::check() ? ConnectNetworks::for(Auth::user()) : [],
         ]);
         $this->loadViewsFrom(__DIR__.'/views', 'tantra');
 

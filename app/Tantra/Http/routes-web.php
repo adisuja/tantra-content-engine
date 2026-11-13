@@ -6,6 +6,7 @@ use App\Http\Middleware\App\EnsureAccountReady;
 use App\Http\Middleware\App\EnsureHasWorkspace;
 use App\Tantra\Http\Controllers\Web\ChannelAppController;
 use App\Tantra\Http\Controllers\Web\ConnectorController;
+use App\Tantra\Http\Controllers\Web\DeveloperAppsController;
 use App\Tantra\Http\Controllers\Web\InsightsController;
 use App\Tantra\Http\Controllers\Web\JoinController;
 use App\Tantra\Http\Controllers\Web\ManualTaskController;
@@ -103,6 +104,11 @@ Route::middleware(['web', 'auth'])
         Route::post('/{provider}/test', [ConnectorController::class, 'test'])->name('test');
         Route::post('/{provider}/models', [ConnectorController::class, 'models'])->name('models');
     });
+
+// tantra: Settings > Admin > Developer apps, the instance owner's keys page (Adi 2026-11-14).
+Route::middleware(['web', 'auth', EnsureAccountReady::class])
+    ->get('settings/developer-apps', [DeveloperAppsController::class, 'index'])
+    ->name('tantra.developer-apps.index');
 
 // tantra: the sidebar lists every workspace's channels; one in another workspace switches there first (PRD D1).
 Route::middleware(['web', 'auth', EnsureAccountReady::class])
