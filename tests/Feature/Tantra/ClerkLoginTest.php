@@ -526,7 +526,7 @@ describe('second review fixes', function () {
         $migration = require database_path('migrations/tantra/2026_11_14_100100_tantra_users_email_lower_unique.php');
 
         expect(fn () => $migration->up())->toThrow(RuntimeException::class, 'dup@example.com');
-    });
+    })->skip(fn (): bool => DB::getDriverName() !== 'pgsql', 'The index is for PostgreSQL; MySQL compares emails without case already.');
 
     it('creates the lower(email) index when there are no duplicates', function () {
         DB::statement('drop index if exists users_email_lower_unique');
@@ -536,7 +536,7 @@ describe('second review fixes', function () {
         $migration->up();
 
         expect(fn () => User::factory()->create(['email' => 'ONE@example.com']))->toThrow(UniqueConstraintViolationException::class);
-    });
+    })->skip(fn (): bool => DB::getDriverName() !== 'pgsql', 'The index is for PostgreSQL; MySQL compares emails without case already.');
 
     it('does not adopt an existing user holding the team email without --force', function () {
         $owner = User::factory()->create(['email' => 'adi@growthclub.org']);
