@@ -6,6 +6,8 @@ namespace App\Services\Analytics\Collectors\Metrics;
 
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
+use App\Tantra\Analytics\Collectors\UnipileLinkedInMetricsCollector;
+use App\Tantra\Analytics\Collectors\ZernioPageMetricsCollector;
 
 class PublicationMetricsCollectorFactory
 {
@@ -21,6 +23,9 @@ class PublicationMetricsCollectorFactory
             Platform::TikTok => app(TikTokPublicationMetricsCollector::class),
             Platform::Bluesky => app(BlueskyPublicationMetricsCollector::class),
             Platform::Mastodon => app(MastodonPublicationMetricsCollector::class),
+            // tantra: LinkedIn profiles through Unipile, the Tantra page through Zernio (PRD 25.7).
+            Platform::LinkedIn, Platform::UnipileLinkedIn => app(UnipileLinkedInMetricsCollector::class),
+            Platform::ZernioLinkedInPage => app(ZernioPageMetricsCollector::class),
             default => throw AnalyticsCollectionException::unsupported("{$platform->value} publication metrics are excluded"),
         };
     }

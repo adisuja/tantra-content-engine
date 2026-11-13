@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Tantra\Http\Controllers\Api\BatchController;
+use App\Tantra\Http\Controllers\Api\ChannelScheduleController;
 use App\Tantra\Http\Controllers\Api\MessagesController;
 use App\Tantra\Http\Controllers\Api\ProfileController;
 use App\Tantra\Http\Controllers\Api\ResultsController;
@@ -23,6 +24,9 @@ Route::middleware(['api', 'auth:api', 'tantra.owner-token', 'throttle:api'])
         Route::get('/batches/{batch}/feedback', [BatchController::class, 'feedback'])->whereUuid('batch')->name('batches.feedback');
         Route::get('/messages/{engineBatchId}/{enginePostId}', [MessagesController::class, 'show'])->where(['engineBatchId' => '[A-Za-z0-9_-]{1,32}', 'enginePostId' => '[A-Za-z0-9_-]{1,32}'])->name('messages.show');
         Route::get('/results/{engineBatchId}', [ResultsController::class, 'show'])->where('engineBatchId', '[A-Za-z0-9_-]{1,32}')->name('results.show');
+        // tantra: each channel's posting days and times (PRD 25.6).
+        Route::get('/channels/{channel}/schedule', [ChannelScheduleController::class, 'show'])->whereUuid('channel')->name('channels.schedule.show');
+        Route::put('/channels/{channel}/schedule', [ChannelScheduleController::class, 'update'])->whereUuid('channel')->name('channels.schedule.update');
     });
 
 // tantra: Zernio's signed publish events (PRD 10.4 step 6). No session, no CSRF.

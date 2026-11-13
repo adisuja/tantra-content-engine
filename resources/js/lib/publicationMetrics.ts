@@ -4,7 +4,16 @@ import { formatNumberCompact, formatPercent } from '@/lib/utils';
 import type { PublicationMetricFact } from '@/types/analytics';
 
 /** Networks whose native name for a re-share is "repost"; stored as `shares`. */
-const REPOST_NETWORKS = new Set(['x', 'threads', 'mastodon', 'bluesky']);
+const REPOST_NETWORKS = new Set([
+    'x',
+    'threads',
+    'mastodon',
+    'bluesky',
+    // tantra: LinkedIn calls a re-share a repost too.
+    'linkedin',
+    'unipile-linkedin',
+    'zernio-linkedin-page',
+]);
 
 export const publicationMetricLabel = (
     metricKey: string,
@@ -76,6 +85,17 @@ const CONTENT_TYPE_METRICS: Record<string, readonly string[]> = {
     short: VIDEO_METRICS,
 };
 
+// tantra: the numbers Unipile gives for a LinkedIn profile's own posts.
+const LINKEDIN_PROFILE = {
+    metrics: [
+        'reactions',
+        'comments',
+        'engagement_rate',
+        'impressions',
+        'shares',
+    ],
+} as const;
+
 /**
  * A network's own ordered set, replacing the content-type set. `feedOnly`
  * keeps the content-type set for stories, reels and videos.
@@ -118,6 +138,20 @@ const NETWORK_METRICS: Record<
         ],
     },
     mastodon: { metrics: ['reactions', 'comments', 'shares'] },
+    // tantra: LinkedIn profiles (through Unipile) and the Tantra page (through Zernio).
+    linkedin: LINKEDIN_PROFILE,
+    'unipile-linkedin': LINKEDIN_PROFILE,
+    'zernio-linkedin-page': {
+        metrics: [
+            'reactions',
+            'comments',
+            'engagement_rate',
+            'impressions',
+            'shares',
+            'clicks',
+            'reach',
+        ],
+    },
     bluesky: { metrics: ['reactions', 'comments', 'shares', 'quotes'] },
     pinterest: {
         metrics: [

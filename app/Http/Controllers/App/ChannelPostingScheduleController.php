@@ -22,6 +22,7 @@ class ChannelPostingScheduleController extends Controller
         $this->authorizeChannel($request, $account);
 
         $update->handle($account, $request->validated());
+        \App\Tantra\Channels\ChannelSchedules::confirm($account); // tantra: a person chose these times (PRD 25.6).
 
         return ChannelPostingScheduleResource::make($account);
     }
@@ -31,6 +32,7 @@ class ChannelPostingScheduleController extends Controller
         $this->authorizeChannel($request, $account);
 
         $regenerate->handle($account, $request->validated('goal') === null ? null : (int) $request->validated('goal'));
+        \App\Tantra\Channels\ChannelSchedules::confirm($account); // tantra: the posting goal step after connecting (PRD 25.6).
 
         return ChannelPostingScheduleResource::make($account);
     }

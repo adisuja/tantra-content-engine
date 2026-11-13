@@ -25,7 +25,8 @@ Env: `TANTRA_CLERK_LOGIN`, `CLERK_SECRET_KEY`, and only to override the defaults
 | `tantra:heartbeat --media` | every 15 minutes | files missing from storage for posts due in a day |
 | `tantra:manual-tasks` | every 5 minutes | X posts and personal polls: due, emailed, expired |
 | `tantra:giveaway-replies` | hourly | giveaway auto replies (off by default) |
-| `tantra:collect-metrics` | 06:00 and 18:00 UTC | post and page numbers |
+| `tantra:collect-metrics` | 06:00 and 18:00 UTC | post and page numbers for `/tantra/insights` and the batch results |
+| upstream `analytics:*` | upstream's own times | followers, post history and post numbers for the Insights tab, LinkedIn included (see "Insights") |
 | `tantra:reconnect-reminders` | 03:41 UTC | LinkedIn connections about to run out or dropped |
 | `tantra:check-connectors` | hourly | tests every Connectors tab entry and records which ones fail and why |
 | `tantra:linkedin-sync` | every 15 minutes | matches new Unipile LinkedIn accounts to teammates by name, reads each person's LinkedIn identity once a day, and the page's from Zernio |
@@ -37,6 +38,13 @@ One-off commands: `tantra:ai-connector` (add a connector, key on STDIN), `tantra
 `/tantra/review` (`ReviewPageController::index`, `pages/tantra/review/Index.vue`, `ReviewCard.vue`) is the one review screen and where people land: `LandOnReview` sends the first calendar visit of a session in a Tantra workspace there. Three tabs: Review, Scheduled and Published. Each post is its phone preview from `platforms.ts` (LinkedIn, the LinkedIn page, X, and a plain fallback for networks without their own look yet), with Approve and schedule, feedback for the next engine round, and Undo once scheduled.
 
 Each post has its own link, `/tantra/review?item=<id>` (`ReviewItem::shareUrl()`, the "Copy link to this post" button), which survives the sign in redirect and opens that post on whichever tab holds it. The card has three columns: the phone preview, the asset (the resource's pages from `media_manifest.resource_previews`, else the post's own slides, with the public `/previewlink/{token}` page from `PreviewLinkController`, no sign in, a 40 character random token) and the controls. Under the asset sit the follow-up messages (`App\Tantra\Review\Messages`: LinkedIn DM, connection note, email subject and body, WhatsApp, SMS): pushed as `messages` by the content kit, copied with one click, edited by the review owner (`message_overrides`, kept through re-pushes, `POST /tantra/review/items/{item}/messages/{channel}`). Follow-ups read the edited text: the published post's DM list, and `GET /api/tantra/messages/{batch}/{post}?first_name=` for the CRM and agents.
+## Channels and posting times
+
+PRD 25.6. `app/Tantra/Channels/ChannelSchedules.php`, `TeamController::schedule`, `Api/ChannelScheduleController`, `components/tantra/team/ChannelScheduleCard.vue`. The Team page has a "Channels and posting times" section: every channel in the workspaces a person reviews (the Account owner sees everyone's), each with its network icon, timezone and the upstream weekly grid, so a personal profile, a page and an X account each get their own times. Saves go to `PUT /tantra/team/channels/{channel}/schedule`, allowed for that workspace's review owner and the Account owner, validated with upstream's `UpdatePostingScheduleRequest` and saved through upstream's `UpdatePostingSchedule`, which reflows the channel's queue. A goal or schedule left out of the request stays as it is. The same is on the API (`GET/PUT api/tantra/channels/{channel}/schedule`, owner token) and MCP (`tantra-get-channel-schedule-tool`, `tantra-update-channel-schedule-tool`).
+
+Unipile and Zernio channels arrive with default times nobody chose, so `meta.schedule_confirmed_at` is set the first time a person saves a channel's times (the Team page, the API, MCP, the channel settings page or the posting goal step after connecting). Until then the Team page asks "Check the times we set for ...", and the checklist's "posting times set" step needs every connected channel they review to have at least one enabled time and checked times.
+
+Onboarding: one connection can create several channels (a LinkedIn profile and its pages). `SocialController` flashes them all as `connectedChannels`, and the connect dialog opens the posting goal step for each in turn.
 
 ## Identities come from LinkedIn
 
@@ -45,6 +53,16 @@ Nobody's name, headline or photo is typed in. `app/Tantra/LinkedIn`:
 - `LinkedInSync` matches each LinkedIn account in Tantra's Unipile to the Engine user with the same name (one to one, never confirmed on its own: Adi confirms on the Team page before anything is posted in someone's name). It then reads `users/me` through that account: name, headline (`description`), member id, profile URL, followers and the large photo. The photo is copied to `tantra/linkedin/{user}.jpg`, since LinkedIn's links expire, and becomes the person's Engine photo unless they uploaded their own. A 401 marks the account disconnected. The Tantra page gets its name, logo and followers from Zernio.
 - `SyncLinkedInIdentity` reads a person at once when Adi matches their account on the Team page.
 - `Identity` is what the previews show: the page channel for page posts, the person's LinkedIn identity, else their LinkedIn channel, else their Engine name; the X channel for X. A `profile_card` from an older batch only fills gaps.
+
+## Insights
+
+The upstream Insights tab and each channel's Insights page show every LinkedIn channel (PRD 25.7). `Platform::isIncludedInAnalytics()` is on for LinkedIn, the Zernio page and Unipile LinkedIn (the LinkedIn page app stays off), and the three upstream collector factories hand them to `app/Tantra/Analytics/Collectors`. These call our clients, never the OAuth refresh path, and fail with upstream's `AnalyticsCollectionException`; a missing account is a permission problem, never a deleted post.
+
+- Unipile LinkedIn reads through the channel's own account (`platform_user_id`). OAuth LinkedIn has no analytics scope, so it reads through the workspace review owner's confirmed Unipile account (`MemberProfile`); without one it says "no Unipile account matched for this LinkedIn profile".
+- Followers: the identity sync's count when a day old at most, else `users/me`, cached 6 hours (`users/me` is rate limited). Posts: `users/me/posts`, each page cached for an hour and shared by discovery and every post's read, so one account costs one list call an hour. Reposts of other people's posts are left out. Numbers: impressions (`analytics.impressions_counter`, missing stays missing), reactions of every kind summed, comments, reposts (stored as shares, as upstream does for X).
+- The Tantra page: followers from Zernio's account list, posts from Zernio's published LinkedIn posts, numbers from Zernio's post analytics by URN (impressions, reach, reactions, comments, reposts, clicks). A 402 pauses Zernio analytics for a day, shared with `tantra:collect-metrics`.
+- Each post is stored under the id our publishers keep in `posts.platform_post_id` (Unipile's id, Zernio's post id, or the OAuth share URN, matched to Unipile's id once and remembered), so the Engine's own posts link to their numbers. Network posts of these channels are never added to the calendar: upstream's external import only links them to Engine posts.
+- `tantra:collect-metrics` still feeds `/tantra/insights` and the batch results; it reads a Unipile channel through its own account too.
 
 ## Connectors tab
 
@@ -61,12 +79,15 @@ Each change is small and marked `// tantra:` (or `<!-- tantra: -->`). After merg
 - Sign in with Clerk: `app/Http/Controllers/Auth/AuthenticatedSessionController.php` (the login page and sign out), `NewPasswordController.php` (back to the password form), `app/Http/Requests/App/Settings/ProfileUpdateRequest.php` (emails lowercase and unique in any case).
 - Navigation and branding: `AppSidebar.vue`, `AppLogo.vue`, `WorkspaceMenuContent.vue`, `auth/LegalLinks.vue`, `layouts/auth/AuthSplitLayout.vue`.
 - MCP: the Tantra tools on `app/Mcp/Servers/TryPostServer.php`.
+- Posting times for every new channel: `app/Http/Controllers/Auth/SocialController.php` (flashes `connectedChannels`), `app/Http/Controllers/App/ChannelPostingScheduleController.php` (marks the times checked), `components/channels/ConnectChannelDialog.vue` (the goal step for each new channel).
 - AI through the Connectors tab: `app/Actions/Idea/GenerateIdea.php`, `app/Actions/Ai/AssistPostContent.php`, `app/Actions/Ai/GenerateMediaAltText.php`, the error paths of `IdeaGenerateController`, `PostAiAssistantController`, `MediaAltTextController`, the error line in `GenerateIdeasDialog.vue`, `WritingAssistantPanel.vue`, `MediaEditorAltTextPanel.vue`, the banner in `AppSidebarLayout.vue`, the nav item in `useSettingsNavigation.ts`, the CLIs in `docker/Dockerfile`, and the `connectors` label in `lang/*/settings.php` (16 locales, no marker).
 - Branding: `app/Services/Http/SafeHttpFetcher.php` (our user agent).
+- Insights for LinkedIn (PRD 25.7): `Platform::isIncludedInAnalytics()`, the three collector factories in `app/Services/Analytics/Collectors/{Followers,Publications,Metrics}`, the calendar import guard in `app/Actions/Post/ImportExternalPosts.php`, poll and document types in `app/Actions/Analytics/SyncTryPostPublication.php`, and the LinkedIn metric sets in `lib/publicationMetrics.ts`.
 - Tooling: `.prettierignore` (the studio CSS, generated in tantra-content).
 - Copy without a marker: the Zernio entries in `lang/*/posts.php` (16 locales).
 - Tests that pin upstream messages: the failing-provider cases in `tests/Feature/Create/GenerateIdeaTest.php`, `tests/Browser/CreateIdeaEditorTest.php`, `tests/Feature/Ai/MediaAltTextTest.php`, `tests/Feature/Ai/PostAiAssistantTest.php`.
 - Tests that pin upstream lists: `tests/Unit/Enums/PlatformTest.php`, `tests/Browser/SidebarMenuTest.php`, `tests/Feature/Mcp/ToolAnnotationsTest.php`, `tests/Feature/Parity/McpAuthorizationParityTest.php`.
+- Tests that used LinkedIn as the platform without analytics (now the LinkedIn page app): `tests/Feature/Analytics/{PublicationMetricsJobsTest,WorkspaceAnalyticsReportTest,InsightsControllerTest,AnalyticsSurfaceParityTest,PersistedPostMetricsReadTest,ChannelInsightsPageTest,AccountDailyJobsTest}.php`, `tests/Feature/Analytics/Collectors/FollowerCollectorsTest.php`, `tests/Feature/Observers/{PostPublicationObserverTest,SocialAccountObserverTest}.php`, `tests/Feature/Jobs/PostHog/TrackSocialAccountConnectedTest.php`, and `tests/Feature/Enums/SocialAccount/PlatformConnectableOptionsTest.php` (LinkedIn now shows analytics).
 
 ## Operations
 

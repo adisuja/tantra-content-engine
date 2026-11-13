@@ -134,8 +134,7 @@ test('excluded platforms have no collector and make no provider request', functi
 
     Http::assertNothingSent();
 })->with([
-    Platform::LinkedIn,
-    Platform::LinkedInPage,
+    Platform::LinkedInPage, // tantra: LinkedIn has a collector (PRD 25.7)
     Platform::Telegram,
     Platform::Discord,
     Platform::GoogleBusiness,
