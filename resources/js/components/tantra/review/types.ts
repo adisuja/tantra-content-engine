@@ -52,6 +52,13 @@ export interface ReviewMedia {
     download: { url: string; label: string } | null;
 }
 
+export interface ReviewMessage {
+    label: string;
+    text: string;
+    edited: boolean;
+    max: number;
+}
+
 export interface ReviewEventRow {
     kind: string;
     body: string | null;
@@ -97,7 +104,13 @@ export interface ReviewItemRow {
         keyword?: string;
         what?: string;
         url?: string;
+        pages?: number;
+        files?: { label?: string; href?: string }[];
     } | null;
+    share_url: string;
+    preview_url: string;
+    resource_pages: string[];
+    messages: Record<string, ReviewMessage>;
     team_comments: TeamComment[];
     author_key: string;
     dm_list: {
@@ -106,6 +119,7 @@ export interface ReviewItemRow {
         url: string | null;
         comment: string | null;
         sent: boolean;
+        message?: string;
     }[];
     mentions: string[];
     media: ReviewMedia;

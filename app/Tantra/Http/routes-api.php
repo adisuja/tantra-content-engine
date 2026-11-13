@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Tantra\Http\Controllers\Api\BatchController;
+use App\Tantra\Http\Controllers\Api\MessagesController;
 use App\Tantra\Http\Controllers\Api\ProfileController;
 use App\Tantra\Http\Controllers\Api\ResultsController;
 use App\Tantra\Http\Controllers\Api\UploadController;
@@ -20,6 +21,7 @@ Route::middleware(['api', 'auth:api', 'tantra.owner-token', 'throttle:api'])
         Route::post('/previews', [UploadController::class, 'preview'])->name('previews.store');
         Route::post('/batches', [BatchController::class, 'store'])->name('batches.store');
         Route::get('/batches/{batch}/feedback', [BatchController::class, 'feedback'])->whereUuid('batch')->name('batches.feedback');
+        Route::get('/messages/{engineBatchId}/{enginePostId}', [MessagesController::class, 'show'])->where(['engineBatchId' => '[A-Za-z0-9_-]{1,32}', 'enginePostId' => '[A-Za-z0-9_-]{1,32}'])->name('messages.show');
         Route::get('/results/{engineBatchId}', [ResultsController::class, 'show'])->where('engineBatchId', '[A-Za-z0-9_-]{1,32}')->name('results.show');
     });
 

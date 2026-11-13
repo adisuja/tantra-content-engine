@@ -3,10 +3,13 @@
 // preview and, beside it, only the controls: Approve and schedule, and a
 // feedback field with Revise. Approving also confirms the numbers this person
 // may sign off. Scheduled posts get Undo; published posts open on the network.
+import { IconLink } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
+import AssetPanel from '@/components/tantra/review/AssetPanel.vue';
+import MessagesPanel from '@/components/tantra/review/MessagesPanel.vue';
 import PhonePreview from '@/components/tantra/review/PhonePreview.vue';
 import { previewFor } from '@/components/tantra/review/platforms';
 import type { ReviewAction } from '@/components/tantra/review/reviewApi';
@@ -14,6 +17,7 @@ import { sendReviewAction } from '@/components/tantra/review/reviewApi';
 import type { ReviewItemRow } from '@/components/tantra/review/types';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { copyToClipboard } from '@/lib/utils';
 
 const props = defineProps<{
     item: ReviewItemRow;
@@ -65,15 +69,26 @@ const confirmNumbers = async (): Promise<void> => {
 
 <template>
     <article
-        class="flex w-full flex-col items-center gap-5 xl:flex-row xl:items-center xl:justify-center xl:gap-10"
+        class="grid w-full grid-cols-1 justify-items-center gap-5 xl:grid-cols-[minmax(0,464px)_minmax(300px,1fr)_288px] xl:items-start xl:justify-items-stretch xl:gap-6"
         :data-testid="`tantra-card-${item.engine_post_id}`"
     >
-        <div class="w-full max-w-[464px] shrink-0">
+        <div class="w-full max-w-[464px] xl:justify-self-start">
             <PhonePreview :item="item" :viewer="viewer" />
         </div>
 
+        <div
+            class="order-3 flex w-full max-w-[464px] flex-col gap-4 xl:order-none xl:max-w-none"
+        >
+            <AssetPanel :item="item" />
+            <MessagesPanel
+                :item="item"
+                :editable="item.can_review && mode !== 'published'"
+                @changed="emit('changed')"
+            />
+        </div>
+
         <aside
-            class="flex w-full max-w-[464px] flex-col gap-3 xl:w-80 xl:max-w-80"
+            class="flex w-full max-w-[464px] flex-col gap-3 xl:sticky xl:top-6 xl:max-w-none xl:justify-self-end"
         >
             <template v-if="mode === 'review' && item.can_review">
                 <Button
@@ -141,6 +156,22 @@ const confirmNumbers = async (): Promise<void> => {
                 }}</a>
             </Button>
 
+            <Button
+                variant="ghost"
+                size="sm"
+                class="w-full"
+                data-testid="tantra-share-link"
+                @click="
+                    copyToClipboard(
+                        item.share_url,
+                        trans('tantra.review.share.copied'),
+                    )
+                "
+            >
+                <IconLink class="size-4" />
+                {{ $t('tantra.review.share.copy') }}
+            </Button>
+
             <div
                 v-if="mode === 'published' && item.dm_list.length"
                 class="flex flex-col gap-2 text-sm"
@@ -177,6 +208,19 @@ const confirmNumbers = async (): Promise<void> => {
                         >{{ dm.name }}</a
                     >
                     <span v-else>{{ dm.name }}</span>
+                    <button
+                        v-if="dm.message"
+                        type="button"
+                        class="ml-auto text-xs text-muted-foreground underline"
+                        @click.prevent="
+                            copyToClipboard(
+                                dm.message,
+                                trans('tantra.review.messages.copied'),
+                            )
+                        "
+                    >
+                        {{ $t('tantra.review.messages.copy_dm') }}
+                    </button>
                 </label>
             </div>
         </aside>

@@ -37,6 +37,7 @@ const props = defineProps<{
     tab: Tab;
     items: ReviewItemRow[];
     batch: { id: string; title: string } | null;
+    focus?: string | null;
     counts: Record<Tab, number>;
     reconnect: Reconnect[];
     composer: ComposerWaiting[];
@@ -56,9 +57,14 @@ const me = computed(
     () => (page.props.auth?.user as { id?: string } | undefined)?.id,
 );
 
-/* One post at a time. The post's id sits in the address (#EA1) so a refresh
-   or a shared link opens the same post. */
+/* One post at a time. A link to one post (?item=<id>, from Slack or an email)
+   opens that post; the post's id also sits in the address (#EA1) so a refresh
+   opens the same post. */
 const startAt = (): number => {
+    if (props.focus) {
+        const focused = props.items.findIndex((i) => i.id === props.focus);
+        if (focused >= 0) return focused;
+    }
     const id = window.location.hash.slice(1);
     const found = props.items.findIndex((i) => i.engine_post_id === id);
 
@@ -81,7 +87,13 @@ watch(
 );
 watch(current, (item) => {
     if (item) {
-        history.replaceState(history.state, '', `#${item.engine_post_id}`);
+        // Keep the address on this post: ?item= for a link that survives signing in.
+        const url = new URL(window.location.href);
+        if (url.searchParams.has('item')) {
+            url.searchParams.set('item', item.id);
+        }
+        url.hash = item.engine_post_id;
+        history.replaceState(history.state, '', url.toString());
     }
 });
 
@@ -170,7 +182,7 @@ const reconnectLine = (r: Reconnect): string => {
     <AppLayout full-width>
         <Head :title="$t('tantra.review.title')" />
         <div
-            class="mx-auto flex min-h-full w-full max-w-7xl min-w-0 flex-col gap-4 px-3 pt-4 pb-12 md:px-8 md:pt-6"
+            class="mx-auto flex min-h-full w-full max-w-[1760px] min-w-0 flex-col gap-4 px-3 pt-4 pb-12 md:px-6 md:pt-6"
         >
             <nav
                 class="flex items-center gap-1 self-center rounded-full border border-border bg-card p-1"
@@ -303,6 +315,7 @@ const reconnectLine = (r: Reconnect): string => {
                     >
                         <ReviewCard
                             :key="current.id"
+                            class="min-w-0 flex-1"
                             :item="current"
                             :viewer="viewer"
                             :mode="tab"

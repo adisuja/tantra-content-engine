@@ -36,6 +36,8 @@ One-off commands: `tantra:ai-connector` (add a connector, key on STDIN), `tantra
 
 `/tantra/review` (`ReviewPageController::index`, `pages/tantra/review/Index.vue`, `ReviewCard.vue`) is the one review screen and where people land: `LandOnReview` sends the first calendar visit of a session in a Tantra workspace there. Three tabs: Review, Scheduled and Published. Each post is its phone preview from `platforms.ts` (LinkedIn, the LinkedIn page, X, and a plain fallback for networks without their own look yet), with Approve and schedule, feedback for the next engine round, and Undo once scheduled.
 
+Each post has its own link, `/tantra/review?item=<id>` (`ReviewItem::shareUrl()`, the "Copy link to this post" button), which survives the sign in redirect and opens that post on whichever tab holds it. The card has three columns: the phone preview, the asset (the resource's pages from `media_manifest.resource_previews`, else the post's own slides, with the public `/previewlink/{token}` page from `PreviewLinkController`, no sign in, a 40 character random token) and the controls. Under the asset sit the follow-up messages (`App\Tantra\Review\Messages`: LinkedIn DM, connection note, email subject and body, WhatsApp, SMS): pushed as `messages` by the content kit, copied with one click, edited by the review owner (`message_overrides`, kept through re-pushes, `POST /tantra/review/items/{item}/messages/{channel}`). Follow-ups read the edited text: the published post's DM list, and `GET /api/tantra/messages/{batch}/{post}?first_name=` for the CRM and agents.
+
 ## Identities come from LinkedIn
 
 Nobody's name, headline or photo is typed in. `app/Tantra/LinkedIn`:

@@ -15,6 +15,7 @@ use App\Tantra\Manual\ManualTask;
 use App\Tantra\Manual\ManualTasks;
 use App\Tantra\Review\Enums\EventKind;
 use App\Tantra\Review\Enums\ReviewStatus;
+use App\Tantra\Review\Messages;
 use App\Tantra\Review\Models\ReviewItem;
 use App\Tantra\Review\Models\WorkspaceSettings;
 use App\Tantra\Review\ReviewGate;
@@ -180,6 +181,40 @@ final class ReviewActions
      * Edit, remove or restore one entry of the team thread (PRD 10.5 step 2).
      * Removing a comment also removes the replies under it.
      */
+    /**
+     * tantra: the review owner edits one follow-up message (Messages::CHANNELS).
+     * The edit is kept apart from the pushed text, so a re-push never loses it, and
+     * every follow-up reads it through Messages::for(). Empty text restores the pushed one.
+     */
+    public static function editMessage(User $user, ReviewItem $item, string $channel, ?string $text): void
+    {
+        ReviewGate::assertReviewOwner($user, $item);
+        if (! array_key_exists($channel, Messages::CHANNELS)) {
+            throw ValidationException::withMessages(['channel' => 'No such message.']);
+        }
+        [$label, $max] = Messages::CHANNELS[$channel];
+        $text = $text === null ? null : trim(str_replace("\r\n", "\n", $text));
+        if ($text !== null && $text !== '' && preg_match('/[\x{2013}\x{2014}]/u', $text)) {
+            throw ValidationException::withMessages(['text' => 'No en or em dashes, please.']);
+        }
+        if ($text !== null && mb_strlen($text) > $max) {
+            throw ValidationException::withMessages(['text' => "{$label} can be {$max} characters at most."]);
+        }
+
+        $overrides = (array) ($item->message_overrides ?? []);
+        if ($text === null || $text === '') {
+            unset($overrides[$channel]);
+        } else {
+            $overrides[$channel] = $text;
+        }
+
+        DB::transaction(function () use ($item, $overrides, $user, $channel, $label, $text): void {
+            $item->message_overrides = $overrides === [] ? null : $overrides;
+            $item->save();
+            $item->record(EventKind::Comment, $user, $text === null || $text === '' ? "{$label} restored." : "{$label} edited.", ['message' => $channel, 'text' => $text]);
+        });
+    }
+
     public static function editThreadEntry(User $user, ReviewItem $item, int $index, ?string $text, ?bool $excluded): void
     {
         ReviewGate::assertReviewOwner($user, $item);
