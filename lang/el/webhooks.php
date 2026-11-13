@@ -83,6 +83,7 @@ return [
     ],
     'events' => [
         'group_posts' => 'Αναρτήσεις',
+        'group_roadmap' => 'Roadmap', // tantra
         'post_created' => 'Η ανάρτηση δημιουργήθηκε',
         'post_scheduled' => 'Η ανάρτηση προγραμματίστηκε',
         'post_unscheduled' => 'Ακυρώθηκε ο προγραμματισμός',
@@ -92,6 +93,8 @@ return [
         'post_deleted' => 'Η ανάρτηση διαγράφηκε',
         'post_deleted_on_network' => 'Η ανάρτηση διαγράφηκε στο δίκτυο',
         'post_restored' => 'Η ανάρτηση επανήλθε στο δίκτυο',
+        'roadmap_request_created' => 'Roadmap request', // tantra
+        'roadmap_item_moved' => 'Roadmap card moved', // tantra
     ],
     'event_descriptions' => [
         'post_created' => 'Όταν δημιουργείται μια νέα ανάρτηση.',
@@ -102,6 +105,8 @@ return [
         'post_deleted' => 'Όταν διαγράφεται μια ανάρτηση.',
         'post_deleted_on_network' => 'Όταν μια ανάρτηση διαγράφεται στο δίκτυό της.',
         'post_restored' => 'Όταν μια διαγραμμένη ανάρτηση επανέρχεται στο δίκτυο.',
+        'roadmap_request_created' => 'When someone asks for a feature on the public roadmap.', // tantra
+        'roadmap_item_moved' => 'When a roadmap card moves to another column.', // tantra
     ],
     'http_reasons' => [
         'unknown' => 'Άγνωστο',

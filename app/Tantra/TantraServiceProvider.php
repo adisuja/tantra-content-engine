@@ -30,6 +30,7 @@ use App\Tantra\Console\LinkedInSyncCommand;
 use App\Tantra\Console\ManualTasksCommand;
 use App\Tantra\Console\MapProfileCommand;
 use App\Tantra\Console\ReconnectRemindersCommand;
+use App\Tantra\Console\RoadmapKeyCommand;
 use App\Tantra\Console\SyncChannelsCommand;
 use App\Tantra\Console\TeamAccountsCommand;
 use App\Tantra\Console\ZernioConnectCommand;
@@ -45,6 +46,7 @@ use App\Tantra\Review\Models\WorkspaceSettings;
 use App\Tantra\Review\OwnerApproval;
 use App\Tantra\Review\ReviewChips;
 use App\Tantra\Review\ReviewGate;
+use App\Tantra\Roadmap\Roadmap;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Http\Kernel as HttpKernel;
@@ -58,6 +60,7 @@ use Illuminate\Support\ServiceProvider;
 use Inertia\Inertia;
 use Laravel\Ai\Ai;
 use Laravel\Ai\Providers\OpenAiCompatibleProvider;
+use Laravel\Passport\Passport;
 
 /**
  * Entry point for everything Tantra adds to the TryPost fork.
@@ -97,6 +100,10 @@ class TantraServiceProvider extends ServiceProvider
         }
         $this->loadRoutesFrom(__DIR__.'/Http/routes-api.php');
         $this->loadRoutesFrom(__DIR__.'/Http/routes-web.php');
+        $this->loadRoutesFrom(__DIR__.'/Http/routes-roadmap.php');
+
+        // The public roadmap: an API key with this scope may edit it (tantra:roadmap-key).
+        Passport::tokensCan(Passport::$scopes + [Roadmap::SCOPE => 'Edit the Tantra product roadmap']);
 
         // Live review screens: anyone who may open the batch hears its changes.
         Broadcast::channel('tantra.review.batch.{batch}', fn (User $user, string $batch): bool => Batch::query()
@@ -173,7 +180,7 @@ class TantraServiceProvider extends ServiceProvider
         });
 
         if ($this->app->runningInConsole()) {
-            $this->commands([AiConnectorCommand::class, CheckConnectorsCommand::class, CollectMetricsCommand::class, CreateOwnerCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class, TeamAccountsCommand::class, LinkedInSyncCommand::class, GiveawayRepliesCommand::class, HealthCommand::class, HeartbeatCommand::class, ReconnectRemindersCommand::class, SyncChannelsCommand::class]);
+            $this->commands([AiConnectorCommand::class, CheckConnectorsCommand::class, CollectMetricsCommand::class, CreateOwnerCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class, TeamAccountsCommand::class, LinkedInSyncCommand::class, GiveawayRepliesCommand::class, HealthCommand::class, HeartbeatCommand::class, ReconnectRemindersCommand::class, SyncChannelsCommand::class, RoadmapKeyCommand::class]);
         }
 
         if ($this->app->environment('production') && config('tantra.lean_workers.enabled')) {

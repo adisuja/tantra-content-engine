@@ -11,14 +11,21 @@ import { initializeDataLayer } from '@/datalayer';
 import { bootLocale, i18nConfig, syncLocale, textDirection } from '@/language';
 import { syncContentTypeMediaRules } from '@/lib/contentTypeMediaRules';
 import { trackInAppPushes } from '@/lib/inAppHistory';
-import { capturePageview, initializePostHog, syncPostHogContext } from '@/posthog';
+import {
+    capturePageview,
+    initializePostHog,
+    syncPostHogContext,
+} from '@/posthog';
 import { syncPreferences } from '@/preferences';
 import type { Auth } from '@/types';
 
 const appName = import.meta.env.VITE_APP_NAME || 'TryPost.it';
 
 createInertiaApp({
-    title: (title) => (title ? `${title} - ${appName}` : appName),
+    title: (title, page) =>
+        // tantra: a public page (the roadmap) names its own full title.
+        (page?.props?.tantraTitle as string | undefined) ??
+        (title ? `${title} - ${appName}` : appName),
     resolve: (name) =>
         resolvePageComponent(
             `./pages/${name}.vue`,

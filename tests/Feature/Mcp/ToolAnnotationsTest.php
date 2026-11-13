@@ -35,6 +35,11 @@ function mcpExpectedToolAnnotations(): array
         'tantra-winning-formula-tool' => [true, false, false],
         'tantra-list-manual-tasks-tool' => [true, false, false],
         'tantra-mark-manual-task-posted-tool' => [false, false, false],
+        // tantra: the public roadmap
+        'roadmap_list' => [true, false, false],
+        'roadmap_add_request' => [false, false, false],
+        'roadmap_move' => [false, true, false],
+        'roadmap_update' => [false, true, false],
 
         // Posts
         'list-posts-tool' => [true, false, false],

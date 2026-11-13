@@ -83,6 +83,7 @@ return [
     ],
     'events' => [
         'group_posts' => '게시물',
+        'group_roadmap' => 'Roadmap', // tantra
         'post_created' => '게시물 생성됨',
         'post_scheduled' => '게시물 예약됨',
         'post_unscheduled' => '예약 취소됨',
@@ -92,6 +93,8 @@ return [
         'post_deleted' => '게시물 삭제됨',
         'post_deleted_on_network' => '네트워크에서 게시물 삭제됨',
         'post_restored' => '게시물이 네트워크에 복귀함',
+        'roadmap_request_created' => 'Roadmap request', // tantra
+        'roadmap_item_moved' => 'Roadmap card moved', // tantra
     ],
     'event_descriptions' => [
         'post_created' => '새 게시물이 생성될 때.',
@@ -102,6 +105,8 @@ return [
         'post_deleted' => '게시물이 삭제될 때.',
         'post_deleted_on_network' => '게시된 게시물이 네트워크에서 삭제될 때.',
         'post_restored' => '삭제된 게시물이 네트워크에 다시 표시될 때.',
+        'roadmap_request_created' => 'When someone asks for a feature on the public roadmap.', // tantra
+        'roadmap_item_moved' => 'When a roadmap card moves to another column.', // tantra
     ],
     'http_reasons' => [
         'unknown' => '알 수 없음',

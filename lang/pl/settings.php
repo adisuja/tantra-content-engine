@@ -26,6 +26,7 @@ return [
             'webhooks' => 'Webhooki',
             'api_keys' => 'API',
             'connectors' => 'Connectors',
+            'roadmap' => 'Roadmap', // tantra
             'mcp' => 'MCP',
             'billing' => 'Rozliczenia',
         ],
