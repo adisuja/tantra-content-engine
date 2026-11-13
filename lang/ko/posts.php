@@ -797,6 +797,10 @@ return [
             'label' => '게시물',
             'description' => '표준 게시물: 단일 이미지, 다중 이미지, 동영상 또는 PDF',
         ],
+        'unipile_linkedin_post' => [
+            'label' => '게시물',
+            'description' => '표준 게시물: 단일 이미지, 다중 이미지, 동영상 또는 PDF',
+        ],
         'facebook_post' => [
             'label' => '게시물',
             'description' => '페이지의 표준 게시물',
@@ -874,7 +878,8 @@ return [
     'platforms' => [
         'linkedin' => 'LinkedIn',
         'linkedin-page' => 'LinkedIn 페이지',
-        'zernio-linkedin-page' => 'LinkedIn 페이지 (Zernio)',
+        'zernio-linkedin-page' => 'LinkedIn 페이지',
+        'unipile-linkedin' => 'LinkedIn',
         'x' => 'X',
         'tiktok' => 'TikTok',
         'youtube' => 'YouTube Shorts',

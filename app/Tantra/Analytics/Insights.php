@@ -74,7 +74,7 @@ final class Insights
         $posts = Post::query()
             ->whereIn('workspace_id', $workspaceIds)
             ->where('status', PostStatus::Published)
-            ->whereIn('platform', [Platform::LinkedIn, Platform::ZernioLinkedInPage])
+            ->whereIn('platform', [Platform::LinkedIn, Platform::UnipileLinkedIn, Platform::ZernioLinkedInPage])
             ->when($since, fn ($q) => $q->where('published_at', '>=', $since))
             ->get();
         if ($posts->isEmpty()) {

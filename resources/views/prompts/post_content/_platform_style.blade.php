@@ -5,6 +5,7 @@
 @case('linkedin')
 @case('linkedin-page')
 @case('zernio-linkedin-page'){{-- tantra: the Tantra page through Zernio --}}
+@case('unipile-linkedin'){{-- tantra: a teammate's profile through Unipile --}}
 - Professional, short paragraphs separated by line breaks, a clear takeaway, three hashtags at most at the end.
 @break
 @case('instagram')

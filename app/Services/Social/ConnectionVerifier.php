@@ -20,6 +20,7 @@ use App\Exceptions\Social\XPublishException;
 use App\Exceptions\Social\YouTubePublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\SocialAccount;
+use App\Tantra\Unipile\UnipileVerifier; // tantra:
 use App\Tantra\Zernio\ZernioVerifier; // tantra:
 use App\Services\Social\Discord\DiscordClient;
 use App\Services\Social\Mastodon\MastodonApi;
@@ -222,6 +223,7 @@ class ConnectionVerifier
             Platform::Discord => $this->verifyDiscord($account),
             Platform::GoogleBusiness => $this->verifyGoogleBusiness($account),
             Platform::ZernioLinkedInPage => ZernioVerifier::verify($account), // tantra:
+            Platform::UnipileLinkedIn => UnipileVerifier::verify($account), // tantra:
         };
     }
 

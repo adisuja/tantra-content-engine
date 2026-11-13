@@ -7,9 +7,11 @@ namespace App\Tantra;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Events\PostStatusChanged;
+use App\Http\Resources\App\HandleInertiaRequests\SidebarChannelResource;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
+use App\Models\Workspace;
 use App\Tantra\Ai\AiAlerts;
 use App\Tantra\Ai\CliTextGateway;
 use App\Tantra\Boost\Boost;
@@ -27,6 +29,7 @@ use App\Tantra\Console\LinkedInSyncCommand;
 use App\Tantra\Console\ManualTasksCommand;
 use App\Tantra\Console\MapProfileCommand;
 use App\Tantra\Console\ReconnectRemindersCommand;
+use App\Tantra\Console\SyncChannelsCommand;
 use App\Tantra\Console\TeamAccountsCommand;
 use App\Tantra\Console\ZernioConnectCommand;
 use App\Tantra\Http\Controllers\Web\ReviewPageController;
@@ -123,6 +126,14 @@ class TantraServiceProvider extends ServiceProvider
         // AI and integration warnings for the app banner (Connectors tab).
         Inertia::share('tantraAlerts', fn (): array => Auth::user() === null ? [] : AiAlerts::forAccount(Auth::user()->account_id));
 
+        // The sidebar's other workspaces and their channels (PRD D1): every channel the member can use.
+        Inertia::share('tantraOtherChannels', fn (): array => Auth::user() === null ? [] : Auth::user()->accountWorkspaces()
+            ->when(Auth::user()->current_workspace_id !== null, fn ($q) => $q->where('workspaces.id', '!=', Auth::user()->current_workspace_id))
+            ->orderBy('name')->get()
+            ->map(fn (Workspace $workspace): array => ['id' => $workspace->id, 'name' => $workspace->name, 'channels' => SidebarChannelResource::collection($workspace)])
+            ->filter(fn (array $group): bool => $group['channels'] !== [])
+            ->values()->all());
+
         // The sidebar's Review badge: posts waiting for this user's approval.
         Inertia::share('tantraReview', fn (): ?array => Auth::user() === null ? null : [
             'waiting' => ReviewGate::waitingCount(Auth::user()),
@@ -141,13 +152,15 @@ class TantraServiceProvider extends ServiceProvider
             $schedule->command('tantra:heartbeat --media')->everyFifteenMinutes()->withoutOverlapping();
             // Names, headlines and photos from LinkedIn: new accounts every 15 minutes, a refresh daily.
             $schedule->command('tantra:linkedin-sync')->everyFifteenMinutes()->withoutOverlapping();
+            // Every account connected in Tantra becomes a channel (PRD engine channels, 2026-11-13).
+            $schedule->command('tantra:sync-channels')->everyFifteenMinutes()->withoutOverlapping();
             // Post and page numbers (PRD 10.6).
             $schedule->command('tantra:check-connectors')->hourly()->withoutOverlapping();
             $schedule->command('tantra:collect-metrics')->twiceDaily(6, 18)->withoutOverlapping();
         });
 
         if ($this->app->runningInConsole()) {
-            $this->commands([AiConnectorCommand::class, CheckConnectorsCommand::class, CollectMetricsCommand::class, CreateOwnerCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class, TeamAccountsCommand::class, LinkedInSyncCommand::class, GiveawayRepliesCommand::class, HealthCommand::class, HeartbeatCommand::class, ReconnectRemindersCommand::class]);
+            $this->commands([AiConnectorCommand::class, CheckConnectorsCommand::class, CollectMetricsCommand::class, CreateOwnerCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class, TeamAccountsCommand::class, LinkedInSyncCommand::class, GiveawayRepliesCommand::class, HealthCommand::class, HeartbeatCommand::class, ReconnectRemindersCommand::class, SyncChannelsCommand::class]);
         }
 
         if ($this->app->environment('production') && config('tantra.lean_workers.enabled')) {

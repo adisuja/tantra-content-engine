@@ -40,7 +40,7 @@ final class CollectMetrics
 
         $posts = Post::query()
             ->where('status', PostStatus::Published)
-            ->whereIn('platform', [Platform::LinkedIn, Platform::ZernioLinkedInPage])
+            ->whereIn('platform', [Platform::LinkedIn, Platform::UnipileLinkedIn, Platform::ZernioLinkedInPage])
             ->where('published_at', '>=', now()->subDays(self::DAYS))
             ->with('socialAccount.workspace.account')
             ->get();

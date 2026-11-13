@@ -97,7 +97,7 @@ class TeamController extends Controller
         return [
             'joined' => ReviewGate::hasJoined($user),
             'linkedin' => SocialAccount::query()->whereIn('workspace_id', $reviewed)
-                ->whereIn('platform', [Platform::LinkedIn, Platform::ZernioLinkedInPage])->where('status', Status::Connected)->exists(),
+                ->whereIn('platform', [Platform::LinkedIn, Platform::UnipileLinkedIn, Platform::ZernioLinkedInPage])->where('status', Status::Connected)->exists(),
             'expertise' => filled($profile?->expertise),
             'unipile' => $profile?->unipile_confirmed_at !== null,
             'consent' => $profile?->boost_consent_at !== null,

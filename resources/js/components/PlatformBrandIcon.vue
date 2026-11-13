@@ -29,6 +29,7 @@ const BRAND_COLORS: Record<string, string> = {
     linkedin: 'text-[#0A66C2]',
     'linkedin-page': 'text-[#0A66C2]',
     'zernio-linkedin-page': 'text-[#0A66C2]', // tantra:
+    'unipile-linkedin': 'text-[#0A66C2]', // tantra:
     instagram: 'text-[#E1306C]',
     'instagram-facebook': 'text-[#E1306C]',
     facebook: 'text-[#1877F2]',
@@ -45,6 +46,7 @@ const icons = {
     linkedin: IconBrandLinkedin,
     'linkedin-page': IconBrandLinkedin,
     'zernio-linkedin-page': IconBrandLinkedin, // tantra:
+    'unipile-linkedin': IconBrandLinkedin, // tantra:
     x: IconBrandX,
     tiktok: IconBrandTiktok,
     youtube: IconBrandYoutubeFilled,

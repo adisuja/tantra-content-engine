@@ -64,7 +64,7 @@ final class Identity
 
             $page = $channels->first(fn (SocialAccount $c): bool => in_array($c->platform, [Platform::ZernioLinkedInPage, Platform::LinkedInPage], true));
             $x = $channels->first(fn (SocialAccount $c): bool => $c->platform === Platform::X);
-            $linkedin = $channels->first(fn (SocialAccount $c): bool => $c->platform === Platform::LinkedIn);
+            $linkedin = $channels->first(fn (SocialAccount $c): bool => in_array($c->platform, [Platform::LinkedIn, Platform::UnipileLinkedIn], true));
 
             if ($platform === 'x' && $x !== null) {
                 return self::shape(

@@ -4,6 +4,7 @@ const PLATFORM_LOGOS: Record<string, string> = {
     linkedin: '/images/accounts/linkedin.png',
     'linkedin-page': '/images/accounts/linkedin.png',
     'zernio-linkedin-page': '/images/accounts/linkedin.png', // tantra:
+    'unipile-linkedin': '/images/accounts/linkedin.png', // tantra:
     x: '/images/accounts/x.png',
     tiktok: '/images/accounts/tiktok.png',
     instagram: '/images/accounts/instagram.png',
@@ -22,7 +23,8 @@ const PLATFORM_LOGOS: Record<string, string> = {
 const PLATFORM_LABELS: Record<string, string> = {
     linkedin: 'LinkedIn',
     'linkedin-page': 'LinkedIn Page',
-    'zernio-linkedin-page': 'LinkedIn Page (Zernio)', // tantra:
+    'zernio-linkedin-page': 'LinkedIn Page', // tantra: the source never shows (Adi, 2026-11-13)
+    'unipile-linkedin': 'LinkedIn', // tantra:
     x: 'X',
     tiktok: 'TikTok',
     instagram: 'Instagram',
@@ -48,6 +50,7 @@ const PLATFORM_CONTENT_TYPES: Record<string, string[]> = {
     linkedin: ['linkedin_post'],
     'linkedin-page': ['linkedin_page_post'],
     'zernio-linkedin-page': ['zernio_linkedin_page_post'], // tantra:
+    'unipile-linkedin': ['unipile_linkedin_post'], // tantra:
     facebook: ['facebook_post', 'facebook_reel', 'facebook_story'],
     tiktok: ['tiktok_video', 'tiktok_photo'],
     youtube: ['youtube_short'],

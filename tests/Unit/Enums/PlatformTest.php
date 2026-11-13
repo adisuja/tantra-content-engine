@@ -123,6 +123,7 @@ test('platform is enabled by default for every platform', function (Platform $pl
     Platform::Discord,
     Platform::GoogleBusiness,
     Platform::ZernioLinkedInPage, // tantra:
+    Platform::UnipileLinkedIn, // tantra:
 ]);
 
 test('each platform can be disabled via config', function (Platform $platform) {
@@ -146,6 +147,7 @@ test('each platform can be disabled via config', function (Platform $platform) {
     Platform::Discord,
     Platform::GoogleBusiness,
     Platform::ZernioLinkedInPage, // tantra:
+    Platform::UnipileLinkedIn, // tantra:
 ]);
 
 test('each platform maps to its publishing queue', function (Platform $platform, string $queue) {
@@ -167,6 +169,7 @@ test('each platform maps to its publishing queue', function (Platform $platform,
     [Platform::Discord, 'social-discord'],
     [Platform::GoogleBusiness, 'social-google_business'],
     [Platform::ZernioLinkedInPage, 'social-zernio-linkedin-page'], // tantra:
+    [Platform::UnipileLinkedIn, 'social-unipile-linkedin'], // tantra:
 ]);
 
 test('allQueues lists every platform publishing queue in enum order', function () {
@@ -187,6 +190,7 @@ test('allQueues lists every platform publishing queue in enum order', function (
         'social-discord',
         'social-google_business',
         'social-zernio-linkedin-page', // tantra:
+        'social-unipile-linkedin', // tantra:
     ])->and(Platform::allQueues())->toHaveCount(count(Platform::cases()));
 });
 
@@ -237,6 +241,7 @@ test('disabling a platform removes only its queue from enabledQueues', function 
     Platform::Discord,
     Platform::GoogleBusiness,
     Platform::ZernioLinkedInPage, // tantra:
+    Platform::UnipileLinkedIn, // tantra:
 ]);
 
 test('disabling every platform yields no enabled queues', function () {
@@ -301,6 +306,7 @@ test('isEnabled falls back to env when enabled config is missing', function (Pla
     [Platform::Discord, 'DISCORD_ENABLED'],
     [Platform::GoogleBusiness, 'GOOGLE_BUSINESS_ENABLED'],
     [Platform::ZernioLinkedInPage, 'ZERNIO_ENABLED'], // tantra:
+    [Platform::UnipileLinkedIn, 'UNIPILE_ENABLED'], // tantra:
 ]);
 
 test('linkedin pages and instagram facebook are not directly connectable', function () {

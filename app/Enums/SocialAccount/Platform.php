@@ -30,11 +30,13 @@ enum Platform: string
     case GoogleBusiness = 'google_business';
     // tantra: the Tantra LinkedIn page, published through Zernio (PRD 10.4).
     case ZernioLinkedInPage = 'zernio-linkedin-page';
+    // tantra: a teammate's LinkedIn profile connected in Tantra's Unipile, published through Unipile (Adi, 2026-11-13).
+    case UnipileLinkedIn = 'unipile-linkedin';
 
     public function network(): string
     {
         return match ($this) {
-            self::LinkedIn, self::LinkedInPage, self::ZernioLinkedInPage => 'linkedin',
+            self::LinkedIn, self::LinkedInPage, self::ZernioLinkedInPage, self::UnipileLinkedIn => 'linkedin',
             self::Instagram, self::InstagramFacebook => 'instagram',
             default => $this->value,
         };
@@ -50,7 +52,7 @@ enum Platform: string
     {
         return match ($this) {
             self::LinkedIn, self::LinkedInPage, self::Telegram,
-            self::Discord, self::GoogleBusiness, self::ZernioLinkedInPage => false,
+            self::Discord, self::GoogleBusiness, self::ZernioLinkedInPage, self::UnipileLinkedIn => false,
             default => true,
         };
     }
@@ -101,7 +103,8 @@ enum Platform: string
             self::Telegram => 'Telegram',
             self::Discord => 'Discord',
             self::GoogleBusiness => 'Google Business Profile',
-            self::ZernioLinkedInPage => 'LinkedIn Page (Zernio)',
+            self::ZernioLinkedInPage => 'LinkedIn Page',
+            self::UnipileLinkedIn => 'LinkedIn',
         };
     }
 
@@ -120,7 +123,7 @@ enum Platform: string
     public function color(): string
     {
         return match ($this) {
-            self::LinkedIn, self::LinkedInPage, self::ZernioLinkedInPage => '#0A66C2',
+            self::LinkedIn, self::LinkedInPage, self::ZernioLinkedInPage, self::UnipileLinkedIn => '#0A66C2',
             self::X => '#000000',
             self::TikTok => '#000000',
             self::YouTube => '#FF0000',
@@ -140,7 +143,7 @@ enum Platform: string
     public function allowedMediaTypes(): array
     {
         return match ($this) {
-            self::LinkedIn, self::LinkedInPage, self::ZernioLinkedInPage => [MediaType::Image, MediaType::Video, MediaType::Document],
+            self::LinkedIn, self::LinkedInPage, self::ZernioLinkedInPage, self::UnipileLinkedIn => [MediaType::Image, MediaType::Video, MediaType::Document],
             self::X => [MediaType::Image, MediaType::Video],
             self::TikTok => [MediaType::Image, MediaType::Video],
             self::YouTube => [MediaType::Video],
@@ -159,7 +162,7 @@ enum Platform: string
     public function maxImages(): int
     {
         return match ($this) {
-            self::LinkedIn, self::LinkedInPage, self::ZernioLinkedInPage => 10,
+            self::LinkedIn, self::LinkedInPage, self::ZernioLinkedInPage, self::UnipileLinkedIn => 10,
             self::X => 4,
             self::TikTok => 0,
             self::YouTube => 0,
@@ -195,7 +198,7 @@ enum Platform: string
             self::Threads => 1000,
             self::Pinterest => 500,
             self::Discord => 1024,
-            self::TikTok, self::YouTube, self::Telegram, self::GoogleBusiness, self::ZernioLinkedInPage => null,
+            self::TikTok, self::YouTube, self::Telegram, self::GoogleBusiness, self::ZernioLinkedInPage, self::UnipileLinkedIn => null,
         };
     }
 
@@ -233,7 +236,7 @@ enum Platform: string
     public function maxContentLength(): int
     {
         return match ($this) {
-            self::LinkedIn, self::LinkedInPage, self::ZernioLinkedInPage => 3000,
+            self::LinkedIn, self::LinkedInPage, self::ZernioLinkedInPage, self::UnipileLinkedIn => 3000,
             self::X => 280,
             self::TikTok => 2200,
             self::YouTube => 5000,
@@ -294,7 +297,7 @@ enum Platform: string
             // Threads/Mastodon — similar feel, slightly more relaxed
             self::Threads, self::Mastodon => 300,
             // LinkedIn — readable long-form sweet spot is ~1200-1500
-            self::LinkedIn, self::LinkedInPage, self::ZernioLinkedInPage => 1200,
+            self::LinkedIn, self::LinkedInPage, self::ZernioLinkedInPage, self::UnipileLinkedIn => 1200,
             // Instagram captions — most viewers expand only when interested,
             // 100-150 words performs best
             self::Instagram, self::InstagramFacebook => 600,
@@ -339,7 +342,7 @@ enum Platform: string
             self::Discord => [],
             self::GoogleBusiness => ['https://www.googleapis.com/auth/business.manage'],
             // Zernio holds the LinkedIn grant; the Engine only has Tantra's Zernio key.
-            self::ZernioLinkedInPage => [],
+            self::ZernioLinkedInPage, self::UnipileLinkedIn => [], // tantra: Unipile holds the session
         };
     }
 
@@ -355,7 +358,7 @@ enum Platform: string
     public function supportsTextOnly(): bool
     {
         return match ($this) {
-            self::LinkedIn, self::LinkedInPage, self::ZernioLinkedInPage => true,
+            self::LinkedIn, self::LinkedInPage, self::ZernioLinkedInPage, self::UnipileLinkedIn => true,
             self::X => true,
             self::TikTok => false,
             self::YouTube => false,
@@ -513,6 +516,7 @@ enum Platform: string
                 self::Discord => 'DISCORD_ENABLED',
                 self::GoogleBusiness => 'GOOGLE_BUSINESS_ENABLED',
                 self::ZernioLinkedInPage => 'ZERNIO_ENABLED',
+                self::UnipileLinkedIn => 'UNIPILE_ENABLED',
             }, true),
         );
     }
@@ -527,7 +531,7 @@ enum Platform: string
     public function isConnectable(): bool
     {
         return match ($this) {
-            self::LinkedInPage, self::InstagramFacebook, self::ZernioLinkedInPage => false,
+            self::LinkedInPage, self::InstagramFacebook, self::ZernioLinkedInPage, self::UnipileLinkedIn => false,
             self::LinkedIn => self::LinkedIn->isEnabled() || self::LinkedInPage->isEnabled(),
             self::Instagram => self::Instagram->isEnabled() || self::InstagramFacebook->isEnabled(),
             default => $this->isEnabled(),

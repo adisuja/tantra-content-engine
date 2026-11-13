@@ -797,6 +797,10 @@ return [
             'label' => '投稿',
             'description' => '標準の投稿: 単一画像、複数画像、動画、または PDF',
         ],
+        'unipile_linkedin_post' => [
+            'label' => '投稿',
+            'description' => '標準の投稿: 単一画像、複数画像、動画、または PDF',
+        ],
         'facebook_post' => [
             'label' => '投稿',
             'description' => 'ページ上の標準の投稿',
@@ -874,7 +878,8 @@ return [
     'platforms' => [
         'linkedin' => 'LinkedIn',
         'linkedin-page' => 'LinkedIn ページ',
-        'zernio-linkedin-page' => 'LinkedIn ページ (Zernio)',
+        'zernio-linkedin-page' => 'LinkedIn ページ',
+        'unipile-linkedin' => 'LinkedIn',
         'x' => 'X',
         'tiktok' => 'TikTok',
         'youtube' => 'YouTube ショート',

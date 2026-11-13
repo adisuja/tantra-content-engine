@@ -399,7 +399,7 @@ class SocialAccount extends Model
                         : null,
                     SocialPlatform::LinkedIn => $username ? "https://linkedin.com/in/{$username}" : null,
                     SocialPlatform::LinkedInPage => $username ? "https://linkedin.com/company/{$username}" : null,
-                    SocialPlatform::ZernioLinkedInPage => data_get($this->meta, 'profile_url'), // tantra:
+                    SocialPlatform::ZernioLinkedInPage, SocialPlatform::UnipileLinkedIn => data_get($this->meta, 'profile_url'), // tantra:
                     SocialPlatform::X => $username ? "https://x.com/{$username}" : null,
                     SocialPlatform::TikTok => $username ? "https://tiktok.com/@{$username}" : null,
                     SocialPlatform::Instagram, SocialPlatform::InstagramFacebook => $username

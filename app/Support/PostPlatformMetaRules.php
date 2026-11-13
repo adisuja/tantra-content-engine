@@ -37,7 +37,8 @@ class PostPlatformMetaRules
      * Keys TryPost writes itself once a post is live (Telegram reactions): never
      * taken from a request, and kept when the post's settings are edited.
      */
-    public const SYSTEM_KEYS = ['reactions'];
+    // tantra: a provider's post id marks the post as sent; a duplicate must post again.
+    public const SYSTEM_KEYS = ['reactions', 'zernio_post_id', 'unipile_post_id', 'unipile_post_url', 'unipile_attempt_at', 'unipile_first_comment_id', 'unipile_first_comment_failed', 'unipile_first_comment_tries'];
 
     /** What an Instagram music pick stores; anything else sent with it is dropped. */
     private const array INSTAGRAM_AUDIO_FIELDS = ['id', 'title', 'artist', 'cover_url', 'preview_url', 'audio_volume', 'video_volume'];

@@ -41,7 +41,7 @@ class ContentSanitizer
         $content = $this->escapeTypedBrackets($content);
 
         return match ($platform) {
-            Platform::LinkedIn, Platform::LinkedInPage, Platform::ZernioLinkedInPage => $this->convertBoldAndStrip($content), // tantra:
+            Platform::LinkedIn, Platform::LinkedInPage, Platform::ZernioLinkedInPage, Platform::UnipileLinkedIn => $this->convertBoldAndStrip($content), // tantra:
             Platform::Telegram => $this->toTelegramHtml($content),
             Platform::X => $this->defuseLinks($this->stripHtml($content)),
             default => $this->stripHtml($content),

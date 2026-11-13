@@ -247,8 +247,8 @@ final class ImportBatch
     public static function channelFor(Workspace $workspace, string $platform): ?SocialAccount
     {
         $platforms = match (strtolower($platform)) {
-            // A personal profile through TryPost, the Tantra page through Zernio.
-            'linkedin' => [Platform::LinkedIn->value, Platform::ZernioLinkedInPage->value, Platform::LinkedInPage->value],
+            // A personal profile through TryPost or Unipile, the Tantra page through Zernio.
+            'linkedin' => [Platform::LinkedIn->value, Platform::UnipileLinkedIn->value, Platform::ZernioLinkedInPage->value, Platform::LinkedInPage->value],
             default => [],
         };
 

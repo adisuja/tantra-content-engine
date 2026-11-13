@@ -112,6 +112,53 @@ class UnipileClient
         return $response->successful() ? array_values((array) ($response->json('data') ?? [])) : [];
     }
 
+    /**
+     * Every account, and whether the list is known to be complete. Unipile v2
+     * pages with `has_more` but takes no cursor, so a list that says there is
+     * more is never used to mark anything disconnected.
+     *
+     * @return array{items: list<array<string, mixed>>, complete: bool}
+     */
+    public function allAccounts(): array
+    {
+        $response = $this->get('/accounts?limit=250');
+
+        return [
+            'items' => array_values((array) ($response->json('data') ?? $response->json('items') ?? [])),
+            'complete' => $response->json('has_more') !== true,
+        ];
+    }
+
+    /**
+     * Create a post on the account (v2 POST /{account}/posts). HTTP failures come
+     * back as the response and connection failures as the exception, so the
+     * publisher can tell "never sent" from "maybe posted".
+     *
+     * @param  array<string, mixed>  $payload
+     *
+     * @throws ConnectionException
+     */
+    public function createPost(string $accountId, array $payload): Response
+    {
+        if (! self::configured()) {
+            throw new RuntimeException('LinkedIn publishing is not set up on the server.');
+        }
+
+        return $this->request()->timeout(180)->post(rtrim((string) config('tantra.unipile.dsn'), '/')."/{$accountId}/posts", $payload);
+    }
+
+    /**
+     * One account's state, from the list: connected or disconnected.
+     *
+     * @param  array<string, mixed>  $account
+     */
+    public static function statusOf(array $account): string
+    {
+        $raw = is_string($account['status'] ?? null) ? $account['status'] : (string) data_get($account, 'sources.0.status', '');
+
+        return in_array(strtoupper($raw), ['OK', 'RUNNING', 'CONNECTED', 'CREATION_SUCCESS', 'RECONNECTED', 'SYNC_SUCCESS'], true) ? 'connected' : 'disconnected';
+    }
+
     private function get(string $path, bool $allowFailure = false): Response
     {
         return $this->send('get', $path, null, $allowFailure);

@@ -5,6 +5,7 @@ export const ContentType = {
     LinkedInPost: 'linkedin_post',
     LinkedInPagePost: 'linkedin_page_post',
     ZernioLinkedInPagePost: 'zernio_linkedin_page_post', // tantra:
+    UnipileLinkedInPost: 'unipile_linkedin_post', // tantra:
     LinkedInComment: 'linkedin_comment',
     FacebookPost: 'facebook_post',
     FacebookReel: 'facebook_reel',

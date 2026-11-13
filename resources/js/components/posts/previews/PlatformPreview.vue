@@ -115,6 +115,7 @@ const previewComponent = computed(() => {
         case 'linkedin':
         case 'linkedin-page':
         case 'zernio-linkedin-page': // tantra:
+        case 'unipile-linkedin': // tantra:
             return LinkedInPreview;
         case 'x':
             return XPreview;

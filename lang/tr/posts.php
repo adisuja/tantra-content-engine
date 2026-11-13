@@ -797,6 +797,10 @@ return [
             'label' => 'Gönderi',
             'description' => 'Standart gönderi: tek görsel, çoklu görsel, video veya PDF',
         ],
+        'unipile_linkedin_post' => [
+            'label' => 'Gönderi',
+            'description' => 'Standart gönderi: tek görsel, çoklu görsel, video veya PDF',
+        ],
         'facebook_post' => [
             'label' => 'Gönderi',
             'description' => 'Sayfanızda standart gönderi',
@@ -874,7 +878,8 @@ return [
     'platforms' => [
         'linkedin' => 'LinkedIn',
         'linkedin-page' => 'LinkedIn Sayfası',
-        'zernio-linkedin-page' => 'LinkedIn Sayfası (Zernio)',
+        'zernio-linkedin-page' => 'LinkedIn Sayfası',
+        'unipile-linkedin' => 'LinkedIn',
         'x' => 'X',
         'tiktok' => 'TikTok',
         'youtube' => 'YouTube Shorts',

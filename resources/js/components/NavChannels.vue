@@ -2,17 +2,18 @@
 import { Link, usePage } from '@inertiajs/vue3';
 import {
     IconCalendarEvent,
-    IconTrendingUp,
     IconChevronDown,
     IconGripVertical,
     IconPlus,
     IconSearch,
     IconSettings,
+    IconTrendingUp,
 } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
 import ChannelAvatar from '@/components/ChannelAvatar.vue';
 import PlatformBrandIcon from '@/components/PlatformBrandIcon.vue';
+import OtherWorkspaceChannels from '@/components/tantra/OtherWorkspaceChannels.vue'; // tantra:
 import {
     HoverCard,
     HoverCardContent,
@@ -52,6 +53,13 @@ import type { AvailablePlatform } from '@/types/social-account';
 import { isConnectionLost } from '@/types/social-account';
 
 const page = usePage();
+// tantra: with other workspaces listed below, this group is named after the current one (PRD D1).
+const groupName = computed<string | null>(() =>
+    ((page.props.tantraOtherChannels as unknown[] | undefined) ?? []).length > 0
+        ? ((page.props.auth as { currentWorkspace?: { name?: string } | null })
+              .currentWorkspace?.name ?? null)
+        : null,
+);
 const channels = computed<SidebarChannel[]>(() =>
     orderChannels((page.props.channels as SidebarChannel[]) ?? []),
 );
@@ -159,7 +167,8 @@ const reconnect = (channel: SidebarChannel): void => {
                 data-testid="sidebar-channels-label"
             >
                 <template v-if="channels.length > 0"
-                    >{{ $t('sidebar.channels') }} · {{ channels.length }}</template
+                    >{{ groupName ?? $t('sidebar.channels') }} ·
+                    {{ channels.length }}</template
                 >
                 <template v-else-if="canManageAccounts">{{
                     $t('sidebar.connect_channels')
@@ -180,7 +189,9 @@ const reconnect = (channel: SidebarChannel): void => {
                         <SidebarGroupAction
                             :class="['rounded-lg', headerActionClass]"
                             :aria-label="$t('sidebar.search_channels')"
-                            :aria-keyshortcuts="isMacPlatform ? 'Meta+K' : 'Control+K'"
+                            :aria-keyshortcuts="
+                                isMacPlatform ? 'Meta+K' : 'Control+K'
+                            "
                             data-testid="sidebar-channels-search"
                             @click="openCommandPalette()"
                         >
@@ -193,7 +204,9 @@ const reconnect = (channel: SidebarChannel): void => {
                         data-testid="sidebar-channels-search-tooltip"
                     >
                         {{ $t('sidebar.search_channels') }}
-                        <KbdGroup data-testid="sidebar-channels-search-shortcut">
+                        <KbdGroup
+                            data-testid="sidebar-channels-search-shortcut"
+                        >
                             <Kbd>{{ isMacPlatform ? '⌘' : 'Ctrl' }}</Kbd>
                             <Kbd>K</Kbd>
                         </KbdGroup>
@@ -255,10 +268,7 @@ const reconnect = (channel: SidebarChannel): void => {
             class="relative -mx-4 mt-1 flex min-h-0 w-auto min-w-0 flex-col gap-2 overflow-y-auto px-4 pb-4 group-data-[collapsible=icon]:-mx-2.5 group-data-[collapsible=icon]:px-2.5"
             data-testid="sidebar-channels-list"
         >
-            <SidebarMenuItem
-                v-if="channels.length === 0"
-                key="empty"
-            >
+            <SidebarMenuItem v-if="channels.length === 0" key="empty">
                 <div
                     v-if="canManageAccounts"
                     class="flex items-center gap-2 px-2 pt-1 pb-2"
@@ -316,10 +326,7 @@ const reconnect = (channel: SidebarChannel): void => {
                 </p>
             </SidebarMenuItem>
 
-            <template
-                v-for="{ key, channel } in listEntries"
-                :key="key"
-            >
+            <template v-for="{ key, channel } in listEntries" :key="key">
                 <li
                     v-if="channel === null"
                     aria-hidden="true"
@@ -362,9 +369,17 @@ const reconnect = (channel: SidebarChannel): void => {
                     <button
                         v-if="reorderable"
                         type="button"
-                        class="absolute top-2 -start-3.5 z-10 flex h-5 w-3.5 cursor-grab items-center justify-center rounded-sm text-muted-foreground opacity-0 outline-hidden transition-opacity group-hover/channel:opacity-100 group-data-[collapsible=icon]:hidden focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-sidebar-ring active:cursor-grabbing max-md:hidden"
-                        :aria-label="$t('channels.reorder.handle', { name: channelName(channel) })"
-                        :title="$t('channels.reorder.handle', { name: channelName(channel) })"
+                        class="absolute -start-3.5 top-2 z-10 flex h-5 w-3.5 cursor-grab items-center justify-center rounded-sm text-muted-foreground opacity-0 outline-hidden transition-opacity group-hover/channel:opacity-100 group-data-[collapsible=icon]:hidden focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-sidebar-ring active:cursor-grabbing max-md:hidden"
+                        :aria-label="
+                            $t('channels.reorder.handle', {
+                                name: channelName(channel),
+                            })
+                        "
+                        :title="
+                            $t('channels.reorder.handle', {
+                                name: channelName(channel),
+                            })
+                        "
                         :data-channel-handle="`sidebar:${channel.id}`"
                         :data-testid="`sidebar-channel-handle-${channel.id}`"
                         @keydown="onHandleKeydown($event, channel.id)"
@@ -380,7 +395,7 @@ const reconnect = (channel: SidebarChannel): void => {
                             <SidebarMenuButton
                                 as-child
                                 :is-active="isCurrentChannel(channel)"
-                                class="h-9 gap-2 py-1 ps-2 max-md:pe-16 group-hover/channel:pe-16 group-has-focus-visible/channel:pe-16 data-[active=true]:bg-transparent data-[active=true]:hover:bg-sidebar-accent [&:has(~[data-sidebar=group-action]:hover)]:bg-sidebar-accent group-data-[collapsible=icon]:overflow-visible group-data-[collapsible=icon]:p-0.5! group-data-[collapsible=icon]:data-[active=true]:bg-sidebar-accent"
+                                class="h-9 gap-2 py-1 ps-2 group-hover/channel:pe-16 group-has-focus-visible/channel:pe-16 group-data-[collapsible=icon]:overflow-visible group-data-[collapsible=icon]:p-0.5! data-[active=true]:bg-transparent group-data-[collapsible=icon]:data-[active=true]:bg-sidebar-accent data-[active=true]:hover:bg-sidebar-accent max-md:pe-16 [&:has(~[data-sidebar=group-action]:hover)]:bg-sidebar-accent"
                             >
                                 <Link
                                     :href="publish.url(channel.id)"
@@ -394,10 +409,17 @@ const reconnect = (channel: SidebarChannel): void => {
                                         :size="28"
                                         ring="sidebar"
                                         :reserve-space="!isCollapsedRail"
-                                        :status="canManageAccounts ? null : channel.status"
+                                        :status="
+                                            canManageAccounts
+                                                ? null
+                                                : channel.status
+                                        "
                                         :account-id="channel.id"
                                     />
-                                    <span class="truncate text-sm group-data-[collapsible=icon]:hidden">{{ channelName(channel) }}</span>
+                                    <span
+                                        class="truncate text-sm group-data-[collapsible=icon]:hidden"
+                                        >{{ channelName(channel) }}</span
+                                    >
                                 </Link>
                             </SidebarMenuButton>
                         </HoverCardTrigger>
@@ -415,7 +437,10 @@ const reconnect = (channel: SidebarChannel): void => {
                                 {{ channelName(channel) }}
                             </p>
                             <p
-                                v-if="isConnectionLost(channel) && !canManageAccounts"
+                                v-if="
+                                    isConnectionLost(channel) &&
+                                    !canManageAccounts
+                                "
                                 class="px-2 pb-1.5 text-xs text-destructive"
                             >
                                 {{ $t('channels.connection_lost_hint') }}
@@ -446,7 +471,7 @@ const reconnect = (channel: SidebarChannel): void => {
                             <TooltipTrigger as-child>
                                 <button
                                     type="button"
-                                    class="absolute start-1.5 top-0.5 z-10 size-2 cursor-pointer rounded-full bg-destructive ring-2 ring-sidebar outline-hidden focus-visible:ring-sidebar-ring group-data-[collapsible=icon]:start-0 group-data-[collapsible=icon]:top-0"
+                                    class="absolute start-1.5 top-0.5 z-10 size-2 cursor-pointer rounded-full bg-destructive ring-2 ring-sidebar outline-hidden group-data-[collapsible=icon]:start-0 group-data-[collapsible=icon]:top-0 focus-visible:ring-sidebar-ring"
                                     :aria-label="$t('channels.reconnect')"
                                     :data-testid="`sidebar-channel-${channel.id}-lost`"
                                     @click="reconnect(channel)"
@@ -471,13 +496,18 @@ const reconnect = (channel: SidebarChannel): void => {
                         :class="['right-[30px]', channelActionClass]"
                         :title="$t('channels.new_post')"
                         :data-testid="`sidebar-channel-${channel.id}-new-post`"
-                        @click="openPostComposer({ socialAccountIds: [channel.id] })"
+                        @click="
+                            openPostComposer({ socialAccountIds: [channel.id] })
+                        "
                     >
                         <IconPlus />
                     </SidebarGroupAction>
 
                     <SidebarGroupAction
-                        :class="['right-0.5 aria-expanded:bg-transparent', channelActionClass]"
+                        :class="[
+                            'right-0.5 aria-expanded:bg-transparent',
+                            channelActionClass,
+                        ]"
                         :aria-label="
                             $t('sidebar.channel_submenu', {
                                 name: channelName(channel),
@@ -505,33 +535,52 @@ const reconnect = (channel: SidebarChannel): void => {
                                 <SidebarMenuSubItem>
                                     <SidebarMenuSubButton
                                         as-child
-                                        :is-active="urlIsActive(publish.url(channel.id))"
+                                        :is-active="
+                                            urlIsActive(publish.url(channel.id))
+                                        "
                                     >
                                         <Link
                                             :href="publish.url(channel.id)"
                                             :data-testid="`sidebar-channel-${channel.id}-publish`"
                                         >
                                             <IconCalendarEvent />
-                                            <span class="min-w-0 flex-1 truncate">{{ $t('channels.publish') }}</span>
                                             <span
-                                                v-if="channel.scheduled_posts_count > 0"
+                                                class="min-w-0 flex-1 truncate"
+                                                >{{
+                                                    $t('channels.publish')
+                                                }}</span
+                                            >
+                                            <span
+                                                v-if="
+                                                    channel.scheduled_posts_count >
+                                                    0
+                                                "
                                                 class="flex w-6 shrink-0 justify-center tabular-nums"
                                                 :data-testid="`sidebar-channel-${channel.id}-publish-count`"
-                                            >{{ channel.scheduled_posts_count }}</span>
+                                                >{{
+                                                    channel.scheduled_posts_count
+                                                }}</span
+                                            >
                                         </Link>
                                     </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>
                                 <SidebarMenuSubItem>
                                     <SidebarMenuSubButton
                                         as-child
-                                        :is-active="urlIsActive(insights.url(channel.id))"
+                                        :is-active="
+                                            urlIsActive(
+                                                insights.url(channel.id),
+                                            )
+                                        "
                                     >
                                         <Link
                                             :href="insights.url(channel.id)"
                                             :data-testid="`sidebar-channel-${channel.id}-insights`"
                                         >
                                             <IconTrendingUp />
-                                            <span>{{ $t('channels.insights') }}</span>
+                                            <span>{{
+                                                $t('channels.insights')
+                                            }}</span>
                                         </Link>
                                     </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>
@@ -541,5 +590,6 @@ const reconnect = (channel: SidebarChannel): void => {
                 </SidebarMenuItem>
             </template>
         </TransitionGroup>
+        <OtherWorkspaceChannels /><!-- tantra: -->
     </SidebarGroup>
 </template>

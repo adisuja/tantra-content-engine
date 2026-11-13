@@ -32,6 +32,7 @@ use App\Services\Social\ThreadsPublisher;
 use App\Services\Social\TikTokPublisher;
 use App\Services\Social\XPublisher;
 use App\Services\Social\YouTubePublisher;
+use App\Tantra\Unipile\UnipilePublisher; // tantra:
 use App\Tantra\Zernio\ZernioPublisher; // tantra:
 use App\Support\Social\GoogleBusinessDerivativeCleaner;
 use App\Support\Social\LimitRetryPolicy;
@@ -560,7 +561,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             : 'An unexpected error occurred while publishing. Please try again.';
     }
 
-    private function getPublisher(): LinkedInPublisher|LinkedInPagePublisher|XPublisher|TikTokPublisher|YouTubePublisher|FacebookPublisher|InstagramPublisher|ThreadsPublisher|PinterestPublisher|BlueskyPublisher|MastodonPublisher|TelegramPublisher|DiscordPublisher|GoogleBusinessPublisher|ZernioPublisher
+    private function getPublisher(): LinkedInPublisher|LinkedInPagePublisher|XPublisher|TikTokPublisher|YouTubePublisher|FacebookPublisher|InstagramPublisher|ThreadsPublisher|PinterestPublisher|BlueskyPublisher|MastodonPublisher|TelegramPublisher|DiscordPublisher|GoogleBusinessPublisher|ZernioPublisher|UnipilePublisher
     {
         return match ($this->post->platform) {
             SocialPlatform::LinkedIn => app(LinkedInPublisher::class),
@@ -578,6 +579,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             SocialPlatform::Discord => app(DiscordPublisher::class),
             SocialPlatform::GoogleBusiness => app(GoogleBusinessPublisher::class),
             SocialPlatform::ZernioLinkedInPage => app(ZernioPublisher::class), // tantra:
+            SocialPlatform::UnipileLinkedIn => app(UnipilePublisher::class), // tantra:
         };
     }
 

@@ -797,6 +797,10 @@ return [
             'label' => 'Publication',
             'description' => 'Publication standard: image unique, multi-images, vidéo ou PDF',
         ],
+        'unipile_linkedin_post' => [
+            'label' => 'Publication',
+            'description' => 'Publication standard: image unique, multi-images, vidéo ou PDF',
+        ],
         'facebook_post' => [
             'label' => 'Publication',
             'description' => 'Publication standard sur votre page',
@@ -874,7 +878,8 @@ return [
     'platforms' => [
         'linkedin' => 'LinkedIn',
         'linkedin-page' => 'Page LinkedIn',
-        'zernio-linkedin-page' => 'Page LinkedIn (Zernio)',
+        'zernio-linkedin-page' => 'Page LinkedIn',
+        'unipile-linkedin' => 'LinkedIn',
         'x' => 'X',
         'tiktok' => 'TikTok',
         'youtube' => 'YouTube Shorts',

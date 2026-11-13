@@ -18,6 +18,8 @@ export const Platform = {
     GoogleBusiness: 'google_business',
     // tantra: the Tantra LinkedIn page, published through Zernio
     ZernioLinkedInPage: 'zernio-linkedin-page',
+    // tantra: a teammate's LinkedIn profile, published through Unipile
+    UnipileLinkedIn: 'unipile-linkedin',
 } as const;
 
 export type PlatformValue = (typeof Platform)[keyof typeof Platform];

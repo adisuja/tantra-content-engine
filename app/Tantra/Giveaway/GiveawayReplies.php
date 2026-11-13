@@ -47,7 +47,7 @@ final class GiveawayReplies
 
         $posts = Post::query()
             ->where('status', PostStatus::Published)
-            ->whereIn('platform', [Platform::LinkedIn, Platform::ZernioLinkedInPage])
+            ->whereIn('platform', [Platform::LinkedIn, Platform::UnipileLinkedIn, Platform::ZernioLinkedInPage])
             ->where('published_at', '>=', now()->subDays((int) $config['days']))
             ->whereNotNull('post_group_id')
             ->with('socialAccount')

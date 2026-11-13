@@ -13,6 +13,7 @@ const MEDIA_LIMITS_ANCHOR: Record<PlatformValue, string> = {
     [Platform.LinkedIn]: 'linkedin',
     [Platform.LinkedInPage]: 'linkedin',
     [Platform.ZernioLinkedInPage]: 'linkedin', // tantra:
+    [Platform.UnipileLinkedIn]: 'linkedin', // tantra:
     [Platform.TikTok]: 'tiktok',
     [Platform.YouTube]: 'youtube',
     [Platform.Pinterest]: 'pinterest',

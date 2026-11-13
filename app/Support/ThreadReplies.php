@@ -40,7 +40,7 @@ class ThreadReplies
             Platform::Bluesky => ContentType::BlueskyPost,
             Platform::Mastodon => ContentType::MastodonPost,
             Platform::X => ContentType::XPost,
-            Platform::LinkedIn, Platform::LinkedInPage, Platform::ZernioLinkedInPage => ContentType::LinkedInComment, // tantra: Zernio's firstComment
+            Platform::LinkedIn, Platform::LinkedInPage, Platform::ZernioLinkedInPage, Platform::UnipileLinkedIn => ContentType::LinkedInComment, // tantra: Zernio's firstComment
             default => null,
         };
     }
@@ -54,7 +54,7 @@ class ThreadReplies
     {
         return match ($platform) {
             Platform::Bluesky, Platform::Mastodon, Platform::X => self::MAX_REPLIES,
-            Platform::LinkedIn, Platform::LinkedInPage, Platform::ZernioLinkedInPage => 1, // tantra:
+            Platform::LinkedIn, Platform::LinkedInPage, Platform::ZernioLinkedInPage, Platform::UnipileLinkedIn => 1, // tantra:
             default => 0,
         };
     }

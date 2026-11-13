@@ -8,6 +8,7 @@ use App\Tantra\Http\Controllers\Web\ConnectorController;
 use App\Tantra\Http\Controllers\Web\InsightsController;
 use App\Tantra\Http\Controllers\Web\JoinController;
 use App\Tantra\Http\Controllers\Web\ManualTaskController;
+use App\Tantra\Http\Controllers\Web\OpenChannelController;
 use App\Tantra\Http\Controllers\Web\ReconnectController;
 use App\Tantra\Http\Controllers\Web\ReviewItemActionController;
 use App\Tantra\Http\Controllers\Web\ReviewPageController;
@@ -96,3 +97,9 @@ Route::middleware(['web', 'auth'])
         Route::post('/{provider}/test', [ConnectorController::class, 'test'])->name('test');
         Route::post('/{provider}/models', [ConnectorController::class, 'models'])->name('models');
     });
+
+// tantra: the sidebar lists every workspace's channels; one in another workspace switches there first (PRD D1).
+Route::middleware(['web', 'auth', EnsureAccountReady::class])
+    ->post('tantra/channels/{account}/open', OpenChannelController::class)
+    ->whereUuid('account')
+    ->name('tantra.channels.open');

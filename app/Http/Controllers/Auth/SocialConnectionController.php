@@ -45,7 +45,7 @@ class SocialConnectionController extends Controller
             Platform::Discord => DiscordController::class,
             Platform::GoogleBusiness => GoogleBusinessController::class,
             // tantra: Zernio channels are linked with tantra:zernio-connect, never through OAuth.
-            Platform::LinkedInPage, Platform::Telegram, Platform::ZernioLinkedInPage => abort(SymfonyResponse::HTTP_NOT_FOUND),
+            Platform::LinkedInPage, Platform::Telegram, Platform::ZernioLinkedInPage, Platform::UnipileLinkedIn => abort(SymfonyResponse::HTTP_NOT_FOUND),
         });
     }
 }

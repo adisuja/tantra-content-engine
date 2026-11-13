@@ -797,6 +797,10 @@ return [
             'label' => 'Пост',
             'description' => 'Звичайний пост: одне зображення, кілька зображень, відео або PDF',
         ],
+        'unipile_linkedin_post' => [
+            'label' => 'Пост',
+            'description' => 'Звичайний пост: одне зображення, кілька зображень, відео або PDF',
+        ],
         'facebook_post' => [
             'label' => 'Пост',
             'description' => 'Звичайний пост на вашій сторінці',
@@ -874,7 +878,8 @@ return [
     'platforms' => [
         'linkedin' => 'LinkedIn',
         'linkedin-page' => 'Сторінка LinkedIn',
-        'zernio-linkedin-page' => 'Сторінка LinkedIn (Zernio)',
+        'zernio-linkedin-page' => 'Сторінка LinkedIn',
+        'unipile-linkedin' => 'LinkedIn',
         'x' => 'X',
         'tiktok' => 'TikTok',
         'youtube' => 'YouTube Shorts',

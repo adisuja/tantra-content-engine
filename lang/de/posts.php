@@ -797,6 +797,10 @@ return [
             'label' => 'Beitrag',
             'description' => 'Standardbeitrag: Einzelbild, mehrere Bilder, Video oder PDF',
         ],
+        'unipile_linkedin_post' => [
+            'label' => 'Beitrag',
+            'description' => 'Standardbeitrag: Einzelbild, mehrere Bilder, Video oder PDF',
+        ],
         'facebook_post' => [
             'label' => 'Beitrag',
             'description' => 'Standardbeitrag auf deiner Seite',
@@ -874,7 +878,8 @@ return [
     'platforms' => [
         'linkedin' => 'LinkedIn',
         'linkedin-page' => 'LinkedIn-Seite',
-        'zernio-linkedin-page' => 'LinkedIn-Seite (Zernio)',
+        'zernio-linkedin-page' => 'LinkedIn-Seite',
+        'unipile-linkedin' => 'LinkedIn',
         'x' => 'X',
         'tiktok' => 'TikTok',
         'youtube' => 'YouTube Shorts',

@@ -62,6 +62,7 @@ interface Provider {
     supports_images: boolean;
     setup: string[];
     connector: Connector | null;
+    linked_accounts?: { total: number; connected: number } | null;
 }
 
 const props = defineProps<{
@@ -460,6 +461,17 @@ const when = (iso: string | null): string =>
                                 {{ when(p.connector.last_verified_at) }}</span
                             >
                         </div>
+                        <p
+                            v-if="
+                                p.linked_accounts && p.linked_accounts.total > 0
+                            "
+                            class="text-xs text-muted-foreground"
+                            :data-testid="`connector-linked-${p.key}`"
+                        >
+                            {{ p.linked_accounts.total }} accounts from Tantra
+                            are channels,
+                            {{ p.linked_accounts.connected }} connected
+                        </p>
 
                         <div
                             class="mt-auto flex flex-wrap items-center justify-between gap-2"

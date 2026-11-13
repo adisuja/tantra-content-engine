@@ -212,7 +212,7 @@ final class ProviderCatalog
                 keyPlaceholder: 'tk_live_...',
                 setup: [
                     'In Tantra, open Connectors, then API Keys, and create a key.',
-                    'Paste it here. The engine uses it to read your Tantra campaigns and contacts.',
+                    'Paste it here. The engine reads your Tantra campaigns and contacts, and every social account you connected in Tantra shows up as a channel within 15 minutes.',
                 ],
             ),
         ];

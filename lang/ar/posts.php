@@ -797,6 +797,10 @@ return [
             'label' => 'منشور',
             'description' => 'منشور قياسي: صورة واحدة أو متعددة أو فيديو أو PDF',
         ],
+        'unipile_linkedin_post' => [
+            'label' => 'منشور',
+            'description' => 'منشور قياسي: صورة واحدة أو متعددة أو فيديو أو PDF',
+        ],
         'facebook_post' => [
             'label' => 'منشور',
             'description' => 'منشور قياسي على صفحتك',
@@ -874,7 +878,8 @@ return [
     'platforms' => [
         'linkedin' => 'LinkedIn',
         'linkedin-page' => 'LinkedIn Page',
-        'zernio-linkedin-page' => 'LinkedIn Page (Zernio)',
+        'zernio-linkedin-page' => 'LinkedIn Page',
+        'unipile-linkedin' => 'LinkedIn',
         'x' => 'X',
         'tiktok' => 'TikTok',
         'youtube' => 'YouTube Shorts',

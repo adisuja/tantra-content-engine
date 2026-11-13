@@ -22,6 +22,7 @@ export const THREAD_REPLY_CONTENT_TYPES: Readonly<Record<string, string>> = {
     linkedin: ContentType.LinkedInComment,
     'linkedin-page': ContentType.LinkedInComment,
     'zernio-linkedin-page': ContentType.LinkedInComment, // tantra:
+    'unipile-linkedin': ContentType.LinkedInComment, // tantra:
 };
 export const THREAD_PLATFORMS: readonly string[] = Object.keys(
     THREAD_REPLY_CONTENT_TYPES,
@@ -33,5 +34,6 @@ export const THREAD_MAX_REPLIES: Readonly<Record<string, number>> = {
     linkedin: 1,
     'linkedin-page': 1,
     'zernio-linkedin-page': 1, // tantra:
+    'unipile-linkedin': 1, // tantra:
 };
 

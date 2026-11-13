@@ -797,6 +797,10 @@ return [
             'label' => 'Post',
             'description' => 'Standaardpost: enkele afbeelding, meerdere afbeeldingen, video of PDF',
         ],
+        'unipile_linkedin_post' => [
+            'label' => 'Post',
+            'description' => 'Standaardpost: enkele afbeelding, meerdere afbeeldingen, video of PDF',
+        ],
         'facebook_post' => [
             'label' => 'Post',
             'description' => 'Standaardpost op je pagina',
@@ -874,7 +878,8 @@ return [
     'platforms' => [
         'linkedin' => 'LinkedIn',
         'linkedin-page' => 'LinkedIn-pagina',
-        'zernio-linkedin-page' => 'LinkedIn-pagina (Zernio)',
+        'zernio-linkedin-page' => 'LinkedIn-pagina',
+        'unipile-linkedin' => 'LinkedIn',
         'x' => 'X',
         'tiktok' => 'TikTok',
         'youtube' => 'YouTube Shorts',
