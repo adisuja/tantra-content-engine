@@ -9,6 +9,7 @@ use App\Http\Resources\App\IdeaCardResource;
 use App\Http\Resources\App\IdeaStageResource;
 use App\Models\Idea;
 use App\Models\Workspace;
+use App\Tantra\Ideas\IdeasBoard;
 use Illuminate\Database\Eloquent\Builder;
 use Inertia\Inertia;
 
@@ -44,6 +45,11 @@ class BuildIdeasPageProps
             'filters' => $filters,
             'editor' => $editor,
         ];
+
+        // tantra: the Tantra ideas strip, connect prompts and card previews (PRD 25.8).
+        if (($tantra = IdeasBoard::props($workspace, $request->user())) !== null) {
+            $props['tantraIdeas'] = $tantra;
+        }
 
         if ($isGallery) {
             $props['ideas'] = Inertia::scroll(fn () => IdeaCardResource::collection(

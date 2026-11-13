@@ -4,13 +4,14 @@ import { computed, inject, ref } from 'vue';
 
 import IdeaCardMenu from '@/components/create/ideas/IdeaCardMenu.vue';
 import LabelBadge from '@/components/labels/LabelBadge.vue';
+import TantraIdeaPanel from '@/components/tantra/ideas/TantraIdeaPanel.vue'; // tantra:
 import { Checkbox } from '@/components/ui/checkbox';
 import { isImage, isVideo } from '@/lib/mediaType';
 import {
     ideaCardActionsKey,
     type IdeaCard,
-    type IdeaStage,
     type IdeaLabel,
+    type IdeaStage,
     type IdeasView,
 } from '@/types/idea';
 
@@ -51,12 +52,14 @@ const onClick = (): void => {
 
 <template>
     <article
-        class="group/card relative flex w-full cursor-pointer flex-col gap-2 overflow-hidden border bg-card p-4 text-start dark:bg-accent transition-[border-color,opacity] duration-150"
+        class="group/card relative flex w-full cursor-pointer flex-col gap-2 overflow-hidden border bg-card p-4 text-start transition-[border-color,opacity] duration-150 dark:bg-accent"
         :class="[
             view === 'gallery' ? 'rounded-md' : 'rounded-lg',
             selected ? 'border-primary-strong' : 'border-border',
         ]"
-        :data-testid="preview ? 'idea-card-placeholder-preview' : `idea-card-${card.id}`"
+        :data-testid="
+            preview ? 'idea-card-placeholder-preview' : `idea-card-${card.id}`
+        "
         :data-idea-id="preview ? undefined : card.id"
         :role="preview ? undefined : 'button'"
         :aria-pressed="selecting && !preview ? selected : undefined"
@@ -65,8 +68,21 @@ const onClick = (): void => {
         @keydown.enter.self="onClick"
         @keydown.space.self.prevent="onClick"
     >
+        <!-- tantra: a Tantra idea shows its phone preview, badges and Send to review (PRD 25.8). -->
+        <TantraIdeaPanel
+            v-if="card.tantra"
+            :idea-id="card.id"
+            :title="card.title"
+            :idea="card.tantra"
+            :still="preview"
+        />
+
         <div
-            v-if="card.cover && (isImage(card.cover) || isVideo(card.cover))"
+            v-if="
+                !card.tantra &&
+                card.cover &&
+                (isImage(card.cover) || isVideo(card.cover))
+            "
             class="relative -mx-4 -mt-4 overflow-hidden bg-muted"
             :class="view === 'board' ? 'h-[95px]' : ''"
         >
@@ -102,8 +118,9 @@ const onClick = (): void => {
         >
             {{ card.title }}
         </h3>
+        <!-- tantra: a Tantra idea's text is in its phone preview. -->
         <p
-            v-if="card.excerpt"
+            v-if="card.excerpt && !card.tantra"
             class="line-clamp-3 text-sm leading-5 break-words whitespace-pre-line text-muted-foreground"
             :class="{
                 'pe-6': !card.title,
