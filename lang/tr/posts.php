@@ -442,6 +442,7 @@ return [
             'poll_question_required' => 'Write the poll question.',
             'quote_url_invalid' => 'Paste the link of an X or Bluesky post.',
             'youtube_tags_max' => 'Tags can have up to :max characters in total.',
+            'x_quote_refused' => 'X refused the quote: your X API plan does not include quoting posts. Remove the quote and publish again.',
             'poll' => 'Poll',
             'poll_question' => 'Question',
             'poll_question_placeholder' => 'Ask something',

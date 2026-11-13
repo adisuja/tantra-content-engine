@@ -26,9 +26,11 @@ trait PublishesFirstComments
     /**
      * @param  array<string, mixed>  $root  the published post: {id, url}
      * @param  callable(string, Collection<int, MediaItem>, array<string, mixed>, array<string, mixed>): array{id: string}  $postReply  text, media, previous segment, root
+     * @param  list<string>  $posted  ids of the replies an earlier attempt already posted, skipped here
+     * @param  (callable(list<string>): void)|null  $checkpoint  called with every reply id posted so far
      * @return array<string, mixed>
      */
-    protected function withFirstComments(Post $post, array $root, callable $postReply): array
+    protected function withFirstComments(Post $post, array $root, callable $postReply, array $posted = [], ?callable $checkpoint = null): array
     {
         $replies = ThreadReplies::supports($post->platform) ? ThreadReplies::of($post->meta) : [];
 
@@ -36,15 +38,19 @@ trait PublishesFirstComments
             return $root;
         }
 
-        $ids = [];
-        $previous = $root;
+        $ids = array_values(array_slice($posted, 0, count($replies)));
+        $previous = $ids === [] ? $root : ['id' => end($ids)];
 
-        foreach ($replies as $reply) {
+        foreach (array_slice($replies, count($ids)) as $reply) {
             $text = (string) app(ContentSanitizer::class)->sanitize($reply['text'], $post->platform);
 
             try {
                 $previous = $postReply($text, ThreadReplies::mediaItems($reply), $previous, $root);
                 $ids[] = (string) $previous['id'];
+
+                if ($checkpoint !== null) {
+                    $checkpoint($ids);
+                }
             } catch (Throwable $e) {
                 report($e);
                 Log::warning('tantra: first comment not posted', ['post_id' => $post->id, 'platform' => $post->platform->value, 'error' => $e->getMessage()]);

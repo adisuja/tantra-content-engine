@@ -76,7 +76,7 @@ test('a linkedin profile poll is published as content.poll with the post text as
     fakeLinkedInPosts();
     $post = linkedInFormatPost($this->member, [
         'content_type' => ContentType::LinkedInPoll,
-        'meta' => ['linkedin_poll' => ['question' => 'Best day to post?', 'options' => ['Monday', ' ', 'Tuesday', 'Friday'], 'duration' => 'ONE_WEEK']],
+        'meta' => ['linkedin_poll' => ['question' => 'Best day to post?', 'options' => ['Monday', ' ', 'Tuesday', 'Friday'], 'duration' => 'SEVEN_DAYS']],
     ]);
 
     $result = (new LinkedInPublisher)->publish($post);
@@ -86,7 +86,7 @@ test('a linkedin profile poll is published as content.poll with the post text as
         ->and(linkedInPostRequest()['content'])->toBe(['poll' => [
             'question' => 'Best day to post?',
             'options' => [['text' => 'Monday'], ['text' => 'Tuesday'], ['text' => 'Friday']],
-            'settings' => ['duration' => 'ONE_WEEK'],
+            'settings' => ['duration' => 'SEVEN_DAYS'],
         ]]);
 });
 
@@ -118,7 +118,7 @@ test('a linkedin poll needs a question and two different choices before it is sc
 test('linkedin poll meta is validated: four choices of thirty characters and a known duration', function () {
     $rules = PostPlatformMetaRules::rules();
 
-    expect(Validator::make(['meta' => ['linkedin_poll' => ['question' => 'Q', 'options' => ['A', 'B', 'C', 'D'], 'duration' => 'TWO_WEEKS']]], $rules)->passes())->toBeTrue()
+    expect(Validator::make(['meta' => ['linkedin_poll' => ['question' => 'Q', 'options' => ['A', 'B', 'C', 'D'], 'duration' => 'FOURTEEN_DAYS']]], $rules)->passes())->toBeTrue()
         ->and(Validator::make(['meta' => ['linkedin_poll' => ['options' => ['A', 'B', 'C', 'D', 'E']]]], $rules)->errors()->has('meta.linkedin_poll.options'))->toBeTrue()
         ->and(Validator::make(['meta' => ['linkedin_poll' => ['options' => [str_repeat('a', 31)]]]], $rules)->errors()->has('meta.linkedin_poll.options.0'))->toBeTrue()
         ->and(Validator::make(['meta' => ['linkedin_poll' => ['duration' => 'ONE_MONTH']]], $rules)->errors()->has('meta.linkedin_poll.duration'))->toBeTrue()
@@ -179,4 +179,11 @@ test('linkedin profile and page posts take up to twenty images', function () {
         ->and(ContentType::LinkedInPost->maxMediaCount())->toBe(20)
         ->and(ContentType::ZernioLinkedInPagePost->maxMediaCount())->toBe(20)
         ->and(ContentType::UnipileLinkedInPost->maxMediaCount())->toBe(10);
+});
+
+test('a poll stored with an old duration name goes out as LinkedIn names it', function () {
+    expect(LinkedInPoll::payload(['linkedin_poll' => ['question' => 'Q', 'options' => ['A', 'B'], 'duration' => 'TWO_WEEKS']])['settings'])
+        ->toBe(['duration' => 'FOURTEEN_DAYS'])
+        ->and(LinkedInPoll::normalize(['duration' => 'ONE_WEEK'])['duration'])->toBe('SEVEN_DAYS')
+        ->and(LinkedInPoll::DURATIONS)->toBe(['ONE_DAY', 'THREE_DAYS', 'SEVEN_DAYS', 'FOURTEEN_DAYS']);
 });

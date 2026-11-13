@@ -12,6 +12,7 @@ use App\Exceptions\Social\ThreadsPublishException;
 use App\Models\Post;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Support\PostPlatformMetaRules;
+use App\Support\ThreadReplies;
 use App\Tantra\Composer\TantraMetaRules;
 use App\Tantra\Social\PublishesFirstComments;
 use Illuminate\Http\Client\ConnectionException;
@@ -72,18 +73,42 @@ class ThreadsPublisher
             ? ['is_ghost_post' => 'true']
             : $this->postOptions($post);
 
-        $root = $this->publishSegment($userId, $accessToken, $content, $media);
+        // tantra: a retry after the root went out resumes the reply chain
+        // instead of posting the root again (meta.threads_chain).
+        $chain = (array) data_get($post->meta, 'threads_chain', []);
+        $root = filled(data_get($chain, 'root.id'))
+            ? (array) $chain['root']
+            : $this->publishSegment($userId, $accessToken, $content, $media);
 
         // tantra: the reply chain under the post (ghost posts take none).
-        if ($post->content_type === ContentType::ThreadsGhostPost) {
+        if ($post->content_type === ContentType::ThreadsGhostPost || ThreadReplies::of($post->meta) === []) {
             return $root;
         }
 
-        return $this->withFirstComments($post, $root, function (string $text, $replyMedia, array $previous) use ($userId, $accessToken): array {
-            $this->containerOptions = ['reply_to_id' => (string) $previous['id']];
+        $this->rememberChain($post, $root, (array) ($chain['ids'] ?? []));
 
-            return $this->publishSegment($userId, $accessToken, $text, $replyMedia);
-        });
+        return $this->withFirstComments(
+            $post,
+            $root,
+            function (string $text, $replyMedia, array $previous) use ($userId, $accessToken): array {
+                $this->containerOptions = ['reply_to_id' => (string) $previous['id']];
+
+                return $this->publishSegment($userId, $accessToken, $text, $replyMedia);
+            },
+            array_map('strval', (array) ($chain['ids'] ?? [])),
+            fn (array $ids) => $this->rememberChain($post, $root, $ids),
+        );
+    }
+
+    /**
+     * tantra: the root and the replies posted so far, saved as they go out.
+     *
+     * @param  array<string, mixed>  $root
+     * @param  list<string>  $ids
+     */
+    private function rememberChain(Post $post, array $root, array $ids): void
+    {
+        $post->forceFill(['meta' => [...((array) $post->meta), 'threads_chain' => ['root' => ['id' => (string) $root['id'], 'url' => $root['url'] ?? null], 'ids' => array_values($ids)]]])->saveQuietly();
     }
 
     /**

@@ -24,7 +24,7 @@ test('discord authorize url asks for the bot scope and leaves the server picker 
     expect(urldecode((string) $response->headers->get('Location')))
         ->toStartWith('https://discord.com/api/oauth2/authorize')
         ->toContain('scope=bot identify guilds')
-        ->toContain('permissions=248832')
+        ->toContain('permissions=562949953670144') // tantra: + SEND_POLLS
         ->not->toContain('disable_guild_select');
 });
 

@@ -178,14 +178,12 @@ class UnipilePublisher
         return array_filter([
             'text' => $text,
             'attachments' => $attachments ?: null,
-            // The title shown on a PDF document post; Unipile takes up to 58 characters.
-            'document_title' => $document === null ? null : Str::limit(
-                (string) (data_get($post->meta, 'document_title') ?: $document->original_filename ?: 'Document'),
-                self::DOCUMENT_TITLE_MAX,
-                '',
-            ),
-            // The link card of a text post; LinkedIn shows it only on a post without media.
-            'external_link' => $attachments === [] && $post->attachesLinkPreview() ? UrlDetector::firstUrl($text) : null,
+            // The title shown on a PDF document post, only when one was typed; Unipile takes up to 58 characters.
+            'document_title' => $document !== null && filled($title = data_get($post->meta, 'document_title'))
+                ? Str::limit((string) $title, self::DOCUMENT_TITLE_MAX, '')
+                : null,
+            // The link card of a text post, only when asked for (opt in); LinkedIn shows it only without media.
+            'external_link' => $attachments === [] && data_get($post->meta, 'link_preview') === true ? UrlDetector::firstUrl($text) : null,
         ], fn ($v): bool => $v !== null);
     }
 

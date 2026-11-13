@@ -14,6 +14,23 @@ use RuntimeException;
 final class PinterestSections
 {
     /**
+     * Whether the section is one of the board's. A list that cannot be read
+     * counts as no: the pin then goes to the board itself.
+     */
+    public static function belongs(SocialAccount $account, string $boardId, string $sectionId): bool
+    {
+        if ($boardId === '') {
+            return false;
+        }
+
+        try {
+            return collect(self::list($account, $boardId))->contains('id', $sectionId);
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    /**
      * @return list<array{id: string, name: string}>
      */
     public static function list(SocialAccount $account, string $boardId): array

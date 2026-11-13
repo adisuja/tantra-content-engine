@@ -29,7 +29,11 @@ final class LinkedInPoll
 
     public const int OPTION_MAX_LENGTH = 30;
 
-    public const array DURATIONS = ['ONE_DAY', 'THREE_DAYS', 'ONE_WEEK', 'TWO_WEEKS'];
+    /** LinkedIn's PollDuration values. */
+    public const array DURATIONS = ['ONE_DAY', 'THREE_DAYS', 'SEVEN_DAYS', 'FOURTEEN_DAYS'];
+
+    /** Names an earlier build stored, read as LinkedIn's own. */
+    public const array LEGACY_DURATIONS = ['ONE_WEEK' => 'SEVEN_DAYS', 'TWO_WEEKS' => 'FOURTEEN_DAYS'];
 
     public const string DEFAULT_DURATION = 'THREE_DAYS';
 
@@ -60,7 +64,7 @@ final class LinkedInPoll
         return Arr::whereNotNull([
             'question' => is_string($poll['question'] ?? null) ? Str::trim($poll['question']) : null,
             'options' => self::options([self::META_KEY => $poll]),
-            'duration' => is_string($poll['duration'] ?? null) ? $poll['duration'] : null,
+            'duration' => is_string($poll['duration'] ?? null) ? self::duration($poll['duration']) : null,
         ]);
     }
 
@@ -97,13 +101,21 @@ final class LinkedInPoll
      */
     public static function payload(mixed $meta): array
     {
-        $duration = (string) data_get($meta, self::META_KEY.'.duration');
+        $duration = self::duration((string) data_get($meta, self::META_KEY.'.duration'));
 
         return [
             'question' => Str::limit(Str::trim((string) data_get($meta, self::META_KEY.'.question')), self::QUESTION_MAX_LENGTH, ''),
             'options' => array_map(fn (string $text): array => ['text' => $text], self::options($meta)),
             'settings' => ['duration' => in_array($duration, self::DURATIONS, true) ? $duration : self::DEFAULT_DURATION],
         ];
+    }
+
+    /**
+     * A stored duration as LinkedIn names it.
+     */
+    public static function duration(string $value): string
+    {
+        return self::LEGACY_DURATIONS[$value] ?? $value;
     }
 
     /**

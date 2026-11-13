@@ -76,7 +76,7 @@ final class TantraMetaRules
             "{$prefix}.linkedin_poll.question" => ['sometimes', 'nullable', 'string', 'max:'.LinkedInPoll::QUESTION_MAX_LENGTH],
             "{$prefix}.linkedin_poll.options" => ['sometimes', 'nullable', 'array', 'max:'.LinkedInPoll::MAX_OPTIONS],
             "{$prefix}.linkedin_poll.options.*" => ['nullable', 'string', 'max:'.LinkedInPoll::OPTION_MAX_LENGTH],
-            "{$prefix}.linkedin_poll.duration" => ['sometimes', 'nullable', 'string', Rule::in(LinkedInPoll::DURATIONS)],
+            "{$prefix}.linkedin_poll.duration" => ['sometimes', 'nullable', 'string', Rule::in([...LinkedInPoll::DURATIONS, ...array_keys(LinkedInPoll::LEGACY_DURATIONS)])],
 
             // Video title (LinkedIn, Facebook), visibility (LinkedIn member posts, Mastodon), reshares.
             "{$prefix}.video_title" => ['sometimes', 'nullable', 'string', 'max:255'],

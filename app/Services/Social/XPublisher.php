@@ -102,7 +102,7 @@ class XPublisher
         if (in_array($replySettings, TantraMetaRules::X_REPLY_SETTINGS, true)) {
             $data['reply_settings'] = $replySettings;
         }
-        if (! $isPoll && filled($quoteId = TantraMetaRules::xQuoteId(data_get($post->meta, 'quote_url')))) {
+        if (! $isPoll && config('tantra.x.quotes_enabled', false) && filled($quoteId = TantraMetaRules::xQuoteId(data_get($post->meta, 'quote_url')))) {
             $data['quote_tweet_id'] = $quoteId;
         }
         if (data_get($post->meta, 'paid_partnership') === true) {
@@ -265,6 +265,15 @@ class XPublisher
                 'status' => $response->status(),
                 'body' => $this->redactResponseBody($response->body()),
             ]);
+
+            // tantra: X refuses a quote when the API plan does not include it.
+            if ($response->status() === 403 && isset($data['quote_tweet_id'])) {
+                throw new XPublishException(
+                    userMessage: __('posts.form.formats.x_quote_refused'),
+                    category: ErrorCategory::Permission,
+                );
+            }
+
             $this->handleApiError($response);
         }
 

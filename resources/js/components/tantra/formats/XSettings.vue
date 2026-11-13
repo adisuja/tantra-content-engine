@@ -11,9 +11,10 @@ withDefaults(
         meta: Record<string, any>;
         accountId: string;
         isPoll?: boolean;
+        quotesEnabled?: boolean;
         disabled?: boolean;
     }>(),
-    { isPoll: false, disabled: false },
+    { isPoll: false, quotesEnabled: false, disabled: false },
 );
 
 const emit = defineEmits<{ 'update:meta': [value: Record<string, any>] }>();
@@ -43,7 +44,7 @@ const replyOptions: MetaOption[] = [
             @update:meta="update"
         />
         <MetaTextRow
-            v-if="!isPoll"
+            v-if="quotesEnabled && !isPoll"
             :meta="meta"
             meta-key="quote_url"
             :label="$t('posts.form.formats.quote_url')"

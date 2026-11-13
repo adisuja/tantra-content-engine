@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tantra\Channels;
 
 use App\Enums\SocialAccount\Platform;
+use App\Models\SocialAccount;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -34,6 +35,11 @@ final class LinkedInPageApp
 
     public const string PROFILE_THEN_PAGE = 'profile_then_page';
 
+    /** The issuing app stamped on an account (meta.oauth_app). */
+    public const string APP_PROFILE = 'linkedin';
+
+    public const string APP_PAGE = 'linkedin_page';
+
     private const string KIND_KEY = 'tantra_linkedin_kind';
 
     private const string STATE_KEY = 'tantra_linkedin_page_state';
@@ -51,6 +57,49 @@ final class LinkedInPageApp
         $page = (string) config('services.linkedin-page.client_id');
 
         return $page !== '' && $page !== (string) config('services.linkedin.client_id');
+    }
+
+    /**
+     * The page app's keys, read at the point of use: the LinkedIn app's while
+     * the page app has none (whatever the boot-time config holds).
+     *
+     * @return array{client_id: ?string, client_secret: ?string}
+     */
+    public static function pageKeys(): array
+    {
+        $id = config('services.linkedin-page.client_id');
+        $secret = config('services.linkedin-page.client_secret');
+
+        return filled($id) && filled($secret)
+            ? ['client_id' => (string) $id, 'client_secret' => (string) $secret]
+            : ['client_id' => config('services.linkedin.client_id'), 'client_secret' => config('services.linkedin.client_secret')];
+    }
+
+    /**
+     * The keys a LinkedIn account refreshes with: those of the app that issued
+     * its token (meta.oauth_app, stamped at connect). An account connected
+     * before the stamp existed was issued by the LinkedIn profile app.
+     *
+     * @return array{client_id: ?string, client_secret: ?string}
+     */
+    public static function refreshKeys(SocialAccount $account): array
+    {
+        return data_get($account->meta, 'oauth_app') === self::APP_PAGE
+            ? self::pageKeys()
+            : ['client_id' => config('services.linkedin.client_id'), 'client_secret' => config('services.linkedin.client_secret')];
+    }
+
+    /**
+     * Records on a connect identity which app issued its token.
+     *
+     * @param  array<string, mixed>  $identity
+     * @return array<string, mixed>
+     */
+    public static function stamp(array $identity, string $app): array
+    {
+        data_set($identity, 'attributes.meta.oauth_app', $app);
+
+        return $identity;
     }
 
     /**
@@ -92,7 +141,7 @@ final class LinkedInPageApp
 
         return 'https://www.linkedin.com/oauth/v2/authorization?'.http_build_query([
             'response_type' => 'code',
-            'client_id' => config('services.linkedin-page.client_id'),
+            'client_id' => self::pageKeys()['client_id'],
             'redirect_uri' => self::redirectUri(),
             'state' => $state,
             'scope' => implode(' ', self::pageScopes()),
@@ -140,8 +189,7 @@ final class LinkedInPageApp
             'grant_type' => 'authorization_code',
             'code' => $code,
             'redirect_uri' => self::redirectUri(),
-            'client_id' => config('services.linkedin-page.client_id'),
-            'client_secret' => config('services.linkedin-page.client_secret'),
+            ...self::pageKeys(),
         ]);
 
         $token = $response->json('access_token');

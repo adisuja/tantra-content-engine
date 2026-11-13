@@ -26,6 +26,7 @@ use App\Services\Social\Discord\DiscordClient;
 use App\Services\Social\Mastodon\MastodonApi;
 use App\Services\Social\Meta\GraphError;
 use App\Services\Social\Telegram\TelegramApi;
+use App\Tantra\Channels\LinkedInPageApp; // tantra:
 use App\Support\GoogleBusinessResourceName;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
@@ -302,9 +303,8 @@ class ConnectionVerifier
             ->post(config('trypost.platforms.linkedin.oauth_api').'/oauth/v2/accessToken', [
                 'grant_type' => 'refresh_token',
                 'refresh_token' => $account->refresh_token,
-                // tantra: a company page refreshes with the page app's keys (they fall back to the profile app's).
-                'client_id' => config($account->platform === Platform::LinkedInPage ? 'services.linkedin-page.client_id' : 'services.linkedin.client_id'),
-                'client_secret' => config($account->platform === Platform::LinkedInPage ? 'services.linkedin-page.client_secret' : 'services.linkedin.client_secret'),
+                // tantra: the keys of the app that issued the token (meta.oauth_app), the profile app by default.
+                ...LinkedInPageApp::refreshKeys($account),
             ]));
 
         $data = $response->json();

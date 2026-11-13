@@ -72,15 +72,15 @@ const pollLimits = computed(
             maxOptions: 4,
             questionMaxLength: 140,
             optionMaxLength: 30,
-            durations: ['ONE_DAY', 'THREE_DAYS', 'ONE_WEEK', 'TWO_WEEKS'],
+            durations: ['ONE_DAY', 'THREE_DAYS', 'SEVEN_DAYS', 'FOURTEEN_DAYS'],
             defaultDuration: 'THREE_DAYS',
         },
 );
 const DURATION_LABELS: Record<string, { labelKey: string; count?: string }> = {
     ONE_DAY: { labelKey: 'posts.form.formats.day' },
     THREE_DAYS: { labelKey: 'posts.form.formats.days', count: '3' },
-    ONE_WEEK: { labelKey: 'posts.form.formats.week' },
-    TWO_WEEKS: { labelKey: 'posts.form.formats.weeks', count: '2' },
+    SEVEN_DAYS: { labelKey: 'posts.form.formats.week' },
+    FOURTEEN_DAYS: { labelKey: 'posts.form.formats.weeks', count: '2' },
 };
 const pollDurations = computed((): PollDurationOption[] =>
     (pollLimits.value.durations as string[]).map((value) => {
@@ -105,7 +105,9 @@ const visibilityOptions = [
 </script>
 
 <template>
-    <SettingsSection v-if="pdfDocument || native">
+    <SettingsSection
+        v-if="pdfDocument || native || platform === Platform.UnipileLinkedIn"
+    >
         <MetaPollRow
             v-if="native && isPoll"
             :meta="meta"
@@ -139,6 +141,15 @@ const visibilityOptions = [
                 :disabled="disabled"
             />
         </SettingsRow>
+        <MetaSwitchRow
+            v-if="platform === Platform.UnipileLinkedIn && media.length === 0"
+            :meta="meta"
+            meta-key="link_preview"
+            :label="$t('posts.form.formats.link_attachment')"
+            :test-id="`unipile-link-preview-${accountId}`"
+            :disabled="disabled"
+            @update:meta="update"
+        />
         <template v-if="native">
             <MetaTextRow
                 v-if="hasVideo"

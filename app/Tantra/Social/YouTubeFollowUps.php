@@ -6,6 +6,7 @@ namespace App\Tantra\Social;
 
 use App\Models\Post;
 use App\Models\SocialAccount;
+use App\Services\Http\SafeHttpFetcher;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -30,6 +31,9 @@ final class YouTubeFollowUps
 
     /** YouTube refuses a thumbnail over 2 MB. */
     private const int THUMBNAIL_MAX_BYTES = 2 * 1024 * 1024;
+
+    /** What thumbnails.set accepts. */
+    private const array THUMBNAIL_TYPES = ['image/jpeg', 'image/png'];
 
     /**
      * @param  array<string, mixed>  $result  the uploaded video: {id, url}
@@ -100,14 +104,19 @@ final class YouTubeFollowUps
 
     private function setThumbnail(SocialAccount $account, string $videoId, string $url): void
     {
-        $image = Http::timeout(60)->get($url);
-        $bytes = $image->body();
+        // The link is typed by a person: fetched through the SSRF guard (no
+        // internal addresses), capped at 2 MB, and only a JPEG or PNG is sent.
+        $bytes = app(SafeHttpFetcher::class)->tryGetBody($url, self::THUMBNAIL_MAX_BYTES);
 
-        if ($image->failed() || $bytes === '' || strlen($bytes) > self::THUMBNAIL_MAX_BYTES) {
-            throw new RuntimeException('The thumbnail image could not be read or is over 2 MB.');
+        if ($bytes === null || $bytes === '') {
+            throw new RuntimeException('The thumbnail image could not be read, is not public, or is over 2 MB.');
         }
 
-        $mime = (string) (finfo_buffer(finfo_open(FILEINFO_MIME_TYPE), $bytes) ?: 'image/jpeg');
+        $mime = (string) finfo_buffer(finfo_open(FILEINFO_MIME_TYPE), $bytes);
+
+        if (! in_array($mime, self::THUMBNAIL_TYPES, true)) {
+            throw new RuntimeException("The thumbnail must be a JPEG or PNG image, not {$mime}.");
+        }
 
         $response = Http::withToken((string) $account->access_token)
             ->withBody($bytes, $mime)

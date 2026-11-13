@@ -8,6 +8,7 @@ use App\Models\SocialAccount;
 use App\Support\PostPlatformMetaRules;
 use App\Support\ThreadReplies;
 use App\Tantra\Composer\TantraMetaRules;
+use App\Tantra\Social\EngagementScopes;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
 
@@ -109,3 +110,27 @@ test('the composer lists a youtube channel playlists and a pinterest board secti
         ->assertOk()->assertExactJson(['sections' => [['id' => 's1', 'name' => 'Ideas']]]);
     $this->actingAs($user)->getJson(route('tantra.formats.youtube.playlists', $pinterest))->assertForbidden();
 });
+
+test('comment and reply scopes are asked for only once switched on', function () {
+    expect(EngagementScopes::with(Platform::Threads, ['threads_basic']))->toBe(['threads_basic'])
+        ->and(EngagementScopes::with(Platform::Facebook, ['pages_manage_posts']))->toBe(['pages_manage_posts']);
+
+    config(['tantra.meta.engagement_scopes' => true]);
+
+    expect(EngagementScopes::with(Platform::Threads, ['threads_basic']))->toBe(['threads_basic', 'threads_manage_replies'])
+        ->and(EngagementScopes::with(Platform::Instagram, []))->toBe(['instagram_business_manage_comments'])
+        ->and(EngagementScopes::with(Platform::InstagramFacebook, []))->toBe(['instagram_manage_comments'])
+        ->and(EngagementScopes::with(Platform::Facebook, []))->toBe(['pages_manage_engagement'])
+        ->and(EngagementScopes::with(Platform::X, ['tweet.write']))->toBe(['tweet.write']);
+});
+
+test('the threads connect asks for the reply scope only when switched on', function (bool $on) {
+    config(['tantra.meta.engagement_scopes' => $on, 'services.threads.client_id' => 'tid', 'services.threads.redirect' => 'https://engine.test/accounts/threads/callback']);
+    $result = createApiTestToken();
+
+    $response = $this->actingAs($result['user'])->get(route('app.social.threads.connect'));
+    $location = urldecode((string) ($response->headers->get('Location') ?: $response->headers->get('X-Inertia-Location')));
+
+    expect(str_contains($location, 'threads_manage_replies'))->toBe($on)
+        ->and($location)->toContain('threads_content_publish');
+})->with(['off' => [false], 'on' => [true]]);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\TikTok\PrivacyLevel;
+use App\Exceptions\Social\XPublishException;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -225,11 +226,21 @@ function fakeGapYouTube(array $extra = []): void
     test()->instance(Client::class, $client);
 }
 
+function gapPng(): string
+{
+    $image = imagecreatetruecolor(4, 4);
+    ob_start();
+    imagepng($image);
+
+    return (string) ob_get_clean();
+}
+
 test('a youtube long-form video links to watch, carries its tags, joins the playlist, sets the thumbnail and posts the first comment', function () {
+    fakePublicDns();
     $account = gapAccount('youtube');
     fakeGapYouTube([
         'https://www.googleapis.com/youtube/v3/playlistItems*' => Http::response(['id' => 'pi1']),
-        'https://cdn.test/thumb.jpg' => Http::response('jpegbytes'),
+        'https://cdn.test/thumb.jpg' => Http::response(gapPng(), 200, ['Content-Type' => 'image/png']),
         'https://www.googleapis.com/upload/youtube/v3/thumbnails/set*' => Http::response(['items' => []]),
         'https://www.googleapis.com/youtube/v3/commentThreads*' => Http::response(['id' => 'ct1']),
     ]);
@@ -270,6 +281,7 @@ test('a youtube short keeps its shorts link, and a refused playlist or comment n
 // X
 
 test('x sends reply settings, the quoted post id and paid partnership', function () {
+    config(['tantra.x.quotes_enabled' => true]);
     $account = gapAccount('x', ['username' => 'tantra']);
     Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::response(['data' => ['id' => '555']], 201)]);
 
@@ -422,10 +434,116 @@ test('a pin goes into the chosen board section', function () {
     $account = gapAccount('pinterest');
     Http::fake([
         'https://cdn.test/*' => Http::response('jpegbytes', 200, ['Content-Type' => 'image/jpeg']),
+        config('trypost.platforms.pinterest.api').'/boards/b1/sections*' => Http::response(['items' => [['id' => 's9', 'name' => 'Ideas']]]),
         config('trypost.platforms.pinterest.api').'/pins' => Http::response(['id' => 'pin1'], 201),
     ]);
 
     (new PinterestPublisher)->publish(gapPost($account, ContentType::PinterestPin, ['media' => gapImage(), 'meta' => ['board_id' => 'b1', 'board_section_id' => 's9']]));
 
-    expect(gapSent('/pins')['board_section_id'])->toBe('s9');
+    expect(gapSent('/pins#')['board_section_id'])->toBe('s9');
+});
+
+test('a section that is not on the pin board is dropped', function () {
+    $account = gapAccount('pinterest');
+    Http::fake([
+        'https://cdn.test/*' => Http::response('jpegbytes', 200, ['Content-Type' => 'image/jpeg']),
+        config('trypost.platforms.pinterest.api').'/boards/b2/sections*' => Http::response(['items' => [['id' => 's1', 'name' => 'Other']]]),
+        config('trypost.platforms.pinterest.api').'/pins' => Http::response(['id' => 'pin1'], 201),
+    ]);
+
+    (new PinterestPublisher)->publish(gapPost($account, ContentType::PinterestPin, ['media' => gapImage(), 'meta' => ['board_id' => 'b2', 'board_section_id' => 's9']]));
+
+    expect(isset(gapSent('/pins#')['board_section_id']))->toBeFalse();
+});
+
+test('a youtube thumbnail from an internal address, or that is not an image, is never sent', function (string $url, ?string $body) {
+    fakePublicDns();
+    $account = gapAccount('youtube');
+    fakeGapYouTube([
+        'https://cdn.test/page' => Http::response($body ?? '', 200, ['Content-Type' => 'text/html']),
+        'https://www.googleapis.com/upload/youtube/v3/thumbnails/set*' => Http::response(['items' => []]),
+    ]);
+    $post = gapPost($account, ContentType::YouTubeVideo, [
+        'content' => 'Walkthrough',
+        'media' => [['id' => 'v1', 'type' => 'video', 'path' => 'media/video.mp4', 'url' => 'https://cdn.test/video.mp4', 'mime_type' => 'video/mp4', 'original_filename' => 'video.mp4']],
+        'meta' => ['thumbnail_url' => $url],
+    ]);
+
+    $result = (new YouTubePublisher)->publish($post);
+
+    expect($result['id'])->toBe('vid123')
+        ->and($post->fresh()->meta['youtube_followup_failed'])->toBe('thumbnail');
+    Http::assertNotSent(fn (Request $r): bool => str_contains($r->url(), 'thumbnails/set'));
+    Http::assertNotSent(fn (Request $r): bool => str_contains($r->url(), '169.254.169.254'));
+})->with([
+    'cloud metadata address' => ['http://169.254.169.254/latest/meta-data', null],
+    'html page' => ['https://cdn.test/page', '<html>not an image</html>'],
+]);
+
+test('x sends no quote while quoting is switched off', function () {
+    $account = gapAccount('x', ['username' => 'tantra']);
+    Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::response(['data' => ['id' => '555']], 201)]);
+
+    (new XPublisher)->publish(gapPost($account, ContentType::XPost, ['meta' => ['quote_url' => 'https://x.com/someone/status/1234567890']]));
+
+    expect(isset(gapSent('/tweets')['quote_tweet_id']))->toBeFalse();
+});
+
+test('x explains a quote refused by the API plan', function () {
+    config(['tantra.x.quotes_enabled' => true]);
+    $account = gapAccount('x', ['username' => 'tantra']);
+    Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::response(['title' => 'Forbidden'], 403)]);
+
+    expect(fn () => (new XPublisher)->publish(gapPost($account, ContentType::XPost, ['meta' => ['quote_url' => 'https://x.com/someone/status/1234567890']])))
+        ->toThrow(XPublishException::class, __('posts.form.formats.x_quote_refused'));
+});
+
+test('a threads retry resumes the reply chain after the replies already posted, never posting the root again', function () {
+    $account = gapAccount('threads', ['platform_user_id' => 'u1']);
+    $base = 'https://graph.threads.net/v1.0';
+    Http::fake([
+        "{$base}/u1/threads" => Http::response(['id' => 'c9']),
+        "{$base}/c9*" => Http::response(['status' => 'FINISHED']),
+        "{$base}/u1/threads_publish" => Http::response(['id' => 'p3']),
+        "{$base}/p3*" => Http::response(['permalink' => 'https://www.threads.net/@u/post/Z']),
+    ]);
+    $post = gapPost($account, ContentType::ThreadsPost, ['meta' => [
+        'thread_replies' => ['Second', 'Third'],
+        'threads_chain' => ['root' => ['id' => 'p1', 'url' => 'https://www.threads.net/@u/post/X'], 'ids' => ['p2']],
+    ]]);
+
+    $result = (new ThreadsPublisher)->publish($post);
+
+    $creates = collect(Http::recorded())->map(fn (array $pair) => $pair[0])->filter(fn (Request $r): bool => str_ends_with($r->url(), '/u1/threads'))->values();
+    expect($result['id'])->toBe('p1')
+        ->and($result['thread_reply_ids'])->toBe(['p2', 'p3'])
+        ->and($creates)->toHaveCount(1)
+        ->and($creates[0]['text'])->toBe('Third')
+        ->and($creates[0]['reply_to_id'])->toBe('p2')
+        ->and($post->fresh()->meta['threads_chain']['ids'])->toBe(['p2', 'p3']);
+});
+
+test('discord sends the message without its poll when the bot may not send polls', function () {
+    Cache::flush();
+    config(['trypost.platforms.discord.bot_token' => 'BOT', 'services.discord.client_id' => '999']);
+    $account = gapAccount('discord', ['platform_user_id' => '111']);
+    $api = config('trypost.platforms.discord.api');
+    Http::fake([
+        "{$api}/guilds/*/channels" => Http::response([['id' => '444', 'name' => 'general', 'type' => 0]]),
+        "{$api}/guilds/*/roles" => Http::response([['id' => '111', 'name' => '@everyone', 'permissions' => '3072']]),
+        "{$api}/guilds/*/members/*" => Http::response(['roles' => []]),
+        "{$api}/channels/*/messages" => Http::sequence()
+            ->push(['code' => 50013, 'message' => 'Missing Permissions'], 403)
+            ->push(['id' => '778']),
+    ]);
+    $post = gapPost($account, ContentType::DiscordMessage, ['meta' => [
+        'channel_id' => '444',
+        'discord_poll' => ['question' => 'Lunch?', 'options' => ['Pizza', 'Tacos']],
+    ]]);
+
+    $result = (new DiscordPublisher)->publish($post);
+
+    expect($result['id'])->toBe('778')
+        ->and(data_get(gapSent('/messages')->data(), 'poll'))->toBeNull()
+        ->and($post->fresh()->meta['discord_poll_failed'])->toBeTrue();
 });

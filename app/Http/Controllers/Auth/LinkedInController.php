@@ -91,7 +91,7 @@ class LinkedInController extends SocialController
             $identities = [
                 ...($this->personEnabled() ? [$this->personIdentity($person, $credentials)] : []),
                 ...array_map(
-                    fn (array $organization): array => $this->organizationIdentity($organization, $person, $credentials),
+                    fn (array $organization): array => LinkedInPageApp::stamp($this->organizationIdentity($organization, $person, $credentials), LinkedInPageApp::APP_PROFILE), // tantra:
                     $this->organizationEnabled() && $kind === null ? $this->fetchOrganizations($socialUser->token) : [], // tantra: pages come from their own app
                 ),
             ];
@@ -136,7 +136,7 @@ class LinkedInController extends SocialController
         try {
             $credentials = LinkedInPageApp::credentials($request);
             $pages = array_map(
-                fn (array $organization): array => $this->organizationIdentity($organization, [], $credentials),
+                fn (array $organization): array => LinkedInPageApp::stamp($this->organizationIdentity($organization, [], $credentials), LinkedInPageApp::APP_PAGE),
                 $this->fetchOrganizations($credentials['access_token']),
             );
         } catch (Exception $e) {

@@ -96,6 +96,7 @@ test('the profile callback moves on to the page app, then offers the profile and
         ->assertRedirect(route('app.social.connect.show', Platform::LinkedIn));
 
     expect(PendingConnection::current()->identityKeys())->toBe(['linkedin:person-123', 'linkedin-page:123456']);
+    expect(data_get(collect(PendingConnection::current()->identities())->firstWhere('platform', 'linkedin-page'), 'attributes.meta.oauth_app'))->toBe('linkedin_page');
     Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), '/oauth/v2/accessToken')
         && $r['client_id'] === 'page-app' && $r['client_secret'] === 'page-secret' && $r['code'] === 'abc');
     Http::assertSent(fn (Request $r): bool => str_contains($r->url(), 'organizationAcls') && $r->header('Authorization')[0] === 'Bearer page-token');
@@ -112,15 +113,39 @@ test('a page callback with a forged state connects nothing', function () {
     expect(socialConnectFailure())->toBe('error_connecting');
 });
 
-test('a company page refreshes its token with the page app keys', function () {
+function refreshLinkedInPage(array $meta): Request
+{
+    config(['services.linkedin.client_secret' => 'profile-secret']);
     $page = SocialAccount::factory()->linkedinPage()->create([
-        'workspace_id' => $this->workspace->id,
+        'workspace_id' => test()->workspace->id,
         'refresh_token' => 'r1',
         'token_expires_at' => now()->subMinute(),
+        'meta' => ['organization_id' => '1', ...$meta],
     ]);
     Http::fake([config('trypost.platforms.linkedin.oauth_api').'/oauth/v2/accessToken' => Http::response(['access_token' => 'new', 'expires_in' => 3600])]);
 
     app(ConnectionVerifier::class)->refreshToken($page);
 
-    Http::assertSent(fn (Request $r): bool => $r['client_id'] === 'page-app' && $r['client_secret'] === 'page-secret');
+    return collect(Http::recorded())->map(fn (array $pair) => $pair[0])->first(fn (Request $r): bool => str_ends_with($r->url(), '/accessToken'));
+}
+
+test('a company page stamped with the page app refreshes with the page app keys', function () {
+    $request = refreshLinkedInPage(['oauth_app' => 'linkedin_page']);
+
+    expect($request['client_id'])->toBe('page-app')->and($request['client_secret'])->toBe('page-secret');
+});
+
+test('a company page connected before the stamp refreshes with the profile app keys', function () {
+    $request = refreshLinkedInPage([]);
+
+    expect($request['client_id'])->toBe('profile-app')->and($request['client_secret'])->toBe('profile-secret');
+});
+
+test('the page app keys fall back to the profile app keys at the point of use', function () {
+    config(['services.linkedin-page.client_id' => null, 'services.linkedin-page.client_secret' => null]);
+
+    $request = refreshLinkedInPage(['oauth_app' => 'linkedin_page']);
+
+    expect($request['client_id'])->toBe('profile-app')->and($request['client_secret'])->toBe('profile-secret')
+        ->and(LinkedInPageApp::pageKeys())->toBe(['client_id' => 'profile-app', 'client_secret' => 'profile-secret']);
 });

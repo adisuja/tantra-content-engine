@@ -220,6 +220,7 @@ const aiGenerated = computed({
             :content-type="destination.content_type"
             :meta="destination.meta"
             :media="destination.media"
+            :publish-config="platformConfig?.publishConfig ?? null"
             :disabled="disabled"
             @update:meta="update"
         />

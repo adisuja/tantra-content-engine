@@ -49,22 +49,35 @@ test('zernio sends disableLinkPreview only when the link preview is turned off',
     'off' => [false, true],
 ]);
 
-test('unipile sends the first link as external_link when the link preview is on', function () {
+test('unipile sends the first link as external_link only when the link preview is turned on', function () {
     $channel = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::UnipileLinkedIn, 'platform_user_id' => 'acc', 'access_token' => 'unipile-managed']);
     Http::fake(['unipile.test/v2/acc/posts' => Http::response(['id' => '1'], 201)]);
 
-    app(UnipilePublisher::class)->publish(routePost($channel, ContentType::UnipileLinkedInPost));
+    app(UnipilePublisher::class)->publish(routePost($channel, ContentType::UnipileLinkedInPost, ['meta' => ['link_preview' => true]]));
 
     Http::assertSent(fn (Request $r): bool => $r['external_link'] === 'https://example.com/guide' && ! isset($r['document_title']));
 });
 
-test('unipile sends no external_link when the link preview is off', function () {
+test('unipile sends no external_link by default or when the link preview is off', function (array $meta) {
     $channel = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::UnipileLinkedIn, 'platform_user_id' => 'acc', 'access_token' => 'unipile-managed']);
     Http::fake(['unipile.test/v2/acc/posts' => Http::response(['id' => '1'], 201)]);
 
-    app(UnipilePublisher::class)->publish(routePost($channel, ContentType::UnipileLinkedInPost, ['meta' => ['link_preview' => false]]));
+    app(UnipilePublisher::class)->publish(routePost($channel, ContentType::UnipileLinkedInPost, ['meta' => $meta]));
 
-    Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), '/posts') && ! isset($r['external_link']));
+    Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), '/posts') && ! isset($r['external_link']) && ! isset($r['document_title']));
+})->with(['default' => [[]], 'off' => [['link_preview' => false]]]);
+
+test('unipile sends no document title when none was typed', function () {
+    Storage::fake();
+    Storage::put('media/deck.pdf', '%PDF-1.4');
+    $channel = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::UnipileLinkedIn, 'platform_user_id' => 'acc', 'access_token' => 'unipile-managed']);
+    Http::fake(['unipile.test/v2/acc/posts' => Http::response(['id' => '1'], 201)]);
+
+    app(UnipilePublisher::class)->publish(routePost($channel, ContentType::UnipileLinkedInPost, [
+        'media' => [['id' => 'd1', 'path' => 'media/deck.pdf', 'url' => 'https://example.com/deck.pdf', 'mime_type' => 'application/pdf', 'original_filename' => 'deck.pdf']],
+    ]));
+
+    Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), '/posts') && ! isset($r['document_title']));
 });
 
 test('unipile sends the document title cut to 58 characters on a PDF post', function () {

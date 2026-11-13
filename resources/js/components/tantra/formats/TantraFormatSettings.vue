@@ -30,9 +30,10 @@ const props = withDefaults(
         contentType: string;
         meta?: Record<string, any> | null;
         media: MediaItem[];
+        publishConfig?: Record<string, any> | null;
         disabled?: boolean;
     }>(),
-    { meta: null, disabled: false },
+    { meta: null, publishConfig: null, disabled: false },
 );
 
 const emit = defineEmits<{ 'update:meta': [value: Record<string, any>] }>();
@@ -174,8 +175,12 @@ watch(
 
 watch(
     () => (props.platform === Platform.Pinterest ? meta.value.board_id : null),
-    async (board) => {
+    async (board, previous) => {
         sections.value = null;
+        // A section belongs to one board: a new board clears it.
+        if (previous && board !== previous && meta.value.board_section_id) {
+            update({ ...meta.value, board_section_id: null });
+        }
         if (!board) {
             return;
         }
@@ -257,6 +262,7 @@ watch(
         :meta="meta"
         :account-id="accountId"
         :is-poll="contentType === ContentType.XPoll"
+        :quotes-enabled="publishConfig?.quotesEnabled === true"
         :disabled="disabled"
         @update:meta="update"
     />

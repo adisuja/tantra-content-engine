@@ -439,7 +439,7 @@ test('x publish config serves the poll limits', function () {
         'maxDuration' => 10080,
         'defaultDuration' => 1440,
         'questionMaxLength' => 280,
-    ]]);
+    ], 'quotesEnabled' => false]); // tantra: quotes stay off until the X plan allows them
 });
 
 test('youtube publish config exposes only the fixed categories and the default', function () {

@@ -621,6 +621,7 @@ enum Platform: string
             ],
             self::X => [
                 'poll' => XPoll::limits(),
+                'quotesEnabled' => (bool) config('tantra.x.quotes_enabled', false), // tantra:
             ],
             self::LinkedIn, self::LinkedInPage => [
                 'linkedinPoll' => LinkedInPoll::limits(), // tantra:
