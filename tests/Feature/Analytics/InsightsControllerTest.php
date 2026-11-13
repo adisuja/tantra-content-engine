@@ -55,13 +55,13 @@ test('dashboard rejects invalid dates and never renders an excluded account', fu
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
     $user->update(['current_workspace_id' => $workspace->id]);
-    $linkedIn = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::LinkedIn]);
+    $linkedIn = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::LinkedInPage]); // tantra: LinkedIn is measured (PRD 25.7)
     AnalyticsAccountDailySnapshot::factory()->create([
         'workspace_id' => $workspace->id,
         'social_account_id' => $linkedIn->id,
         'social_account_key' => $linkedIn->id,
-        'platform' => Platform::LinkedIn,
-        'network' => Platform::LinkedIn->network(),
+        'platform' => Platform::LinkedInPage,
+        'network' => Platform::LinkedInPage->network(),
         'platform_user_id' => $linkedIn->platform_user_id,
         'date' => '2026-09-20',
         'followers_count' => 100,

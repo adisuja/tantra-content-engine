@@ -6,6 +6,8 @@ namespace App\Services\Analytics\Collectors\Followers;
 
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
+use App\Tantra\Analytics\Collectors\UnipileLinkedInFollowerCollector;
+use App\Tantra\Analytics\Collectors\ZernioPageFollowerCollector;
 
 class FollowerCollectorFactory
 {
@@ -26,6 +28,9 @@ class FollowerCollectorFactory
             Platform::TikTok => app(TikTokFollowerCollector::class),
             Platform::Bluesky => app(BlueskyFollowerCollector::class),
             Platform::Mastodon => app(MastodonFollowerCollector::class),
+            // tantra: LinkedIn profiles through Unipile, the Tantra page through Zernio (PRD 25.7).
+            Platform::LinkedIn, Platform::UnipileLinkedIn => app(UnipileLinkedInFollowerCollector::class),
+            Platform::ZernioLinkedInPage => app(ZernioPageFollowerCollector::class),
             default => throw AnalyticsCollectionException::unsupported("{$platform->value} follower analytics is excluded"),
         };
     }
