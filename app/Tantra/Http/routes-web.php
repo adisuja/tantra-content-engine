@@ -52,7 +52,7 @@ Route::middleware(['web', 'auth'])
         Route::post('/{task}/skip', [ManualTaskController::class, 'skip'])->whereUuid('task')->name('skip');
     });
 
-// tantra: the Team page: consent, expertise, Unipile matches (PRD 10.5, 10.9).
+// tantra: the Team page: consent, expertise, Unipile matches, posting times (PRD 10.5, 10.9, 25.6).
 Route::middleware(['web', 'auth'])
     ->prefix('tantra/team')
     ->name('tantra.team.')
@@ -64,6 +64,7 @@ Route::middleware(['web', 'auth'])
         Route::post('/expertise', [TeamController::class, 'expertise'])->name('expertise');
         Route::post('/match', [TeamController::class, 'match'])->name('match');
         Route::post('/{member}/clerk-unlink', [TeamController::class, 'clerkUnlink'])->whereUuid('member')->name('clerk-unlink');
+        Route::put('/channels/{channel}/schedule', [TeamController::class, 'schedule'])->whereUuid('channel')->name('channels.schedule');
     });
 
 // tantra: the team dashboard (PRD 10.6).
