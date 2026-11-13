@@ -8,6 +8,7 @@ use App\Enums\Post\Status as PostStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
 use App\Models\SocialAccount;
+use App\Tantra\Analytics\Collectors\UnipileLinkedInReader;
 use App\Tantra\Boost\Boost;
 use App\Tantra\Boost\MemberProfile;
 use App\Tantra\Review\Models\ReviewItem;
@@ -23,7 +24,8 @@ use Illuminate\Support\Facades\Log;
  * at both runs for its first 14 days, then at the morning run until day 30.
  *
  * - Tantra page posts: Zernio's LinkedIn post stats by URN (impressions, reach, clicks).
- * - Personal posts: Unipile through the author's own account, engagement only (Spike S2).
+ * - Personal posts: Unipile, through a Unipile channel's own account or, for OAuth
+ * LinkedIn, the review owner's matched account; impressions when Unipile gives them.
  * - The page itself: follower gain and page views from Zernio, one row a day.
  */
 final class CollectMetrics
@@ -130,36 +132,58 @@ final class CollectMetrics
     /** @return array<string, mixed>|null */
     private static function fromUnipile(UnipileClient $unipile, Post $post): ?array
     {
-        $workspace = $post->socialAccount?->workspace;
-        $native = Boost::nativeRef($post);
+        $channel = $post->socialAccount;
+        $workspace = $channel?->workspace;
+        // A Unipile channel's post id is Unipile's own; an OAuth post's is its LinkedIn URN.
+        $native = $post->platform === Platform::UnipileLinkedIn && filled($post->platform_post_id)
+            ? (string) $post->platform_post_id
+            : Boost::nativeRef($post);
         if (! UnipileClient::configured() || $workspace === null || $native === null) {
             return null;
         }
 
-        $authorId = ReviewGate::reviewOwnerIdFor($workspace->id, $workspace->account?->owner_id);
-        $author = $authorId ? MemberProfile::query()->find($authorId) : null;
-        if ($author?->unipile_account_id === null || $author->unipile_confirmed_at === null) {
+        $accountId = self::unipileAccountFor($channel);
+        if ($accountId === null) {
             return null;
         }
 
-        $data = $unipile->postDetails((string) $author->unipile_account_id, $native);
+        $data = $unipile->postDetails($accountId, $native);
         if ($data === null || ! isset($data['id'])) {
             return null;
         }
 
-        $reactions = $data['reactions_counter'] ?? null;
-
         return [
             'source' => 'unipile',
-            'impressions' => null, // not given for personal posts (Spike S2)
+            // The per post read rarely has impressions (Spike S2); the list read does (Insights).
+            'impressions' => self::int(data_get($data, 'analytics.impressions_counter')),
             'unique_impressions' => null,
-            'reactions' => is_array($reactions) ? array_sum(array_map('intval', $reactions)) : self::int($reactions),
+            'reactions' => UnipileLinkedInReader::counters($data)['reactions'],
             'comments' => self::int($data['comments_counter'] ?? null),
             'shares' => self::int($data['reposts_counter'] ?? null),
             'clicks' => null,
             'saves' => null,
             'raw' => array_intersect_key($data, array_flip(['id', 'reactions_counter', 'comments_counter', 'reposts_counter', 'analytics', 'date', 'parsed_datetime'])),
         ];
+    }
+
+    /**
+     * The Unipile account a personal post is read through: a Unipile channel's
+     * own account, else (OAuth LinkedIn) the workspace review owner's confirmed one.
+     */
+    private static function unipileAccountFor(SocialAccount $channel): ?string
+    {
+        if ($channel->platform === Platform::UnipileLinkedIn) {
+            return filled($channel->platform_user_id) ? (string) $channel->platform_user_id : null;
+        }
+
+        $workspace = $channel->workspace;
+        $authorId = ReviewGate::reviewOwnerIdFor($workspace->id, $workspace->account?->owner_id);
+        $author = $authorId ? MemberProfile::query()->find($authorId) : null;
+        if ($author?->unipile_account_id === null || $author->unipile_confirmed_at === null) {
+            return null;
+        }
+
+        return (string) $author->unipile_account_id;
     }
 
     /** One row a day per Tantra page, for two days ago (LinkedIn's follower numbers lag). */

@@ -164,7 +164,7 @@ test('connecting an included account dispatches its initial follower collection'
 test('connecting an excluded account does not dispatch follower collection', function () {
     Bus::fake();
 
-    SocialAccount::factory()->linkedin()->create([
+    SocialAccount::factory()->linkedinPage()->create([ // tantra: LinkedIn is measured (PRD 25.7)
         'workspace_id' => $this->workspace->id,
     ]);
 
