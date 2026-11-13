@@ -1,7 +1,8 @@
 <script setup lang="ts">
-// tantra: the Team page (PRD 10.5 and 10.9): consent to post approved team
-// comments in your name, your expertise line, and for the Account owner, which
-// Unipile LinkedIn account belongs to which teammate.
+// tantra: the Team page (PRD 10.5, 10.9 and 25.6): consent to post approved
+// team comments in your name, your expertise line, the posting days and times
+// of every channel you review, and for the Account owner, which Unipile
+// LinkedIn account belongs to which teammate.
 import { Head, router } from '@inertiajs/vue3';
 import { IconUsersGroup } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
@@ -10,11 +11,15 @@ import { toast } from 'vue-sonner';
 
 import HeaderTitle from '@/components/HeaderTitle.vue';
 import { postJson } from '@/components/tantra/review/reviewApi';
+import ChannelScheduleCard, {
+    type TeamChannel,
+} from '@/components/tantra/team/ChannelScheduleCard.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/AppLayout.vue';
+import type { TimezoneOption } from '@/types/posting-schedule';
 
 interface Member {
     id: string;
@@ -37,6 +42,7 @@ interface Member {
         synced_at: string | null;
     } | null;
     clerk_linked?: boolean;
+    channels: TeamChannel[];
 }
 
 type ChecklistStep =
@@ -45,12 +51,14 @@ type ChecklistStep =
     | 'expertise'
     | 'unipile'
     | 'consent'
-    | 'api_key';
+    | 'api_key'
+    | 'schedule';
 
 // Where each step is done. Steps done on this page, or by Adi, have no link.
 const STEP_LINKS: Partial<Record<ChecklistStep, string>> = {
     linkedin: '/connect/linkedin',
     api_key: '/settings/workspace/api-keys',
+    schedule: '#posting-times',
 };
 const STEPS: ChecklistStep[] = [
     'joined',
@@ -59,6 +67,7 @@ const STEPS: ChecklistStep[] = [
     'unipile',
     'consent',
     'api_key',
+    'schedule',
 ];
 const doneCount = (m: Member): number =>
     STEPS.filter((step) => m.checklist[step]).length;
@@ -75,7 +84,16 @@ const props = defineProps<{
     isOwner: boolean;
     boostEnabled: boolean;
     unipileAccounts: UnipileAccount[];
+    timezones: TimezoneOption[];
 }>();
+
+// Channels whose times came from a default nobody has checked yet.
+const unchecked = (m: Member): TeamChannel[] =>
+    m.channels.filter((c) => !c.confirmed);
+
+const reloadMembers = (): void => {
+    router.reload({ only: ['members'] });
+};
 
 const me = props.members.find((m) => m.is_me);
 const expertise = ref(me?.expertise ?? '');
@@ -156,6 +174,17 @@ const send = async (url: string, body: Record<string, unknown>) => {
                         >{{ $t('tantra.team.checklist.do_it') }}</a
                     >
                 </div>
+                <a
+                    v-for="c in me.checklist.schedule ? [] : unchecked(me)"
+                    :key="c.id"
+                    :href="`#channel-${c.id}`"
+                    class="ms-6 text-xs underline"
+                    >{{
+                        $t('tantra.team.channels.check', {
+                            channel: c.display_name || c.username || '',
+                        })
+                    }}</a
+                >
             </section>
 
             <section
@@ -204,6 +233,49 @@ const send = async (url: string, body: Record<string, unknown>) => {
                         }}</Button>
                     </div>
                 </form>
+            </section>
+
+            <section
+                id="posting-times"
+                class="flex max-w-4xl flex-col gap-4"
+                data-testid="tantra-posting-times"
+            >
+                <div class="flex flex-col gap-1">
+                    <h2 class="font-heading text-base font-medium">
+                        {{ $t('tantra.team.channels.title') }}
+                    </h2>
+                    <p class="max-w-2xl text-sm text-muted-foreground">
+                        {{ $t('tantra.team.channels.help') }}
+                    </p>
+                </div>
+                <div
+                    v-for="m in members"
+                    :key="m.id"
+                    class="flex flex-col gap-3"
+                >
+                    <h3 v-if="isOwner" class="text-sm font-medium">
+                        {{ m.linkedin?.name || m.name }}
+                    </h3>
+                    <p
+                        v-if="m.channels.length === 0"
+                        class="rounded-lg border border-dashed border-border-strong px-4 py-3 text-sm text-muted-foreground"
+                    >
+                        {{ $t('tantra.team.channels.none') }}
+                        <a
+                            v-if="m.is_me"
+                            href="/settings/workspace/channels"
+                            class="underline"
+                            >{{ $t('tantra.team.channels.connect') }}</a
+                        >
+                    </p>
+                    <ChannelScheduleCard
+                        v-for="c in m.channels"
+                        :key="c.id"
+                        :channel="c"
+                        :timezones="timezones"
+                        @saved="reloadMembers"
+                    />
+                </div>
             </section>
 
             <section v-if="isOwner" class="flex flex-col gap-3">

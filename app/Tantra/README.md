@@ -36,6 +36,14 @@ One-off commands: `tantra:ai-connector` (add a connector, key on STDIN), `tantra
 
 `/tantra/review` (`ReviewPageController::index`, `pages/tantra/review/Index.vue`, `ReviewCard.vue`) is the one review screen and where people land: `LandOnReview` sends the first calendar visit of a session in a Tantra workspace there. Three tabs: Review, Scheduled and Published. Each post is its phone preview from `platforms.ts` (LinkedIn, the LinkedIn page, X, and a plain fallback for networks without their own look yet), with Approve and schedule, feedback for the next engine round, and Undo once scheduled.
 
+## Channels and posting times
+
+PRD 25.6. `app/Tantra/Channels/ChannelSchedules.php`, `TeamController::schedule`, `Api/ChannelScheduleController`, `components/tantra/team/ChannelScheduleCard.vue`. The Team page has a "Channels and posting times" section: every channel in the workspaces a person reviews (the Account owner sees everyone's), each with its network icon, timezone and the upstream weekly grid, so a personal profile, a page and an X account each get their own times. Saves go to `PUT /tantra/team/channels/{channel}/schedule`, allowed for that workspace's review owner and the Account owner, validated with upstream's `UpdatePostingScheduleRequest` and saved through upstream's `UpdatePostingSchedule`, which reflows the channel's queue. A goal or schedule left out of the request stays as it is. The same is on the API (`GET/PUT api/tantra/channels/{channel}/schedule`, owner token) and MCP (`tantra-get-channel-schedule-tool`, `tantra-update-channel-schedule-tool`).
+
+Unipile and Zernio channels arrive with default times nobody chose, so `meta.schedule_confirmed_at` is set the first time a person saves a channel's times (the Team page, the API, MCP, the channel settings page or the posting goal step after connecting). Until then the Team page asks "Check the times we set for ...", and the checklist's "posting times set" step needs every connected channel they review to have at least one enabled time and checked times.
+
+Onboarding: one connection can create several channels (a LinkedIn profile and its pages). `SocialController` flashes them all as `connectedChannels`, and the connect dialog opens the posting goal step for each in turn.
+
 ## Identities come from LinkedIn
 
 Nobody's name, headline or photo is typed in. `app/Tantra/LinkedIn`:
@@ -59,6 +67,7 @@ Each change is small and marked `// tantra:` (or `<!-- tantra: -->`). After merg
 - Sign in with Clerk: `app/Http/Controllers/Auth/AuthenticatedSessionController.php` (the login page and sign out), `NewPasswordController.php` (back to the password form), `app/Http/Requests/App/Settings/ProfileUpdateRequest.php` (emails lowercase and unique in any case).
 - Navigation and branding: `AppSidebar.vue`, `AppLogo.vue`, `WorkspaceMenuContent.vue`, `auth/LegalLinks.vue`, `layouts/auth/AuthSplitLayout.vue`.
 - MCP: the Tantra tools on `app/Mcp/Servers/TryPostServer.php`.
+- Posting times for every new channel: `app/Http/Controllers/Auth/SocialController.php` (flashes `connectedChannels`), `app/Http/Controllers/App/ChannelPostingScheduleController.php` (marks the times checked), `components/channels/ConnectChannelDialog.vue` (the goal step for each new channel).
 - AI through the Connectors tab: `app/Actions/Idea/GenerateIdea.php`, `app/Actions/Ai/AssistPostContent.php`, `app/Actions/Ai/GenerateMediaAltText.php`, the error paths of `IdeaGenerateController`, `PostAiAssistantController`, `MediaAltTextController`, the error line in `GenerateIdeasDialog.vue`, `WritingAssistantPanel.vue`, `MediaEditorAltTextPanel.vue`, the banner in `AppSidebarLayout.vue`, the nav item in `useSettingsNavigation.ts`, the CLIs in `docker/Dockerfile`, and the `connectors` label in `lang/*/settings.php` (16 locales, no marker).
 - Branding: `app/Services/Http/SafeHttpFetcher.php` (our user agent).
 - Tooling: `.prettierignore` (the studio CSS, generated in tantra-content).
