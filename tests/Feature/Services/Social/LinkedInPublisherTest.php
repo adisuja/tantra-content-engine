@@ -557,7 +557,7 @@ test('linkedin publisher sends per-image alt text on a carousel, not the filenam
 
 test('linkedin publisher caps a carousel at the platform max images', function () {
     $media = [];
-    for ($i = 1; $i <= 12; $i++) {
+    for ($i = 1; $i <= 22; // tantra: the cap is 20 $i++) {
         $media[] = [
             'id' => "test-media-{$i}",
             'path' => "media/2026-01/carousel-{$i}.jpg",
@@ -597,15 +597,15 @@ test('linkedin publisher caps a carousel at the platform max images', function (
 
     $this->publisher->publish($this->post);
 
-    // Only the first 10 images (LinkedIn::maxImages) are uploaded; the extra 2 are dropped.
-    expect($initCallCount)->toBe(10);
+    // Only the first 20 images (LinkedIn::maxImages) are uploaded; the extra 2 are dropped. tantra: was 10.
+    expect($initCallCount)->toBe(20);
 
     Http::assertSent(function ($request) {
         if (! str_contains($request->url(), '/rest/posts')) {
             return false;
         }
 
-        return count(data_get($request->data(), 'content.multiImage.images', [])) === 10;
+        return count(data_get($request->data(), 'content.multiImage.images', [])) === 20;
     });
 });
 

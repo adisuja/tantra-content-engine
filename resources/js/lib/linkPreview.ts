@@ -10,6 +10,8 @@ export const LINK_PREVIEW_PLATFORMS: ReadonlySet<string> = new Set([
     Platform.Bluesky,
     Platform.LinkedIn,
     Platform.LinkedInPage,
+    Platform.ZernioLinkedInPage, // tantra:
+    Platform.UnipileLinkedIn, // tantra:
 ]);
 
 /** Threads turns the first link into a card on its own, so its card cannot be dropped. */

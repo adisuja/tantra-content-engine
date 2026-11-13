@@ -167,12 +167,17 @@ const aiGenerated = computed({
         <LinkedInSettings
             v-else-if="
                 account.platform === Platform.LinkedIn ||
-                account.platform === Platform.LinkedInPage
+                account.platform === Platform.LinkedInPage ||
+                account.platform === Platform.ZernioLinkedInPage ||
+                account.platform === Platform.UnipileLinkedIn
             "
             :account-id="account.id"
             :media="destination.media"
             :meta="destination.meta"
             :disabled="disabled"
+            :platform="account.platform"
+            :content-type="destination.content_type"
+            :publish-config="platformConfig?.publishConfig ?? null"
             @update:meta="update"
         />
         <GoogleBusinessSettings

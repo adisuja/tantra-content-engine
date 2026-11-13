@@ -9,6 +9,7 @@ use App\Enums\TikTok\PrivacyLevel;
 use App\Rules\ContentFitsPlatformLimits;
 use App\Support\PostPlatformMetaRules;
 use App\Support\Social\XPoll;
+use App\Tantra\Composer\TantraMetaRules;
 use Illuminate\Support\Facades\Validator;
 
 test('custom meta messages cover pinterest, instagram collaborators, google business and x polls', function () {
@@ -30,6 +31,7 @@ test('custom meta messages cover pinterest, instagram collaborators, google busi
         'meta.thread_replies.*.poll.options.*.string' => __('posts.form.x.poll.choice_text'),
         'meta.thread_replies.*.poll.duration_minutes.integer' => XPoll::durationRangeMessage(),
         'meta.thread_replies.*.poll.duration_minutes.between' => XPoll::durationRangeMessage(),
+        ...TantraMetaRules::messages(), // tantra:
     ]);
 });
 

@@ -10,10 +10,12 @@ use App\Exceptions\Social\ErrorCategory;
 use App\Models\Post;
 use App\Services\Social\ContentSanitizer;
 use App\Support\ThreadReplies;
+use App\Support\UrlDetector;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Throwable;
 
 /**
@@ -26,6 +28,9 @@ use Throwable;
  */
 class UnipilePublisher
 {
+    /** Unipile refuses a document title over 58 characters. */
+    public const int DOCUMENT_TITLE_MAX = 58;
+
     public function __construct(private readonly UnipileClient $unipile) {}
 
     /**
@@ -167,9 +172,20 @@ class UnipilePublisher
             'filename' => (string) ($item->original_filename ?: basename($item->path) ?: 'file'),
         ])->values()->all();
 
+        $text = (string) app(ContentSanitizer::class)->forPost($post);
+        $document = $post->mediaItems->first(fn (MediaItem $item): bool => $item->isDocument());
+
         return array_filter([
-            'text' => (string) app(ContentSanitizer::class)->forPost($post),
+            'text' => $text,
             'attachments' => $attachments ?: null,
+            // The title shown on a PDF document post; Unipile takes up to 58 characters.
+            'document_title' => $document === null ? null : Str::limit(
+                (string) (data_get($post->meta, 'document_title') ?: $document->original_filename ?: 'Document'),
+                self::DOCUMENT_TITLE_MAX,
+                '',
+            ),
+            // The link card of a text post; LinkedIn shows it only on a post without media.
+            'external_link' => $attachments === [] && $post->attachesLinkPreview() ? UrlDetector::firstUrl($text) : null,
         ], fn ($v): bool => $v !== null);
     }
 

@@ -18,6 +18,8 @@ use App\Models\SocialAccount;
 use App\Rules\ValidYouTubeDescription;
 use App\Services\Social\ContentSanitizer;
 use App\Support\Social\XPoll;
+use App\Tantra\Composer\TantraMetaRules;
+use App\Tantra\LinkedIn\LinkedInPoll;
 use Closure;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
@@ -110,6 +112,9 @@ class PostPlatformMetaRules
             "{$prefix}.thread_replies.*.poll.duration_minutes" => ['sometimes', 'nullable', 'integer', 'between:'.XPoll::MIN_DURATION.','.XPoll::MAX_DURATION],
 
             "{$prefix}.document_title" => ['sometimes', 'nullable', 'string', 'max:300'],
+
+            // tantra: content formats beyond upstream (LinkedIn polls, video title, visibility, ...).
+            ...TantraMetaRules::rules($prefix),
 
             "{$prefix}.privacy_level" => ['sometimes', 'nullable', 'string', Rule::enum(PrivacyLevel::class)],
             "{$prefix}.auto_add_music" => ['sometimes', 'boolean'],
@@ -213,6 +218,7 @@ class PostPlatformMetaRules
             "{$prefix}.thread_replies.*.poll.options.*.string" => __('posts.form.x.poll.choice_text'),
             "{$prefix}.thread_replies.*.poll.duration_minutes.integer" => XPoll::durationRangeMessage(),
             "{$prefix}.thread_replies.*.poll.duration_minutes.between" => XPoll::durationRangeMessage(),
+            ...TantraMetaRules::messages($prefix), // tantra:
         ];
     }
 
@@ -268,6 +274,7 @@ class PostPlatformMetaRules
             'LinkedIn (profile and page): document_title (≤300, the title shown on a PDF document post; defaults to the file name).',
             'Google Business Profile: topic_type STANDARD (default)|EVENT|OFFER; call_to_action {action_type: '.implode('|', array_column(CtaAction::cases(), 'value')).', url} (not on OFFER; url required unless NONE or CALL); event {title ≤'.TopicType::TITLE_MAX_LENGTH.', start_date, end_date (YYYY-MM-DD), start_time, end_time (HH:MM)} (required on EVENT and OFFER, the title being the offer title); offer {coupon_code, redeem_online_url, terms_conditions ≤5000} (OFFER only).',
             'Telegram, Facebook reels and stories: no settings. Stories (Instagram and Facebook) publish no text.',
+            TantraMetaRules::documentation(), // tantra:
             'Threads of posts: thread_replies (list of up to '.ThreadReplies::MAX_REPLIES.' replies published under the post as a thread, each {text, media} where media is a list of up to 4 media items ({url}, {id} or {upload_token}, with optional meta.alt_text) for that reply alone; a plain string is a text-only reply) on Bluesky, Mastodon and X; on LinkedIn (profile and page) a post takes one reply, published as a comment from the same profile or page, text only, up to 3000 characters; each reply needs text or media, its media follows the rules of a post on that network, and its text must fit the account limit (Bluesky 300, Mastodon 500 including the content warning, which every reply repeats, X 280 or 25000 for accounts with long posts). On X a reply may instead be a poll: {text, poll} with poll {options, duration_minutes} under the same rules as meta.poll, no media, and the reply text as its question (required, up to '.XPoll::QUESTION_MAX_LENGTH.' characters).',
         ]);
     }
@@ -356,6 +363,8 @@ class PostPlatformMetaRules
             $meta['audio'] = Arr::only($meta['audio'], self::INSTAGRAM_AUDIO_FIELDS);
         }
 
+        $meta = TantraMetaRules::normalize($meta); // tantra:
+
         return $meta;
     }
 
@@ -436,8 +445,10 @@ class PostPlatformMetaRules
             $platform === Platform::TikTok => self::tiktokPrivacyViolation($meta),
             $type === ContentType::InstagramReel => self::instagramReelViolation($platform, $meta),
             $type === ContentType::XPoll => XPoll::violation($meta) ?? XPoll::requiredViolation($meta),
+            LinkedInPoll::isPoll($type) => LinkedInPoll::requiredViolation($meta), // tantra:
             $platform === Platform::Pinterest && blank(data_get($meta, 'board_id')) => ['board_id', trans('posts.form.pinterest.board_required')],
             $platform === Platform::Discord && blank(data_get($meta, 'channel_id')) => ['channel_id', trans('posts.form.discord.channel_required')],
+            filled($tantra = TantraMetaRules::requiredViolation($platform, $meta)) => $tantra, // tantra:
             $needsGoogleBusinessEvent
                 && blank(data_get($meta, 'event.title')) => [
                     'event.title',

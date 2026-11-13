@@ -163,7 +163,8 @@ enum Platform: string
     public function maxImages(): int
     {
         return match ($this) {
-            self::LinkedIn, self::LinkedInPage, self::ZernioLinkedInPage, self::UnipileLinkedIn => 10,
+            self::LinkedIn, self::LinkedInPage, self::ZernioLinkedInPage => 20, // tantra: LinkedIn takes up to 20 images
+            self::UnipileLinkedIn => 10,
             self::X => 4,
             self::TikTok => 0,
             self::YouTube => 0,
@@ -619,6 +620,9 @@ enum Platform: string
             ],
             self::X => [
                 'poll' => XPoll::limits(),
+            ],
+            self::LinkedIn, self::LinkedInPage => [
+                'linkedinPoll' => \App\Tantra\LinkedIn\LinkedInPoll::limits(), // tantra:
             ],
             default => [],
         };
