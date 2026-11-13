@@ -23,12 +23,15 @@ use RuntimeException;
  */
 class ClerkSessionController extends Controller
 {
+    // Flashed by sign out: the page ends the Clerk session before showing the form.
+    public const SIGNED_OUT = 'tantra_clerk_signed_out';
+
     public static function page(Request $request, string $state = 'sign-in'): Response
     {
         return Inertia::render('tantra/auth/ClerkSignIn', [
             'state' => $state,
             'email' => $state === 'no-access' ? session('tantra_clerk_email') : null,
-            'signedOut' => $request->boolean('signed_out'),
+            'signedOut' => (bool) session(self::SIGNED_OUT),
             'publishableKey' => (string) config('tantra.clerk.publishable_key'),
             'frontendApi' => (string) config('tantra.clerk.frontend_api'),
             'sessionUrl' => route('tantra.clerk.session'),
@@ -41,7 +44,8 @@ class ClerkSessionController extends Controller
     public function store(Request $request): RedirectResponse
     {
         abort_unless(ClerkLogin::enabled(), 404);
-        $token = (string) $request->input('token', '');
+        $token = $request->input('token');
+        abort_unless(is_string($token) && $token !== '' && strlen($token) <= 8192, 422);
 
         try {
             $claims = ClerkToken::verify($token);
@@ -68,6 +72,7 @@ class ClerkSessionController extends Controller
 
     public function noAccess(Request $request): Response|RedirectResponse
     {
+        abort_unless(ClerkLogin::enabled(), 404);
         if (Auth::check()) {
             return redirect()->route('app.calendar');
         }

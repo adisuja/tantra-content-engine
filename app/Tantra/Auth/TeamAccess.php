@@ -9,6 +9,7 @@ use App\Enums\User\TimeFormat;
 use App\Enums\User\WeekStart;
 use App\Models\Account;
 use App\Models\User;
+use App\Models\Workspace;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -38,7 +39,7 @@ class TeamAccess
     /**
      * @throws RuntimeException when there is no Account yet or the email belongs to another Account.
      */
-    public static function grant(string $email, ?Account $account = null, bool $makeOwner = false, string $name = 'Tantra Team'): User
+    public static function grant(string $email, ?Account $account = null, bool $makeOwner = false, string $name = 'Tantra Team', ?string $clerkId = null): User
     {
         $email = Str::lower(trim($email));
         $account ??= self::mainAccount();
@@ -46,8 +47,14 @@ class TeamAccess
             throw new RuntimeException('There is no Account yet. Run php artisan tantra:create-owner first.');
         }
 
-        return DB::transaction(function () use ($email, $account, $makeOwner, $name): User {
-            $user = User::query()->whereRaw('lower(email) = ?', [$email])->first();
+        return DB::transaction(function () use ($email, $account, $makeOwner, $name, $clerkId): User {
+            // From Clerk: the Engine user linked to this Clerk user, else the one
+            // with the Clerk-verified email, if it is not linked to someone else.
+            $user = $clerkId === null ? null : User::query()->where('clerk_user_id', $clerkId)->first();
+            $user ??= ClerkLogin::byEmail($email);
+            if ($user !== null && $clerkId !== null && ! ClerkLogin::canLink($user, $clerkId)) {
+                throw new RuntimeException("{$email} is linked to another Clerk user. Run php artisan tantra:clerk-unlink {$email} first.");
+            }
             if ($user !== null && $user->account_id !== null && $user->account_id !== $account->id) {
                 throw new RuntimeException("{$email} belongs to another Account. Nothing was changed.");
             }
@@ -66,26 +73,42 @@ class TeamAccess
             if ($user->account_id === null) {
                 $user->forceFill(['account_id' => $account->id])->save();
             }
+            if ($clerkId !== null && $user->clerk_user_id !== $clerkId) {
+                $user->forceFill(['clerk_user_id' => $clerkId])->save();
+            }
 
             $workspaces = $account->workspaces()->orderBy('name')->get();
-            $memberships = DB::table('user_workspace')->where('user_id', $user->id)->pluck('workspace_id')->all();
-            foreach ($workspaces as $workspace) {
-                if (in_array($workspace->id, $memberships, true)) {
-                    $workspace->members()->updateExistingPivot($user->id, ['is_admin' => true, 'requires_approval' => false]);
-                } else {
-                    $workspace->members()->attach($user->id, ['is_admin' => true, 'requires_approval' => false]);
-                }
-            }
+            self::adminOfEvery($user, $workspaces);
 
             if ($user->current_workspace_id === null && $workspaces->isNotEmpty()) {
                 $user->forceFill(['current_workspace_id' => $workspaces->first()->id])->save();
             }
 
             if ($makeOwner && $account->owner_id !== $user->id) {
+                // The previous owner keeps full access as an admin of every workspace.
+                $previous = $account->owner;
+                if ($previous !== null) {
+                    self::adminOfEvery($previous, $workspaces);
+                }
                 $account->forceFill(['owner_id' => $user->id])->save();
             }
 
             return $user->refresh();
         });
+    }
+
+    /**
+     * @param  iterable<Workspace>  $workspaces
+     */
+    private static function adminOfEvery(User $user, iterable $workspaces): void
+    {
+        $memberships = DB::table('user_workspace')->where('user_id', $user->id)->pluck('workspace_id')->all();
+        foreach ($workspaces as $workspace) {
+            if (in_array($workspace->id, $memberships, true)) {
+                $workspace->members()->updateExistingPivot($user->id, ['is_admin' => true, 'requires_approval' => false]);
+            } else {
+                $workspace->members()->attach($user->id, ['is_admin' => true, 'requires_approval' => false]);
+            }
+        }
     }
 }

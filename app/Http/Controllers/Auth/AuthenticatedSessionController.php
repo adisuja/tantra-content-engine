@@ -74,7 +74,9 @@ class AuthenticatedSessionController extends Controller
 
         // tantra: end the Clerk session too, or the sign in page would sign straight back in.
         if (ClerkLogin::enabled()) {
-            return redirect()->route('login', ['signed_out' => 1]);
+            $request->session()->flash(ClerkSessionController::SIGNED_OUT, true);
+
+            return redirect()->route('login');
         }
 
         return redirect()->route('app.home');

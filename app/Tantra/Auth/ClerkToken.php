@@ -21,6 +21,8 @@ class ClerkToken
 {
     private const JWKS_TTL = 3600;
 
+    private const REFETCH_EVERY = 60;
+
     /**
      * @return array<string, mixed> The verified claims.
      *
@@ -32,8 +34,8 @@ class ClerkToken
         $kid = self::kid($token);
 
         $keys = self::keys($issuer);
-        if (! isset($keys[$kid])) {
-            // Clerk rotated its key: read the set again once.
+        if (! isset($keys[$kid]) && Cache::add('tantra:clerk:jwks-refetch:'.md5($issuer), true, self::REFETCH_EVERY)) {
+            // Clerk may have rotated its key: read the set again, at most once a minute.
             $keys = self::keys($issuer, fresh: true);
         }
         if (! isset($keys[$kid])) {
@@ -60,6 +62,10 @@ class ClerkToken
         if (! isset($claims['azp']) || ! in_array(rtrim((string) $claims['azp'], '/'), $parties, true)) {
             throw new InvalidClerkToken('The session token was made for another site.');
         }
+        // A session still waiting on a second step (sts "pending") is not signed in yet.
+        if (($claims['sts'] ?? null) === 'pending') {
+            throw new InvalidClerkToken('The session is not complete yet.');
+        }
         if (! is_string($claims['sub'] ?? null) || $claims['sub'] === '') {
             throw new InvalidClerkToken('The session token names no user.');
         }
@@ -84,24 +90,42 @@ class ClerkToken
     private static function keys(string $issuer, bool $fresh = false): array
     {
         $cacheKey = 'tantra:clerk:jwks:'.md5($issuer);
-        if ($fresh) {
-            Cache::forget($cacheKey);
+        $cached = Cache::get($cacheKey);
+        if (! $fresh && is_array($cached)) {
+            return self::parse($cached);
         }
 
-        $set = Cache::remember($cacheKey, self::JWKS_TTL, function () use ($issuer): array {
+        // Fetch first; the cached set is replaced only by a set that parses.
+        try {
             $response = Http::timeout(5)->acceptJson()->get($issuer.'/.well-known/jwks.json');
-            if (! $response->successful() || ! is_array($response->json('keys'))) {
-                throw new InvalidClerkToken('Clerk\'s signing keys could not be read.');
+            $set = $response->successful() ? $response->json() : null;
+            $keys = is_array($set) && is_array($set['keys'] ?? null) ? self::parse($set) : null;
+        } catch (Throwable) {
+            $keys = null;
+        }
+
+        if ($keys === null) {
+            if (is_array($cached)) {
+                return self::parse($cached);
             }
 
-            return $response->json();
-        });
+            throw new InvalidClerkToken('Clerk\'s signing keys could not be read.');
+        }
 
+        Cache::put($cacheKey, $set, self::JWKS_TTL);
+
+        return $keys;
+    }
+
+    /**
+     * @param  array<string, mixed>  $set
+     * @return array<string, Key>
+     */
+    private static function parse(array $set): array
+    {
         try {
             return JWK::parseKeySet($set, 'RS256');
         } catch (Throwable $e) {
-            Cache::forget($cacheKey);
-
             throw new InvalidClerkToken('Clerk\'s signing keys could not be read.', previous: $e);
         }
     }

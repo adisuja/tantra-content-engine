@@ -62,6 +62,7 @@ Route::middleware(['web', 'auth'])
         Route::post('/consent', [TeamController::class, 'consent'])->name('consent');
         Route::post('/expertise', [TeamController::class, 'expertise'])->name('expertise');
         Route::post('/match', [TeamController::class, 'match'])->name('match');
+        Route::post('/{member}/clerk-unlink', [TeamController::class, 'clerkUnlink'])->whereUuid('member')->name('clerk-unlink');
     });
 
 // tantra: the team dashboard (PRD 10.6).

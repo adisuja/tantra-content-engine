@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Password;
 use Inertia\Testing\AssertableInertia as Assert;
 
 const CLERK_ISSUER = 'https://clerk.usetantra.com';
@@ -147,7 +148,7 @@ describe('signing in', function () {
     it('signs an existing user in by verified email and links the Clerk user', function () {
         $user = User::factory()->create(['email' => 'priya@usetantra.com']);
 
-        $this->post('/auth/clerk/session', ['token' => clerkToken(['email' => 'Priya@usetantra.com'])])
+        $this->post('/auth/clerk/session', ['token' => clerkToken(['email_verified' => true, 'email' => 'Priya@usetantra.com'])])
             ->assertRedirect();
 
         $this->assertAuthenticatedAs($user);
@@ -201,7 +202,7 @@ describe('signing in', function () {
     });
 
     it('sends an unknown email to ask for access', function () {
-        $this->post('/auth/clerk/session', ['token' => clerkToken(['email' => 'stranger@example.com'])])
+        $this->post('/auth/clerk/session', ['token' => clerkToken(['email_verified' => true, 'email' => 'stranger@example.com'])])
             ->assertRedirect(route('tantra.clerk.no-access'));
 
         $this->assertGuest();
@@ -217,7 +218,7 @@ describe('signing in', function () {
         $user = User::factory()->create(['email' => 'priya@usetantra.com']);
         $user->forceFill(['clerk_user_id' => 'user_someone_else'])->save();
 
-        $this->post('/auth/clerk/session', ['token' => clerkToken(['email' => 'priya@usetantra.com'])])
+        $this->post('/auth/clerk/session', ['token' => clerkToken(['email_verified' => true, 'email' => 'priya@usetantra.com'])])
             ->assertRedirect(route('tantra.clerk.no-access'));
 
         $this->assertGuest();
@@ -226,7 +227,7 @@ describe('signing in', function () {
     it('refuses a bad token without signing in', function () {
         User::factory()->create(['email' => 'priya@usetantra.com']);
 
-        $this->post('/auth/clerk/session', ['token' => clerkToken(['email' => 'priya@usetantra.com', 'azp' => 'https://evil.example.com'])])
+        $this->post('/auth/clerk/session', ['token' => clerkToken(['email_verified' => true, 'email' => 'priya@usetantra.com', 'azp' => 'https://evil.example.com'])])
             ->assertRedirect(route('login'))
             ->assertSessionHasErrors('clerk');
 
@@ -238,7 +239,7 @@ describe('signing in', function () {
         clerkWorkspace($owner, 'Adi');
         clerkWorkspace($owner, 'Priya');
 
-        $this->post('/auth/clerk/session', ['token' => clerkToken(['email' => 'team@growthclubpro.com'])])->assertRedirect();
+        $this->post('/auth/clerk/session', ['token' => clerkToken(['email_verified' => true, 'email' => 'team@growthclubpro.com'])])->assertRedirect();
 
         $team = User::query()->where('email', 'team@growthclubpro.com')->firstOrFail();
         $this->assertAuthenticatedAs($team);
@@ -250,7 +251,12 @@ describe('signing in', function () {
     it('signs out of Clerk too when signing out of the Engine', function () {
         $user = User::factory()->create();
 
-        $this->actingAs($user)->post('/logout')->assertRedirect(route('login', ['signed_out' => 1]));
+        $this->actingAs($user)->post('/logout')
+            ->assertRedirect(route('login'))
+            ->assertSessionHas('tantra_clerk_signed_out', true);
+
+        $this->get('/login')->assertInertia(fn (Assert $page) => $page->component('tantra/auth/ClerkSignIn')->where('signedOut', true));
+        $this->get('/login')->assertInertia(fn (Assert $page) => $page->where('signedOut', false));
     });
 });
 
@@ -286,9 +292,28 @@ describe('tantra:team-account', function () {
         $owner = User::factory()->create(['email' => 'adi@growthclub.org']);
         clerkWorkspace($owner, 'Adi');
 
-        Artisan::call('tantra:team-account', ['--owner' => true, '--account' => 'adi@growthclub.org']);
+        $other = clerkWorkspace($owner, 'Priya');
+        DB::table('user_workspace')->where('user_id', $owner->id)->where('workspace_id', $other->id)->delete();
 
-        expect(User::query()->where('email', 'team@growthclubpro.com')->firstOrFail()->isAccountOwner())->toBeTrue();
+        expect(Artisan::call('tantra:team-account', ['--owner' => true, '--force' => true, '--account' => 'adi@growthclub.org']))->toBe(0);
+
+        $team = User::query()->where('email', 'team@growthclubpro.com')->firstOrFail();
+        expect($team->isAccountOwner())->toBeTrue()
+            ->and($owner->refresh()->isAccountOwner())->toBeFalse()
+            ->and($owner->isWorkspaceAdmin($other))->toBeTrue()
+            ->and(DB::table('user_workspace')->where('user_id', $owner->id)->count())->toBe(2);
+    });
+
+    it('asks before handing over the Account', function () {
+        $owner = User::factory()->create(['email' => 'adi@growthclub.org']);
+        clerkWorkspace($owner, 'Adi');
+
+        $this->artisan('tantra:team-account', ['--owner' => true])
+            ->expectsConfirmation('Make team@growthclubpro.com the Account owner? The current owner becomes an admin of every workspace.', 'no')
+            ->assertExitCode(1);
+
+        expect($owner->refresh()->isAccountOwner())->toBeTrue()
+            ->and(User::query()->where('email', 'team@growthclubpro.com')->exists())->toBeFalse();
     });
 
     it('refuses an email that belongs to another Account', function () {
@@ -298,5 +323,195 @@ describe('tantra:team-account', function () {
 
         expect(Artisan::call('tantra:team-account', ['--account' => 'adi@growthclub.org']))->toBe(1)
             ->and(DB::table('user_workspace')->where('user_id', User::query()->where('email', 'team@growthclubpro.com')->value('id'))->count())->toBe(0);
+    });
+});
+
+/**
+ * Clerk's Backend API for user_clerk_1 (the production path: no email in the session token).
+ *
+ * @param  array<string, mixed>  $extra  More faked URLs.
+ */
+function fakeClerkBackend(string $email, string $status = 'verified', array $extra = []): void
+{
+    config(['tantra.clerk.secret_key' => 'sk_test_x']);
+    Http::fake([
+        CLERK_ISSUER.'/.well-known/jwks.json' => Http::response(clerkTestKey()['jwks']),
+        'https://api.clerk.com/v1/users/user_clerk_1' => Http::response([
+            'id' => 'user_clerk_1',
+            'primary_email_address_id' => 'idn_1',
+            'email_addresses' => [['id' => 'idn_1', 'email_address' => $email, 'verification' => ['status' => $status]]],
+        ]),
+        ...$extra,
+    ]);
+}
+
+describe('review fixes', function () {
+    it('refuses a pending session', function () {
+        ClerkToken::verify(clerkToken(['sts' => 'pending']));
+    })->throws(InvalidClerkToken::class, 'not complete');
+
+    it('answers 422 to a token that is not a string', function () {
+        $this->post('/auth/clerk/session', ['token' => ['a', 'b']])->assertStatus(422);
+        $this->post('/auth/clerk/session', [])->assertStatus(422);
+        $this->assertGuest();
+    });
+
+    it('hides every Clerk route while the switch is off', function () {
+        config(['tantra.clerk.enabled' => false]);
+        $owner = User::factory()->create();
+
+        $this->get(route('tantra.clerk.no-access'))->assertNotFound();
+        $this->actingAs($owner)->postJson(route('tantra.team.clerk-unlink', $owner->id))->assertNotFound();
+    });
+
+    it('does not trust an email claim without email_verified, and falls back to the Backend API', function () {
+        $user = User::factory()->create(['email' => 'priya@usetantra.com']);
+
+        $this->post('/auth/clerk/session', ['token' => clerkToken(['email' => 'priya@usetantra.com'])])
+            ->assertRedirect(route('tantra.clerk.no-access'));
+        $this->assertGuest();
+
+        fakeClerkBackend('priya@usetantra.com');
+        $this->post('/auth/clerk/session', ['token' => clerkToken(['email' => 'someone@else.com'])])->assertRedirect();
+        $this->assertAuthenticatedAs($user);
+    });
+
+    it('signs the team login in through the Backend API path production uses', function () {
+        $owner = User::factory()->create(['email' => 'adi@growthclub.org']);
+        clerkWorkspace($owner, 'Adi');
+        fakeClerkBackend('Team@growthclubpro.com');
+
+        $this->post('/auth/clerk/session', ['token' => clerkToken()])->assertRedirect();
+
+        $team = User::query()->where('email', 'team@growthclubpro.com')->firstOrFail();
+        $this->assertAuthenticatedAs($team);
+        expect($team->clerk_user_id)->toBe('user_clerk_1')->and($team->accountWorkspaces()->count())->toBe(1);
+    });
+
+    it('never grants team access from the email stored on the Engine user', function () {
+        $owner = User::factory()->create(['email' => 'adi@growthclub.org']);
+        $adi = clerkWorkspace($owner, 'Adi');
+        // Someone changed their own Engine email to the team address.
+        $sneaky = User::factory()->create(['email' => 'team@growthclubpro.com', 'account_id' => $owner->account_id]);
+        $sneaky->forceFill(['clerk_user_id' => 'user_clerk_1'])->save();
+        fakeClerkBackend('sneaky@example.com');
+
+        $this->post('/auth/clerk/session', ['token' => clerkToken()])->assertRedirect();
+
+        $this->assertAuthenticatedAs($sneaky);
+        expect($sneaky->refresh()->belongsToWorkspace($adi))->toBeFalse();
+    });
+
+    it('refuses the team grant to an Engine user linked to another live Clerk user', function () {
+        $owner = User::factory()->create(['email' => 'adi@growthclub.org']);
+        clerkWorkspace($owner, 'Adi');
+        $team = User::factory()->create(['email' => 'team@growthclubpro.com', 'account_id' => $owner->account_id]);
+        $team->forceFill(['clerk_user_id' => 'user_live'])->save();
+        fakeClerkBackend('team@growthclubpro.com', extra: ['https://api.clerk.com/v1/users/user_live' => Http::response(['id' => 'user_live'])]);
+
+        $this->post('/auth/clerk/session', ['token' => clerkToken()])->assertSessionHasErrors('clerk');
+
+        $this->assertGuest();
+        expect($team->refresh()->clerk_user_id)->toBe('user_live');
+    });
+
+    it('relinks when the linked Clerk user is gone and the new verified email matches', function () {
+        $user = User::factory()->create(['email' => 'priya@usetantra.com']);
+        $user->forceFill(['clerk_user_id' => 'user_deleted'])->save();
+        fakeClerkBackend('priya@usetantra.com', extra: ['https://api.clerk.com/v1/users/user_deleted' => Http::response(['errors' => []], 404)]);
+
+        $this->post('/auth/clerk/session', ['token' => clerkToken()])->assertRedirect();
+
+        $this->assertAuthenticatedAs($user);
+        expect($user->refresh()->clerk_user_id)->toBe('user_clerk_1');
+    });
+
+    it('keeps the link when the linked Clerk user still exists', function () {
+        $user = User::factory()->create(['email' => 'priya@usetantra.com']);
+        $user->forceFill(['clerk_user_id' => 'user_live'])->save();
+        fakeClerkBackend('priya@usetantra.com', extra: ['https://api.clerk.com/v1/users/user_live' => Http::response(['id' => 'user_live'])]);
+
+        $this->post('/auth/clerk/session', ['token' => clerkToken()])->assertRedirect(route('tantra.clerk.no-access'));
+
+        $this->assertGuest();
+        expect($user->refresh()->clerk_user_id)->toBe('user_live');
+    });
+
+    it('unlinks with tantra:clerk-unlink and the owner-only Team page action', function () {
+        $owner = User::factory()->create(['email' => 'adi@growthclub.org']);
+        $priya = User::factory()->create(['email' => 'priya@usetantra.com', 'account_id' => $owner->account_id]);
+        $priya->forceFill(['clerk_user_id' => 'user_old'])->save();
+
+        expect(Artisan::call('tantra:clerk-unlink', ['email' => 'PRIYA@usetantra.com']))->toBe(0)
+            ->and($priya->refresh()->clerk_user_id)->toBeNull()
+            ->and(Artisan::call('tantra:clerk-unlink', ['email' => 'nobody@example.com']))->toBe(1);
+
+        $priya->forceFill(['clerk_user_id' => 'user_old'])->save();
+        $this->actingAs($priya)->postJson(route('tantra.team.clerk-unlink', $priya->id))->assertForbidden();
+        $this->actingAs($owner)->postJson(route('tantra.team.clerk-unlink', $priya->id))->assertOk();
+        expect($priya->refresh()->clerk_user_id)->toBeNull();
+    });
+
+    it('refetches the key set at most once a minute for unknown key ids', function () {
+        $fetches = 0;
+        Http::fake([CLERK_ISSUER.'/.well-known/jwks.json' => function () use (&$fetches) {
+            $fetches++;
+
+            return Http::response(clerkTestKey()['jwks']);
+        }]);
+
+        ClerkToken::verify(clerkToken());
+        foreach ([1, 2, 3] as $attempt) {
+            try {
+                ClerkToken::verify(clerkToken(kid: 'ins_unknown'));
+            } catch (InvalidClerkToken) {
+            }
+        }
+
+        expect($fetches)->toBe(2);
+        $this->travel(61)->seconds();
+        try {
+            ClerkToken::verify(clerkToken(kid: 'ins_unknown'));
+        } catch (InvalidClerkToken) {
+        }
+        expect($fetches)->toBe(3);
+    });
+
+    it('keeps the cached key set when a forced refetch fails', function () {
+        $responses = [Http::response(clerkTestKey()['jwks']), Http::response('down', 500)];
+        Http::fake([CLERK_ISSUER.'/.well-known/jwks.json' => function () use (&$responses) {
+            return array_shift($responses) ?? Http::response('down', 500);
+        }]);
+
+        ClerkToken::verify(clerkToken());
+        try {
+            ClerkToken::verify(clerkToken(kid: 'ins_unknown'));
+        } catch (InvalidClerkToken) {
+        }
+
+        expect(ClerkToken::verify(clerkToken())['sub'])->toBe('user_clerk_1');
+    });
+
+    it('stores profile emails lowercase and unique whatever their case', function () {
+        User::factory()->create(['email' => 'Taken@Example.com']);
+        $user = User::factory()->create(['email' => 'me@example.com']);
+
+        $this->actingAs($user)->put(route('app.profile.update'), ['name' => $user->name, 'email' => 'TAKEN@example.com'])
+            ->assertSessionHasErrors('email');
+        $this->actingAs($user)->put(route('app.profile.update'), ['name' => $user->name, 'email' => ' New.Me@Example.COM '])
+            ->assertSessionHasNoErrors();
+
+        expect($user->refresh()->email)->toBe('new.me@example.com');
+    });
+
+    it('sends password resets and joined teammates to the password form', function () {
+        $user = User::factory()->create(['email' => 'priya@usetantra.com']);
+        $token = Password::createToken($user);
+
+        $this->post(route('password.store'), ['token' => $token, 'email' => 'priya@usetantra.com', 'password' => 'A-much-longer-pass-123!', 'password_confirmation' => 'A-much-longer-pass-123!'])
+            ->assertRedirect(route('login', ['password' => 1]))
+            ->assertSessionHas('status');
+
+        $this->get(route('login', ['password' => 1]))->assertInertia(fn (Assert $page) => $page->component('auth/Login')->has('status'));
     });
 });

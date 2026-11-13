@@ -9,6 +9,7 @@ use App\Enums\SocialAccount\Status;
 use App\Http\Controllers\Controller;
 use App\Models\SocialAccount;
 use App\Models\User;
+use App\Tantra\Auth\ClerkLogin;
 use App\Tantra\Boost\Boost;
 use App\Tantra\Boost\MemberProfile;
 use App\Tantra\LinkedIn\LinkedInSync;
@@ -52,6 +53,7 @@ class TeamController extends Controller
                 'expertise' => $profiles->get($u->id)?->expertise,
                 'checklist' => $this->checklist($u, $profiles->get($u->id)),
                 'linkedin' => $this->linkedin($profiles->get($u->id)),
+                'clerk_linked' => $u->clerk_user_id !== null,
             ])->values();
 
         return Inertia::render('tantra/team/Index', [
@@ -119,6 +121,21 @@ class TeamController extends Controller
         MemberProfile::query()->updateOrCreate(['user_id' => $request->user()->id], ['expertise' => $text]);
 
         return response()->json(['message' => 'Saved.']);
+    }
+
+    /**
+     * The Account owner clears the Clerk user a teammate signs in as, so their
+     * next usetantra.com login links again by verified email.
+     */
+    public function clerkUnlink(Request $request, string $member): JsonResponse
+    {
+        $owner = $request->user();
+        abort_unless(ClerkLogin::enabled(), 404);
+        abort_unless($owner->account?->owner_id === $owner->id, 403);
+        $user = User::query()->where('account_id', $owner->account_id)->findOrFail($member);
+        $user->forceFill(['clerk_user_id' => null])->save();
+
+        return response()->json(['message' => "{$user->name} signs in with usetantra.com again to link."]);
     }
 
     public function match(Request $request): JsonResponse

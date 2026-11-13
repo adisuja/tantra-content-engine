@@ -21,7 +21,8 @@ class TeamAccountCommand extends Command
     protected $signature = 'tantra:team-account
         {email=team@growthclubpro.com : The team login}
         {--account= : Account id or its owner\'s email (default: the first Account)}
-        {--owner : Also make this login the Account owner (billing, channel app keys)}';
+        {--owner : Also make this login the Account owner (billing, channel app keys); the previous owner stays an admin of every workspace}
+        {--force : Hand over the Account without asking}';
 
     protected $description = 'Give the team login admin access to every workspace on the main Account';
 
@@ -44,6 +45,13 @@ class TeamAccountCommand extends Command
 
                 return self::FAILURE;
             }
+        }
+
+        if ($this->option('owner') && ! $this->option('force')
+            && ! $this->confirm("Make {$email} the Account owner? The current owner becomes an admin of every workspace.")) {
+            $this->components->warn('Nothing was changed.');
+
+            return self::FAILURE;
         }
 
         try {
