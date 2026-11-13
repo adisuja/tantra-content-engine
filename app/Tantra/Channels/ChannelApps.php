@@ -75,7 +75,7 @@ final class ChannelApps
                 'label' => 'Meta: Instagram',
                 'portal' => 'https://developers.facebook.com/apps',
                 'help' => 'In the same Meta app add "Instagram API with Instagram Login" and copy the Instagram app ID and secret shown there (they differ from the Meta App ID).',
-                'catch' => 'Free. Same tester rule as Facebook while in development mode.',
+                'catch' => 'Newer Meta apps no longer get Instagram Login (Meta shows "not available for newer apps"); for those, connect Instagram through "Instagram via Facebook" (Meta: Facebook Pages keys). Same tester rule while in development mode.',
                 'fields' => [
                     'client_id' => ['label' => 'Instagram app ID', 'config' => ['services.instagram.client_id']],
                     'client_secret' => ['label' => 'Instagram app secret', 'secret' => true, 'config' => ['services.instagram.client_secret']],
