@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Middleware\App\EnsureAccountReady;
 use App\Http\Middleware\App\EnsureHasWorkspace;
+use App\Tantra\Http\Controllers\Web\ChannelAppController;
 use App\Tantra\Http\Controllers\Web\ConnectorController;
 use App\Tantra\Http\Controllers\Web\InsightsController;
 use App\Tantra\Http\Controllers\Web\JoinController;
@@ -91,6 +92,11 @@ Route::middleware(['web', 'auth'])
         Route::get('/', [ConnectorController::class, 'index'])
             ->middleware([EnsureAccountReady::class, EnsureHasWorkspace::class])
             ->name('index');
+        // tantra: the Channels section, developer app keys per network.
+        Route::put('/channels/{app}', [ChannelAppController::class, 'update'])
+            ->middleware(EnsureAccountReady::class)->name('channels.update');
+        Route::delete('/channels/{app}', [ChannelAppController::class, 'destroy'])
+            ->middleware(EnsureAccountReady::class)->name('channels.destroy');
         Route::put('/{provider}', [ConnectorController::class, 'update'])->name('update');
         Route::delete('/{provider}', [ConnectorController::class, 'destroy'])->name('destroy');
         Route::post('/{provider}/default', [ConnectorController::class, 'makeDefault'])->name('default');

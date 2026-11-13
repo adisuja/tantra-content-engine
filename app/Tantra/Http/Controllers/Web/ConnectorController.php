@@ -66,6 +66,9 @@ class ConnectorController extends Controller
             'providers' => $providers,
             'canManage' => $canManage,
             'serverFallback' => TantraAi::serverProviderConfigured(),
+            // tantra: developer app keys per network (PRD prd-engine-all-channels.md, D2).
+            'channelApps' => ChannelAppController::present(\App\Tantra\Channels\ChannelApps::canManage($user)),
+            'canManageChannels' => \App\Tantra\Channels\ChannelApps::canManage($user),
         ]);
     }
 

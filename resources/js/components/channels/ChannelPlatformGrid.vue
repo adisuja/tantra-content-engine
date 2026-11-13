@@ -30,7 +30,7 @@ const emit = defineEmits<{
         >
             <button
                 type="button"
-                class="flex w-full cursor-pointer flex-col items-center gap-4 rounded-lg border border-border bg-card px-3 pt-6 pb-5 text-center transition-shadow duration-150 ease-out hover:shadow-[0_3px_14px_-12px_var(--subtle-foreground)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring sm:px-4 sm:pt-[39px] sm:pb-6"
+                class="relative flex w-full cursor-pointer flex-col items-center gap-4 rounded-lg border border-border bg-card px-3 pt-6 pb-5 text-center transition-shadow duration-150 ease-out hover:shadow-[0_3px_14px_-12px_var(--subtle-foreground)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring sm:px-4 sm:pt-[39px] sm:pb-6"
                 :data-testid="`connect-channel-${platform.value}`"
                 @click="emit('select', platform.value)"
             >
@@ -45,6 +45,13 @@ const emit = defineEmits<{
                         >{{ $t(`channels.platforms.${platform.value}`) }}</span
                     >
                 </span>
+                <!-- tantra: no developer app keys yet; clicking explains what is missing. -->
+                <span
+                    v-if="platform.ready === false"
+                    class="absolute top-3 right-3 rounded-full border border-border bg-muted px-2 py-0.5 text-xs leading-4 text-muted-foreground"
+                    :data-testid="`connect-needs-setup-${platform.value}`"
+                    >Needs setup</span
+                >
             </button>
             <button
                 v-if="withDetails"
@@ -53,7 +60,9 @@ const emit = defineEmits<{
                 :aria-label="
                     $t('channels.details.more', { network: platform.label })
                 "
-                :title="$t('channels.details.more', { network: platform.label })"
+                :title="
+                    $t('channels.details.more', { network: platform.label })
+                "
                 :data-testid="`connect-info-${platform.value}`"
                 @click="emit('details', platform.value)"
             >

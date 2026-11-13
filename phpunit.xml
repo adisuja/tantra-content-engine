@@ -35,5 +35,6 @@
         <env name="NIGHTWATCH_ENABLED" value="false"/>
         <!-- tantra: upstream tests keep testing upstream branding; Tantra branding tests switch it on. -->
         <env name="TANTRA_BRANDING" value="false"/>
+        <env name="TANTRA_CHANNEL_APPS" value="false"/>
     </php>
 </phpunit>

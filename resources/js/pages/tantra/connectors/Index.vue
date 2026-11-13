@@ -13,6 +13,9 @@ import {
 import { computed, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
+import ChannelAppsSection, {
+    type ChannelAppEntry,
+} from '@/components/tantra/ChannelAppsSection.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -69,6 +72,8 @@ const props = defineProps<{
     providers: Provider[];
     canManage: boolean;
     serverFallback: boolean;
+    channelApps: ChannelAppEntry[];
+    canManageChannels: boolean;
 }>();
 
 const GROUPS: { key: Provider['group']; title: string; description: string }[] =
@@ -299,9 +304,15 @@ const when = (iso: string | null): string =>
     <Head title="Connectors" />
     <SettingsLayout
         title="Connectors"
-        description="Connect the AI that writes ideas, captions, alt text and team threads, and your Tantra account. Keys are encrypted and shared by every workspace in this account."
+        description="Set up the channels your team posts to, the AI that writes ideas, captions, alt text and team threads, and your Tantra account. Keys are encrypted and shared by every workspace in this account."
     >
         <div class="flex flex-col gap-8" data-testid="connectors-page">
+            <!-- tantra: developer app keys per network (PRD prd-engine-all-channels.md) -->
+            <ChannelAppsSection
+                :apps="channelApps"
+                :can-manage="canManageChannels"
+            />
+
             <!-- Summary of what runs the AI right now -->
             <div
                 class="flex items-start gap-3 rounded-lg border p-4"

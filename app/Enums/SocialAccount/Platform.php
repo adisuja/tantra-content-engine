@@ -9,6 +9,7 @@ use App\Enums\TikTok\PrivacyLevel;
 use App\Enums\YouTube\Category;
 use App\Support\Hashtags;
 use App\Support\Social\XPoll;
+use App\Tantra\Channels\ChannelApps;
 use Illuminate\Support\Str;
 
 enum Platform: string
@@ -532,6 +533,18 @@ enum Platform: string
     {
         return match ($this) {
             self::LinkedInPage, self::InstagramFacebook, self::ZernioLinkedInPage, self::UnipileLinkedIn => false,
+            // tantra: every network gets its card, set up or not; an unready one
+            // opens a "Needs setup" step (PRD prd-engine-all-channels.md, D1).
+            default => ChannelApps::enforced() || $this->isReadyToConnect(),
+        };
+    }
+
+    /**
+     * tantra: whether the network's card connects now (keys are in).
+     */
+    public function isReadyToConnect(): bool
+    {
+        return match ($this) {
             self::LinkedIn => self::LinkedIn->isEnabled() || self::LinkedInPage->isEnabled(),
             self::Instagram => self::Instagram->isEnabled() || self::InstagramFacebook->isEnabled(),
             default => $this->isEnabled(),
@@ -572,6 +585,12 @@ enum Platform: string
 
                 if ($platform === self::Instagram) {
                     $option['connect_methods'] = self::instagramConnectMethods();
+                }
+
+                // tantra: readiness and, when not ready, what is missing.
+                $option['ready'] = $platform->isReadyToConnect();
+                if (! $option['ready']) {
+                    $option['setup'] = ChannelApps::setupFor($platform->value);
                 }
 
                 return $option;

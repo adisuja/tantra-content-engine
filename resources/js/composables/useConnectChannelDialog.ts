@@ -5,7 +5,8 @@ export type ConnectChannelStep =
     | 'details'
     | 'instagram'
     | 'instagram-facebook'
-    | 'telegram';
+    | 'telegram'
+    | 'setup';
 
 export interface ConnectChannelState {
     id: number;
@@ -14,6 +15,8 @@ export interface ConnectChannelState {
     reconnectId?: string;
     goalAccountId?: string;
     detailsPlatform?: string;
+    // tantra: the network whose "Needs setup" step is open.
+    setupPlatform?: string;
     canGoBack: boolean;
 }
 
@@ -22,14 +25,25 @@ let nextId = 0;
 const state = shallowRef<ConnectChannelState | null>(null);
 
 const open = (): void => {
-    state.value = { id: ++nextId, flow: 'connect', step: 'grid', canGoBack: false };
+    state.value = {
+        id: ++nextId,
+        flow: 'connect',
+        step: 'grid',
+        canGoBack: false,
+    };
 };
 
 const openAt = (
     step: Exclude<ConnectChannelStep, 'grid' | 'details'>,
     reconnectId?: string,
 ): void => {
-    state.value = { id: ++nextId, flow: 'connect', step, reconnectId, canGoBack: false };
+    state.value = {
+        id: ++nextId,
+        flow: 'connect',
+        step,
+        reconnectId,
+        canGoBack: false,
+    };
 };
 
 const openGoal = (accountId: string): void => {
@@ -61,6 +75,25 @@ const showDetails = (platform: string): void => {
     };
 };
 
+// tantra: a network without developer app keys opens its setup step.
+const showSetup = (platform: string, fromGrid = true): void => {
+    state.value =
+        state.value && fromGrid
+            ? {
+                  ...state.value,
+                  step: 'setup',
+                  setupPlatform: platform,
+                  canGoBack: true,
+              }
+            : {
+                  id: ++nextId,
+                  flow: 'connect',
+                  step: 'setup',
+                  setupPlatform: platform,
+                  canGoBack: false,
+              };
+};
+
 const back = (): void => {
     if (!state.value) return;
 
@@ -68,6 +101,7 @@ const back = (): void => {
         ...state.value,
         step: 'grid',
         detailsPlatform: undefined,
+        setupPlatform: undefined,
         canGoBack: false,
     };
 };
@@ -83,6 +117,7 @@ export const useConnectChannelDialog = () => ({
     openGoal,
     goTo,
     showDetails,
+    showSetup,
     back,
     close,
 });
