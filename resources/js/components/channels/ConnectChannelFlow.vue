@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import {
-    IconArrowLeft,
-} from '@tabler/icons-vue';
+import { IconArrowLeft } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
 import ChannelPlatformGrid from '@/components/channels/ChannelPlatformGrid.vue';
+import ChannelSetupStep from '@/components/channels/ChannelSetupStep.vue';
 import ConnectChannelDetails from '@/components/channels/ConnectChannelDetails.vue';
 import InstagramConnectStep from '@/components/channels/InstagramConnectStep.vue';
 import InstagramFacebookRequirementsStep from '@/components/channels/InstagramFacebookRequirementsStep.vue';
@@ -29,8 +28,8 @@ const emit = defineEmits<{
     connected: [{ accountId: string | null; created: boolean }];
 }>();
 
-const { goTo, back, showDetails } = useConnectChannelDialog();
-const { openConnect, instagramMethods } = useNetworkConnect(
+const { goTo, back, showDetails, showSetup } = useConnectChannelDialog();
+const { openConnect, instagramMethods, isReady } = useNetworkConnect(
     computed(() => props.platforms),
 );
 
@@ -42,7 +41,21 @@ const detailsPlatform = computed(() =>
         : undefined,
 );
 
+const setupPlatform = computed(() =>
+    props.state.step === 'setup'
+        ? props.platforms.find(
+              (platform) => platform.value === props.state.setupPlatform,
+          )
+        : undefined,
+);
+
 const selectPlatform = (platform: string): void => {
+    // tantra: a network without its developer app keys explains what is missing.
+    if (!isReady(platform)) {
+        showSetup(platform);
+        return;
+    }
+
     if (platform === Platform.Instagram) {
         goTo('instagram');
         return;
@@ -124,6 +137,11 @@ const selectInstagramMethod = (method: string): void => {
             <InstagramFacebookRequirementsStep
                 v-else-if="state.step === 'instagram-facebook'"
                 @connect="connectInstagramFacebook"
+            />
+            <ChannelSetupStep
+                v-else-if="state.step === 'setup' && setupPlatform"
+                :platform="setupPlatform"
+                @close="emit('close')"
             />
             <TelegramConnectStep
                 v-else-if="state.step === 'telegram'"

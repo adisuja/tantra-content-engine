@@ -16,6 +16,7 @@ use App\Tantra\Ai\AiAlerts;
 use App\Tantra\Ai\CliTextGateway;
 use App\Tantra\Boost\Boost;
 use App\Tantra\Boost\StartBoostRun;
+use App\Tantra\Channels\ChannelApps;
 use App\Tantra\Composer\MakeComposerThread;
 use App\Tantra\Console\AiConnectorCommand;
 use App\Tantra\Console\CheckConnectorsCommand;
@@ -52,6 +53,7 @@ use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\ServiceProvider;
 use Inertia\Inertia;
 use Laravel\Ai\Ai;
@@ -74,6 +76,17 @@ class TantraServiceProvider extends ServiceProvider
     {
         // Our migrations live apart from upstream's, in database/migrations/tantra.
         $this->loadMigrationsFrom(database_path('migrations/tantra'));
+
+        // Every network is listed; one is enabled once its developer app keys
+        // are in (Settings > Connectors > Channels or the .env). Workers read
+        // the keys again before each job, so a network set up later publishes
+        // without a restart.
+        ChannelApps::apply();
+        Queue::before(fn () => ChannelApps::apply());
+        // The connect dialog offers "Add the keys" only to the Account owner.
+        Inertia::share('tantraChannels', fn (): array => [
+            'canSetUp' => ChannelApps::canManage(Auth::user()),
+        ]);
         $this->loadViewsFrom(__DIR__.'/views', 'tantra');
 
         $this->app->make(Router::class)->aliasMiddleware('tantra.owner-token', EnsureOwnerToken::class);
@@ -207,7 +220,8 @@ class TantraServiceProvider extends ServiceProvider
         $plan = LeanHorizon::plan(
             (array) config('horizon.defaults', []),
             // Team engagement first: its comments have to land within minutes.
-            [Boost::QUEUE, ...Platform::enabledQueues()],
+            // Every network's queue: one set up later needs no restart.
+            [Boost::QUEUE, ...Platform::allQueues()],
             (int) config('tantra.lean_workers.processes', 3),
         );
 

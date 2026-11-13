@@ -64,8 +64,31 @@ export const useNetworkConnect = (
         }
     };
 
+    // Variants have no card of their own: their network's card decides.
+    const isReady = (platform: string): boolean => {
+        const card =
+            platform === Platform.InstagramFacebook
+                ? Platform.Instagram
+                : platform;
+
+        return (
+            toValue(platforms).find((p) => p.value === card)?.ready !== false
+        );
+    };
+
     const startConnect = (platform: string, reconnectId?: string) => {
         const entry = connectEntry(platform);
+
+        // tantra: no developer app keys yet, so explain what is missing.
+        if (!isReady(entry)) {
+            dialog.showSetup(
+                entry === Platform.InstagramFacebook
+                    ? Platform.Instagram
+                    : entry,
+                false,
+            );
+            return;
+        }
 
         if (entry === Platform.Telegram) {
             dialog.openAt('telegram', reconnectId);
@@ -90,5 +113,5 @@ export const useNetworkConnect = (
             ],
     );
 
-    return { startConnect, openConnect, instagramMethods };
+    return { startConnect, openConnect, instagramMethods, isReady };
 };

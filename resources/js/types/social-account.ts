@@ -10,6 +10,17 @@ export interface AvailablePlatform {
     text_only?: boolean;
     media_types?: MediaType[];
     connect_methods?: string[];
+    // tantra: false until the network's developer app keys are in.
+    ready?: boolean;
+    setup?: ChannelSetup | null;
+}
+
+export interface ChannelSetup {
+    app: string;
+    app_label: string;
+    missing: string[];
+    portal: string;
+    catch: string | null;
 }
 
 export interface ConnectedAccount {

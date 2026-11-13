@@ -24,6 +24,15 @@ return [
         'processes' => (int) env('TANTRA_LEAN_WORKER_PROCESSES', 3),
     ],
 
+    // Every network is listed in Add channel; one is enabled once its developer
+    // app keys are in (App\Tantra\Channels\ChannelApps). The test suite turns
+    // this off so upstream tests keep their own *_ENABLED switches.
+    'channel_apps' => [
+        'enforce' => (bool) env('TANTRA_CHANNEL_APPS', true),
+        // Old switch: company pages on before the owner saved a choice.
+        'linkedin_page' => (bool) env('LINKEDIN_PAGE_ENABLED', false),
+    ],
+
     // The Tantra LinkedIn page publishes through Zernio (PRD 10.4). One key for
     // the Account, only ever on the server. The webhook secret signs Zernio's
     // post.published / post.failed / post.partial events.

@@ -100,23 +100,10 @@ CHANGELOG_ENABLED=false
 TELESCOPE_ENABLED=false
 GTM_ID=
 
-# Platforms: LinkedIn personal only for now. Page posting needs Community
-# Management approval, so it stays off or personal connects fail.
-LINKEDIN_ENABLED=true
-LINKEDIN_PAGE_ENABLED=false
-X_ENABLED=false
-FACEBOOK_ENABLED=false
-INSTAGRAM_ENABLED=false
-INSTAGRAM_FACEBOOK_ENABLED=false
-THREADS_ENABLED=false
-TIKTOK_ENABLED=false
-YOUTUBE_ENABLED=false
-PINTEREST_ENABLED=false
-MASTODON_ENABLED=false
-BLUESKY_ENABLED=false
-TELEGRAM_ENABLED=false
-DISCORD_ENABLED=false
-GOOGLE_BUSINESS_ENABLED=false
+# Networks: every one is listed in Add channel. A network connects once its
+# developer app keys are in, either here (LINKEDIN_CLIENT_ID and the like) or
+# saved by the owner in Settings > Connectors > Channels (ChannelApps).
+# The *_ENABLED flags for networks are no longer read.
 GOOGLE_DRIVE_ENABLED=false
 GOOGLE_PHOTOS_ENABLED=false
 CANVA_ENABLED=false
