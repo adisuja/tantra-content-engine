@@ -19,6 +19,7 @@ use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\Meta\GraphError;
 use App\Support\PostPlatformMetaRules;
 use App\Support\Social\PublishCheckpoint;
+use App\Tantra\Social\PublishesFirstComments;
 use Closure;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
@@ -28,6 +29,7 @@ class InstagramPublisher
 {
     use FitsImageToCanvas;
     use HasSocialHttpClient;
+    use PublishesFirstComments; // tantra:
 
     private string $baseUrl;
 
@@ -62,7 +64,7 @@ class InstagramPublisher
         $pendingWorkflow = PublishCheckpoint::instagramWorkflow($post->error_context);
 
         if ($pendingWorkflow !== null) {
-            return $this->resumeWorkflow($instagramId, $accessToken, $content, $pendingWorkflow);
+            return $this->tantraFirstComment($post, $this->resumeWorkflow($instagramId, $accessToken, $content, $pendingWorkflow)); // tantra:
         }
 
         $media = $post->mediaItems;
@@ -77,7 +79,7 @@ class InstagramPublisher
         $firstMedia = $media->first();
         $contentType = $post->content_type;
 
-        return match ($contentType) {
+        return $this->tantraFirstComment($post, match ($contentType) { // tantra: first comment
             ContentType::InstagramReel => $this->publishReel($instagramId, $accessToken, $content, $firstMedia),
             ContentType::InstagramStory => $this->publishStory($instagramId, $accessToken, $firstMedia),
             ContentType::InstagramFeed => $this->publishFeed($instagramId, $accessToken, $content, $media),
@@ -85,7 +87,33 @@ class InstagramPublisher
                 userMessage: "Unsupported Instagram content type: {$contentType?->value}",
                 category: ErrorCategory::ContentPolicy,
             ),
-        };
+        });
+    }
+
+    /**
+     * tantra: the first comment under a feed post or reel (stories take none).
+     *
+     * @param  array<string, mixed>  $result
+     * @return array<string, mixed>
+     */
+    private function tantraFirstComment(Post $post, array $result): array
+    {
+        if ($post->content_type === ContentType::InstagramStory) {
+            return $result;
+        }
+
+        return $this->withFirstComments($post, $result, function (string $text, $media, array $previous, array $root) use ($post): array {
+            $response = $this->socialHttp()->post("{$this->baseUrl}/{$root['id']}/comments", [
+                'message' => $text,
+                'access_token' => $post->socialAccount->access_token,
+            ]);
+
+            if ($response->failed() || blank($response->json('id'))) {
+                throw new \RuntimeException('Instagram refused the first comment: '.$response->status().' '.$this->redactResponseBody($response->body()));
+            }
+
+            return ['id' => (string) $response->json('id')];
+        });
     }
 
     private function publishFeed(string $instagramId, string $accessToken, ?string $content, $media): array
@@ -251,8 +279,12 @@ class InstagramPublisher
      */
     private function sharedOptions(): array
     {
+        $locationId = data_get($this->post->meta, 'location_id');
+
         return array_filter([
             'is_ai_generated' => data_get($this->post->meta, 'is_ai_generated') === true ? 'true' : null,
+            // tantra: a tagged location (a Facebook place id), not on stories.
+            'location_id' => $this->post->content_type !== ContentType::InstagramStory && is_string($locationId) && preg_match('/^\d+$/', $locationId) === 1 ? $locationId : null,
         ], fn (?string $value): bool => $value !== null);
     }
 
@@ -272,6 +304,9 @@ class InstagramPublisher
             'share_to_feed' => data_get($this->post->meta, 'share_to_feed', true) ? 'true' : 'false',
             'trial_params' => $this->trialParams(),
             'audio_configuration' => $this->audioConfiguration(),
+            // tantra: a cover image and the name of the reel's original audio.
+            'cover_url' => filled($cover = data_get($this->post->meta, 'cover_url')) ? (string) $cover : null,
+            'audio_name' => filled($audio = data_get($this->post->meta, 'audio_name')) ? mb_substr((string) $audio, 0, 100) : null,
         ]);
     }
 

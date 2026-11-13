@@ -276,6 +276,8 @@ const CONTENT_TYPE_ICONS: Record<string, Component> = {
     facebook_reel: IconCirclePlay,
     threads_ghost_post: IconGhost2,
     x_poll: IconListDetails,
+    linkedin_poll: IconListDetails, // tantra:
+    linkedin_page_poll: IconListDetails, // tantra:
 };
 
 const contentTypeIcon = computed(() =>

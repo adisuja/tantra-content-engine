@@ -17,6 +17,7 @@ use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\Concerns\PublishesThreads;
 use App\Services\Social\Mastodon\MastodonApi;
 use App\Support\Social\ThreadProgress;
+use App\Tantra\Composer\TantraMetaRules;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Collection;
@@ -68,7 +69,7 @@ class MastodonPublisher
             ...$this->mediaPayload($account, $instance, $post->mediaItems),
         ];
 
-        return $this->createStatus($account, $instance, [...$payload, ...$this->contentWarning($post)], $idempotencyKey);
+        return $this->createStatus($account, $instance, [...$payload, ...$this->contentWarning($post), ...$this->tantraOptions($post, $post->mediaItems->isEmpty())], $idempotencyKey); // tantra:
     }
 
     /**
@@ -101,7 +102,35 @@ class MastodonPublisher
             'visibility' => 'public',
             'in_reply_to_id' => $inReplyToId,
             ...$this->contentWarning($post),
+            ...$this->tantraOptions($post, false), // tantra:
         ];
+    }
+
+    /**
+     * tantra: visibility, language and sensitive media for every status of the
+     * thread; a poll on the root only, and only without media (Mastodon takes
+     * one or the other).
+     *
+     * @return array<string, mixed>
+     */
+    private function tantraOptions(Post $post, bool $withPoll): array
+    {
+        $meta = $post->meta;
+        $visibility = data_get($meta, 'visibility');
+        $language = data_get($meta, 'language');
+        $options = TantraMetaRules::choices(data_get($meta, 'mastodon_poll.options'));
+        $expiresIn = (int) data_get($meta, 'mastodon_poll.expires_in', TantraMetaRules::MASTODON_POLL_DEFAULT_SECONDS);
+
+        return array_filter([
+            'visibility' => in_array($visibility, TantraMetaRules::MASTODON_VISIBILITY, true) ? $visibility : null,
+            'language' => is_string($language) && $language !== '' ? $language : null,
+            'sensitive' => data_get($meta, 'sensitive') === true ? true : null,
+            'poll' => $withPoll && count($options) >= 2 ? [
+                'options' => array_slice($options, 0, 4),
+                'expires_in' => max(TantraMetaRules::MASTODON_POLL_MIN_SECONDS, min(TantraMetaRules::MASTODON_POLL_MAX_SECONDS, $expiresIn)),
+                'multiple' => data_get($meta, 'mastodon_poll.multiple') === true,
+            ] : null,
+        ], fn (mixed $value): bool => $value !== null);
     }
 
     /**

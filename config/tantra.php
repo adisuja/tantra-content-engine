@@ -41,6 +41,16 @@ return [
         'token' => env('TANTRA_HEALTH_TOKEN'),
     ],
 
+    // Format gaps (2026-11-14): features that need a paid plan or app review stay off until switched on.
+    'x' => [
+        // Quoting a post (quote_tweet_id) needs an X API plan that allows it (Enterprise).
+        'quotes_enabled' => (bool) env('TANTRA_X_QUOTES_ENABLED', false),
+    ],
+    'meta' => [
+        // Comment and reply scopes, asked for only once the Meta and Threads apps have them.
+        'engagement_scopes' => (bool) env('TANTRA_META_ENGAGEMENT_SCOPES', false),
+    ],
+
     'zernio' => [
         'key' => env('ZERNIO_API_KEY'),
         'url' => env('ZERNIO_API_URL', 'https://zernio.com/api/v1'),

@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Support\Social\PendingConnection;
+use App\Tantra\Social\EngagementScopes;
 use Exception;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -35,6 +36,7 @@ class InstagramController extends SocialController
         $this->authorize('manageAccounts', $workspace);
 
         $this->rememberConnectSession($request, $workspace);
+        $this->scopes = EngagementScopes::with($this->platform, $this->scopes); // tantra: comment and reply scopes, when switched on
 
         $url = Socialite::driver($this->driver)
             ->scopes($this->scopes)

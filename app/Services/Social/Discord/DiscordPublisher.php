@@ -13,10 +13,13 @@ use App\Models\Post;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\ContentSanitizer;
+use App\Tantra\Composer\TantraMetaRules;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class DiscordPublisher
@@ -70,11 +73,17 @@ class DiscordPublisher
             'content' => $content !== '' ? $content : null,
             'embeds' => $embeds !== [] ? $embeds : null,
             'allowed_mentions' => $this->allowedMentions($post),
+            'poll' => $this->tantraPoll($post), // tantra:
         ], fn ($value) => $value !== null);
 
-        $messageId = $media->isEmpty()
-            ? $this->send($channelId, $payload)
-            : $this->sendWithMedia($channelId, $payload, $media);
+        // tantra: a bot without Send Polls gets the message out without its poll.
+        $messageId = $this->tantraSend(
+            $post,
+            $payload,
+            fn (array $payload): string => $media->isEmpty()
+                ? $this->send($channelId, $payload)
+                : $this->sendWithMedia($channelId, $payload, $media),
+        );
 
         return [
             'id' => $messageId,
@@ -274,6 +283,55 @@ class DiscordPublisher
         }
 
         return min((int) hexdec($hex), self::MAX_EMBED_COLOR);
+    }
+
+    /**
+     * tantra: sends the message; when Discord refuses it for a missing
+     * permission and it carries a poll, sends it again without the poll and
+     * flags the post (discord_poll_failed).
+     *
+     * @param  array<string, mixed>  $payload
+     * @param  callable(array<string, mixed>): string  $send
+     */
+    private function tantraSend(Post $post, array $payload, callable $send): string
+    {
+        try {
+            return $send($payload);
+        } catch (DiscordPublishException $e) {
+            if (! isset($payload['poll']) || $e->category !== ErrorCategory::Permission) {
+                throw $e;
+            }
+
+            Log::warning('tantra: Discord refused the poll, sending without it', ['post_id' => $post->id, 'code' => $e->platformErrorCode]);
+            $id = $send(Arr::except($payload, 'poll'));
+            $post->forceFill(['meta' => [...((array) $post->meta), 'discord_poll_failed' => true]])->saveQuietly();
+
+            return $id;
+        }
+    }
+
+    /**
+     * tantra: a native Discord poll on the message.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function tantraPoll(Post $post): ?array
+    {
+        $options = TantraMetaRules::choices(data_get($post->meta, 'discord_poll.options'));
+        $question = trim((string) data_get($post->meta, 'discord_poll.question'));
+
+        if (count($options) < 2 || $question === '') {
+            return null;
+        }
+
+        $hours = (int) data_get($post->meta, 'discord_poll.duration_hours', TantraMetaRules::DISCORD_POLL_DEFAULT_HOURS);
+
+        return [
+            'question' => ['text' => mb_substr($question, 0, 300)],
+            'answers' => array_map(fn (string $text): array => ['poll_media' => ['text' => mb_substr($text, 0, 55)]], array_slice($options, 0, 10)),
+            'duration' => max(1, min(TantraMetaRules::DISCORD_POLL_MAX_HOURS, $hours)),
+            'allow_multiselect' => false,
+        ];
     }
 
     private function endpoint(string $channelId): string

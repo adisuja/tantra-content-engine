@@ -19,6 +19,7 @@ use App\Services\Social\Concerns\PublishesThreads;
 use App\Support\Social\PublishCheckpoint;
 use App\Support\Social\ThreadProgress;
 use App\Support\Social\XPoll;
+use App\Tantra\Composer\TantraMetaRules;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
@@ -94,6 +95,18 @@ class XPublisher
 
         if (data_get($post->meta, 'is_ai_generated') === true) {
             $data['made_with_ai'] = true;
+        }
+
+        // tantra: who may reply, a quoted post (not with a poll), paid partnership.
+        $replySettings = data_get($post->meta, 'reply_settings');
+        if (in_array($replySettings, TantraMetaRules::X_REPLY_SETTINGS, true)) {
+            $data['reply_settings'] = $replySettings;
+        }
+        if (! $isPoll && config('tantra.x.quotes_enabled', false) && filled($quoteId = TantraMetaRules::xQuoteId(data_get($post->meta, 'quote_url')))) {
+            $data['quote_tweet_id'] = $quoteId;
+        }
+        if (data_get($post->meta, 'paid_partnership') === true) {
+            $data['paid_partnership'] = true;
         }
 
         if (blank($content) && ! isset($data['media'])) {
@@ -252,6 +265,15 @@ class XPublisher
                 'status' => $response->status(),
                 'body' => $this->redactResponseBody($response->body()),
             ]);
+
+            // tantra: X refuses a quote when the API plan does not include it.
+            if ($response->status() === 403 && isset($data['quote_tweet_id'])) {
+                throw new XPublishException(
+                    userMessage: __('posts.form.formats.x_quote_refused'),
+                    category: ErrorCategory::Permission,
+                );
+            }
+
             $this->handleApiError($response);
         }
 

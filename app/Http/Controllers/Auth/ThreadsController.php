@@ -8,6 +8,7 @@ use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Exceptions\SocialAccount\ConnectFlowException;
 use App\Services\Social\TokenRedactor;
 use App\Support\Social\PendingConnection;
+use App\Tantra\Social\EngagementScopes;
 use Exception;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -35,6 +36,7 @@ class ThreadsController extends SocialController
         $this->authorize('manageAccounts', $workspace);
 
         $this->rememberConnectSession($request, $workspace);
+        $this->scopes = EngagementScopes::with($this->platform, $this->scopes); // tantra: comment and reply scopes, when switched on
 
         $state = bin2hex(random_bytes(16));
         session(['threads_oauth_state' => $state]);
