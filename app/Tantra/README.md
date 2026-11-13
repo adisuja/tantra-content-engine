@@ -29,6 +29,7 @@ Env: `TANTRA_CLERK_LOGIN`, `CLERK_SECRET_KEY`, and only to override the defaults
 | upstream `analytics:*` | upstream's own times | followers, post history and post numbers for the Insights tab, LinkedIn included (see "Insights") |
 | `tantra:reconnect-reminders` | 03:41 UTC | LinkedIn connections about to run out or dropped |
 | `tantra:check-connectors` | hourly | tests every Connectors tab entry and records which ones fail and why |
+| `tantra:agent-jobs` | every minute | agent jobs: re-fire ones no run picked up, requeue a run that went quiet, purge inputs 30 days after a job ends |
 | `tantra:linkedin-sync` | every 15 minutes | matches new Unipile LinkedIn accounts to teammates by name, reads each person's LinkedIn identity once a day, and the page's from Zernio |
 
 One-off commands: `tantra:ai-connector` (add a connector, key on STDIN), `tantra:create-owner`, `tantra:team-account`, `tantra:clerk-unlink`, `tantra:map-profile`, `tantra:invite`, `tantra:zernio-connect`, `tantra:team-accounts`, `tantra:health`.
@@ -63,6 +64,19 @@ The upstream Insights tab and each channel's Insights page show every LinkedIn c
 - Each post is stored under the id our publishers keep in `posts.platform_post_id` (Unipile's id, Zernio's post id, or the OAuth share URN, matched to Unipile's id once and remembered), so the Engine's own posts link to their numbers. Network posts of these channels are never added to the calendar: upstream's external import only links them to Engine posts.
 - `tantra:collect-metrics` still feeds `/tantra/insights` and the batch results; it reads a Unipile channel through its own account too.
 
+## Studio ops and agent jobs
+
+`/tantra/ops` (`OpsController`, `pages/tantra/ops/Index.vue`) and `api/tantra/ops/*`, for `TANTRA_ADMIN_EMAILS` with a verified email only (`App\Tantra\Agent\Admin`, `EnsureTantraAdmin`); everyone else gets a 404 and no sidebar entry. PRD 25.4 and 25.5.
+
+- `tantra_agent_jobs`: one piece of work for our Claude Code. Jobs an admin starts are queued and fire the first enabled cloud task (`CloudTask`, the scheduled task's API trigger); jobs anyone else starts wait as `awaiting_admin` until an admin presses Run, because a Claude subscription is its owner's own.
+- Runners (`tantra_agent_runners`) take jobs over `api/tantra/agent/*` with their own token: `claim` (atomic, optionally one `job_id`), then `GET`, `log`, `complete`, `fail` with the `X-Claim-Token` from that claim. A run that lost its claim gets 409.
+- The Engine applies results (`Appliers`, one `JobApplier` per kind, idempotent); the agent never writes to the Engine directly. Features register their appliers in `TantraServiceProvider`.
+- The worker side is in tantra-content `kits/agent/` (`job.py`, `runner.py`, `cloud-task.md`, `prompts/`).
+
+## Content templates
+
+`/tantra/templates` (`TemplatesController`, `pages/tantra/templates/Index.vue`), the fourth Create tab. `tantra_content_templates` holds one row per sample (seeded from tantra-content with `POST api/tantra/templates`, owner token, upsert by key, plus `POST api/tantra/templates/{key}/preview`) and one per post someone added (`POST /tantra/templates/intake` or `api/tantra/templates/intake`): `TemplateIntake` makes it `building`, reads a LinkedIn post itself through Unipile, and queues a `template_from_post` agent job; `TemplateFromPostApplier` makes it live and keeps its preview under `tantra/templates/<key>/`. `GET api/tantra/templates?origin=intake&since=&full=1` is how the content repo pulls new samples. PRD 25.9.
+
 ## Connectors tab
 
 `/settings/workspace/connectors` (`app/Tantra/Ai`, `ConnectorController`, `pages/tantra/connectors`). One row per Account and provider in `tantra_ai_connectors`, key encrypted with the app key. Every AI call goes through `TantraAi::prompt()`: the default connector first, then the other working AI connectors; each failure is classified (`AiFailure`: out of credits, rate limited, key rejected, model not available, signed out, unreachable) and shown where the AI was used, on the card and in the app banner (`tantraAlerts`). With no connector it runs on the `.env` provider as upstream did. Claude and ChatGPT plans run through the official Claude Code and Codex CLIs installed in the image (`CliTextGateway`).
@@ -76,7 +90,8 @@ Each change is small and marked `// tantra:` (or `<!-- tantra: -->`). After merg
 - Slots held by polls posted by hand: `app/Actions/Post/Queue/ListFreeQueueSlots.php`, `ReflowChannelQueue.php`, `ListTakenSlots.php` (a UNION, so it stays one query), `BuildQueueTimeline.php`, and the calendar strip in `BuildCalendarPageProps.php` and `pages/posts/Calendar.vue`.
 - Review chips on post cards: `app/Http/Resources/App/PostCardResource.php`, `PostTimelineCard.vue`, `PostDetailsDialog.vue`, `types/publish.ts`.
 - Sign in with Clerk: `app/Http/Controllers/Auth/AuthenticatedSessionController.php` (the login page and sign out), `NewPasswordController.php` (back to the password form), `app/Http/Requests/App/Settings/ProfileUpdateRequest.php` (emails lowercase and unique in any case).
-- Navigation and branding: `AppSidebar.vue`, `AppLogo.vue`, `WorkspaceMenuContent.vue`, `auth/LegalLinks.vue`, `layouts/auth/AuthSplitLayout.vue`.
+- Content templates tab: `components/create/CreateTabs.vue`, `types/idea.ts` (`CreateTab`).
+- Navigation and branding: `AppSidebar.vue` (also the Studio ops entry for admins), `AppLogo.vue`, `WorkspaceMenuContent.vue`, `auth/LegalLinks.vue`, `layouts/auth/AuthSplitLayout.vue`.
 - MCP: the Tantra tools on `app/Mcp/Servers/TryPostServer.php`.
 - Posting times for every new channel: `app/Http/Controllers/Auth/SocialController.php` (flashes `connectedChannels`), `app/Http/Controllers/App/ChannelPostingScheduleController.php` (marks the times checked), `components/channels/ConnectChannelDialog.vue` (the goal step for each new channel).
 - AI through the Connectors tab: `app/Actions/Idea/GenerateIdea.php`, `app/Actions/Ai/AssistPostContent.php`, `app/Actions/Ai/GenerateMediaAltText.php`, the error paths of `IdeaGenerateController`, `PostAiAssistantController`, `MediaAltTextController`, the error line in `GenerateIdeasDialog.vue`, `WritingAssistantPanel.vue`, `MediaEditorAltTextPanel.vue`, the banner in `AppSidebarLayout.vue`, the nav item in `useSettingsNavigation.ts`, the CLIs in `docker/Dockerfile`, and the `connectors` label in `lang/*/settings.php` (16 locales, no marker).
