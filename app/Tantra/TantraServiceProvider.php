@@ -20,6 +20,7 @@ use App\Tantra\Channels\ChannelApps;
 use App\Tantra\Composer\MakeComposerThread;
 use App\Tantra\Console\AiConnectorCommand;
 use App\Tantra\Console\CheckConnectorsCommand;
+use App\Tantra\Console\ClerkUnlinkCommand;
 use App\Tantra\Console\CollectMetricsCommand;
 use App\Tantra\Console\CreateOwnerCommand;
 use App\Tantra\Console\GiveawayRepliesCommand;
@@ -31,6 +32,7 @@ use App\Tantra\Console\ManualTasksCommand;
 use App\Tantra\Console\MapProfileCommand;
 use App\Tantra\Console\ReconnectRemindersCommand;
 use App\Tantra\Console\SyncChannelsCommand;
+use App\Tantra\Console\TeamAccountCommand;
 use App\Tantra\Console\TeamAccountsCommand;
 use App\Tantra\Console\ZernioConnectCommand;
 use App\Tantra\Http\Controllers\Web\ReviewPageController;
@@ -173,7 +175,7 @@ class TantraServiceProvider extends ServiceProvider
         });
 
         if ($this->app->runningInConsole()) {
-            $this->commands([AiConnectorCommand::class, CheckConnectorsCommand::class, CollectMetricsCommand::class, CreateOwnerCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class, TeamAccountsCommand::class, LinkedInSyncCommand::class, GiveawayRepliesCommand::class, HealthCommand::class, HeartbeatCommand::class, ReconnectRemindersCommand::class, SyncChannelsCommand::class]);
+            $this->commands([AiConnectorCommand::class, CheckConnectorsCommand::class, CollectMetricsCommand::class, CreateOwnerCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class, TeamAccountsCommand::class, TeamAccountCommand::class, ClerkUnlinkCommand::class, LinkedInSyncCommand::class, GiveawayRepliesCommand::class, HealthCommand::class, HeartbeatCommand::class, ReconnectRemindersCommand::class, SyncChannelsCommand::class]);
         }
 
         if ($this->app->environment('production') && config('tantra.lean_workers.enabled')) {

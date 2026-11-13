@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Tantra\Auth\ClerkLogin;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -52,7 +53,7 @@ class NewPasswordController extends Controller
         );
 
         return $status == Password::PASSWORD_RESET
-            ? redirect()->route('login')->with('status', __($status))
+            ? redirect()->route('login', ClerkLogin::enabled() ? ['password' => 1] : [])->with('status', __($status)) // tantra: back to the password form, not Clerk
             : back()->withInput($request->only('email'))
                 ->withErrors(['email' => __($status)]);
     }
