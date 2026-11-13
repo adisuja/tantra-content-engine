@@ -22,7 +22,7 @@ class TeamAccountCommand extends Command
         {email=team@growthclubpro.com : The team login}
         {--account= : Account id or its owner\'s email (default: the first Account)}
         {--owner : Also make this login the Account owner (billing, channel app keys); the previous owner stays an admin of every workspace}
-        {--force : Hand over the Account without asking}';
+        {--force : Hand over the Account without asking, and give team access to an existing user holding this email}';
 
     protected $description = 'Give the team login admin access to every workspace on the main Account';
 
@@ -55,7 +55,7 @@ class TeamAccountCommand extends Command
         }
 
         try {
-            $user = TeamAccess::grant($email, $account, (bool) $this->option('owner'));
+            $user = TeamAccess::grant($email, $account, (bool) $this->option('owner'), adopt: (bool) $this->option('force'));
         } catch (RuntimeException $e) {
             $this->components->error($e->getMessage());
 

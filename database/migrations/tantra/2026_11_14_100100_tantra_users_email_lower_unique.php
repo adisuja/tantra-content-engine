@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
 // tantra: one user per email whatever its case, since Clerk sign in matches on
-// the email (2026-11-14). Skipped with a warning while duplicates exist.
+// the email (2026-11-14). Fails, listing them, while emails differ only by case.
 return new class extends Migration
 {
     private const INDEX = 'users_email_lower_unique';
@@ -22,9 +21,7 @@ return new class extends Migration
             ->pluck('email');
 
         if ($duplicates->isNotEmpty()) {
-            Log::warning('tantra: users_email_lower_unique not created, emails differ only by case', ['emails' => $duplicates->all()]);
-
-            return;
+            throw new RuntimeException('tantra: these emails belong to more than one user, differing only by case. Merge or rename them, then migrate again: '.$duplicates->implode(', '));
         }
 
         if (in_array(DB::getDriverName(), ['pgsql', 'sqlite'], true)) {

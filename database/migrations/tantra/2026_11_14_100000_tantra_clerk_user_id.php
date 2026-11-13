@@ -13,6 +13,8 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             $table->string('clerk_user_id')->nullable()->unique();
+            // When this user was given team access (TeamAccess); the command adopts no other row without --force.
+            $table->timestamp('tantra_team_access_at')->nullable();
         });
     }
 
@@ -20,7 +22,7 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             $table->dropUnique(['clerk_user_id']);
-            $table->dropColumn('clerk_user_id');
+            $table->dropColumn(['clerk_user_id', 'tantra_team_access_at']);
         });
     }
 };

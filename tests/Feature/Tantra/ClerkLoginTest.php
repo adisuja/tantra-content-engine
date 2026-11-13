@@ -7,6 +7,7 @@ use App\Models\Workspace;
 use App\Tantra\Auth\ClerkToken;
 use App\Tantra\Auth\InvalidClerkToken;
 use Firebase\JWT\JWT;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -513,5 +514,61 @@ describe('review fixes', function () {
             ->assertSessionHas('status');
 
         $this->get(route('login', ['password' => 1]))->assertInertia(fn (Assert $page) => $page->component('auth/Login')->has('status'));
+    });
+});
+
+describe('second review fixes', function () {
+    it('fails the lower(email) index migration and lists the duplicates', function () {
+        DB::statement('drop index if exists users_email_lower_unique');
+        User::factory()->create(['email' => 'Dup@Example.com']);
+        User::factory()->create(['email' => 'dup@example.com']);
+
+        $migration = require database_path('migrations/tantra/2026_11_14_100100_tantra_users_email_lower_unique.php');
+
+        expect(fn () => $migration->up())->toThrow(RuntimeException::class, 'dup@example.com');
+    });
+
+    it('creates the lower(email) index when there are no duplicates', function () {
+        DB::statement('drop index if exists users_email_lower_unique');
+        User::factory()->create(['email' => 'one@example.com']);
+
+        $migration = require database_path('migrations/tantra/2026_11_14_100100_tantra_users_email_lower_unique.php');
+        $migration->up();
+
+        expect(fn () => User::factory()->create(['email' => 'ONE@example.com']))->toThrow(UniqueConstraintViolationException::class);
+    });
+
+    it('does not adopt an existing user holding the team email without --force', function () {
+        $owner = User::factory()->create(['email' => 'adi@growthclub.org']);
+        $adi = clerkWorkspace($owner, 'Adi');
+        $existing = User::factory()->create(['name' => 'Someone Else', 'email' => 'team@growthclubpro.com', 'account_id' => $owner->account_id]);
+
+        expect(Artisan::call('tantra:team-account'))->toBe(1)
+            ->and(Artisan::output())->toContain('Someone Else')->toContain($existing->id)
+            ->and($existing->refresh()->belongsToWorkspace($adi))->toBeFalse();
+
+        expect(Artisan::call('tantra:team-account', ['--force' => true]))->toBe(0)
+            ->and($existing->refresh()->isWorkspaceAdmin($adi))->toBeTrue()
+            ->and($existing->tantra_team_access_at)->not->toBeNull();
+
+        // Once given team access, running it again needs no --force.
+        expect(Artisan::call('tantra:team-account'))->toBe(0);
+    });
+
+    it('asks Clerk for a user\'s verified email at most once in 10 minutes', function () {
+        $user = User::factory()->create(['email' => 'priya@usetantra.com']);
+        fakeClerkBackend('priya@usetantra.com');
+
+        $this->post('/auth/clerk/session', ['token' => clerkToken()])->assertRedirect();
+        $this->post('/logout');
+        $this->post('/auth/clerk/session', ['token' => clerkToken()])->assertRedirect();
+        $this->assertAuthenticatedAs($user);
+
+        // The key set once and the Backend API once.
+        Http::assertSentCount(2);
+
+        $this->travel(11)->minutes();
+        $this->post('/auth/clerk/session', ['token' => clerkToken()])->assertRedirect();
+        Http::assertSentCount(3);
     });
 });

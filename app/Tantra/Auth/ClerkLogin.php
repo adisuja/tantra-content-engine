@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tantra\Auth;
 
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Throwable;
@@ -21,6 +22,8 @@ use Throwable;
  */
 class ClerkLogin
 {
+    private const EMAIL_TTL = 600;
+
     public static function enabled(): bool
     {
         return (bool) config('tantra.clerk.enabled') && filled(config('tantra.clerk.publishable_key'));
@@ -116,9 +119,26 @@ class ClerkLogin
             return null;
         }
 
+        // Kept 10 minutes per Clerk user, so signing in again does not call Clerk each time.
+        $cacheKey = 'tantra:clerk:email:'.$claims['sub'];
+        $cached = Cache::get($cacheKey);
+        if (is_string($cached)) {
+            return $cached;
+        }
+
+        $email = self::emailFromBackend((string) $claims['sub'], $secret);
+        if ($email !== null) {
+            Cache::put($cacheKey, $email, self::EMAIL_TTL);
+        }
+
+        return $email;
+    }
+
+    private static function emailFromBackend(string $clerkId, string $secret): ?string
+    {
         try {
             $response = Http::timeout(8)->withToken($secret)->acceptJson()
-                ->get(config('tantra.clerk.api_url').'/users/'.rawurlencode((string) $claims['sub']));
+                ->get(config('tantra.clerk.api_url').'/users/'.rawurlencode($clerkId));
         } catch (Throwable) {
             return null;
         }

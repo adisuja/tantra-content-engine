@@ -37,9 +37,12 @@ class TeamAccess
     }
 
     /**
-     * @throws RuntimeException when there is no Account yet or the email belongs to another Account.
+     * From the command ($clerkId null), an existing user holding the email that
+     * was never given team access is adopted only with $adopt (--force).
+     *
+     * @throws RuntimeException when there is no Account yet, the email belongs to another Account, or adoption needs --force.
      */
-    public static function grant(string $email, ?Account $account = null, bool $makeOwner = false, string $name = 'Tantra Team', ?string $clerkId = null): User
+    public static function grant(string $email, ?Account $account = null, bool $makeOwner = false, string $name = 'Tantra Team', ?string $clerkId = null, bool $adopt = false): User
     {
         $email = Str::lower(trim($email));
         $account ??= self::mainAccount();
@@ -47,7 +50,7 @@ class TeamAccess
             throw new RuntimeException('There is no Account yet. Run php artisan tantra:create-owner first.');
         }
 
-        return DB::transaction(function () use ($email, $account, $makeOwner, $name, $clerkId): User {
+        return DB::transaction(function () use ($email, $account, $makeOwner, $name, $clerkId, $adopt): User {
             // From Clerk: the Engine user linked to this Clerk user, else the one
             // with the Clerk-verified email, if it is not linked to someone else.
             $user = $clerkId === null ? null : User::query()->where('clerk_user_id', $clerkId)->first();
@@ -57,6 +60,11 @@ class TeamAccess
             }
             if ($user !== null && $user->account_id !== null && $user->account_id !== $account->id) {
                 throw new RuntimeException("{$email} belongs to another Account. Nothing was changed.");
+            }
+            if ($user !== null && $clerkId === null && ! $adopt && $user->tantra_team_access_at === null) {
+                $since = $user->created_at?->toDateString() ?? 'an unknown date';
+                $workspaces = $user->workspaces()->count();
+                throw new RuntimeException("{$email} is already an Engine user: {$user->name} (id {$user->id}, since {$since}, in {$workspaces} workspaces). Run again with --force to give this user team access. Nothing was changed.");
             }
 
             $user ??= User::query()->create([
@@ -75,6 +83,9 @@ class TeamAccess
             }
             if ($clerkId !== null && $user->clerk_user_id !== $clerkId) {
                 $user->forceFill(['clerk_user_id' => $clerkId])->save();
+            }
+            if ($user->tantra_team_access_at === null) {
+                $user->forceFill(['tantra_team_access_at' => now()])->save();
             }
 
             $workspaces = $account->workspaces()->orderBy('name')->get();
