@@ -90,6 +90,19 @@ class UnipileClient
         return ['status' => $response->status(), 'data' => $response->successful() ? (array) $response->json() : null];
     }
 
+    /**
+     * One page of the account's own LinkedIn posts, newest first (GET users/me/posts),
+     * each with reactions_counter, comments_counter, reposts_counter and
+     * analytics.impressions_counter, plus the cursor of the next page. Failures come
+     * back as the response, so Insights can tell a busy account from a dropped one.
+     */
+    public function ownPosts(string $accountId, int $limit = 50, ?string $cursor = null): Response
+    {
+        $query = http_build_query(array_filter(['limit' => $limit, 'cursor' => $cursor], fn ($value): bool => $value !== null && $value !== ''));
+
+        return $this->get("/{$accountId}/users/me/posts?{$query}", allowFailure: true);
+    }
+
     /** The LinkedIn member id of the account itself, to tell its own comments apart. */
     public function ownId(string $accountId): ?string
     {

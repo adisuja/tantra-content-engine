@@ -63,7 +63,9 @@ test('account activity sync is not queued when PostHog is disabled', function ()
 
 test('excluded platform does not queue an analytics publication sync', function () {
     config(['services.posthog.enabled' => false]);
-    $post = Post::factory()->linkedin()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
+    // tantra: LinkedIn is measured (PRD 25.7); a LinkedIn page stays excluded.
+    $page = SocialAccount::factory()->linkedinPage()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->forAccount($page)->create(['user_id' => $this->user->id]);
     Queue::fake();
 
     $post->markPublicationPublished('remote-post-id');

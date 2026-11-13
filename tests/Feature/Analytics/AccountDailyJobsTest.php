@@ -35,7 +35,7 @@ test('dispatcher queues every eligible account independently', function () {
     $workspace = Workspace::factory()->create();
     $first = SocialAccount::factory()->instagram()->create(['workspace_id' => $workspace->id]);
     $second = SocialAccount::factory()->instagram()->create(['workspace_id' => $workspace->id]);
-    $linkedin = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
+    $linkedin = SocialAccount::factory()->linkedinPage()->create(['workspace_id' => $workspace->id]); // tantra: LinkedIn is measured (PRD 25.7)
     $third = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
     $disconnected = SocialAccount::factory()->x()->disconnected()->create(['workspace_id' => $workspace->id]);
 
@@ -55,7 +55,7 @@ test('dispatcher queues every eligible account independently', function () {
 test('finalizer dispatches one job per eligible account for both scheduled dates', function () {
     $first = SocialAccount::factory()->instagram()->create();
     $second = SocialAccount::factory()->x()->create();
-    SocialAccount::factory()->linkedin()->create();
+    SocialAccount::factory()->linkedinPage()->create(); // tantra:
     SocialAccount::factory()->x()->create();
     SocialAccount::factory()->x()->disconnected()->create();
 
