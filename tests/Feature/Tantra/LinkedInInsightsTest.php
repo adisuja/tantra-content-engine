@@ -10,6 +10,7 @@ use App\Enums\Post\Status as PostStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Jobs\Analytics\BackfillAccountPublications;
+use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsSyncState;
@@ -40,8 +41,8 @@ use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
-    // Each test reads followers itself; creating a channel must not read them first.
-    Queue::fake([CollectAccountDailySnapshot::class]);
+    // Each test reads followers and history itself; creating a channel must not start them.
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
     $this->travelTo(CarbonImmutable::parse('2026-11-25 06:05:00', 'UTC'));
     config([
         'tantra.zernio.key' => 'zk', 'tantra.zernio.url' => 'https://zernio.test/api/v1',
