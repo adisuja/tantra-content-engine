@@ -37,6 +37,9 @@ return [
     // the Account, only ever on the server. The webhook secret signs Zernio's
     // post.published / post.failed / post.partial events.
     // The pingers' bearer token for /tantra/health (PRD 8.5). Unset: the route answers 404.
+    // Studio ops (PRD 25.4): the founding and development team, comma separated. Nobody is an admin by default.
+    'admin_emails' => array_values(array_filter(array_map('trim', explode(',', (string) env('TANTRA_ADMIN_EMAILS', ''))))),
+
     'health' => [
         'token' => env('TANTRA_HEALTH_TOKEN'),
     ],

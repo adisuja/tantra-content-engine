@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Middleware\App\EnsureAccountReady;
 use App\Http\Middleware\App\EnsureHasWorkspace;
+use App\Tantra\Http\Controllers\OpsController;
 use App\Tantra\Http\Controllers\Web\ChannelAppController;
 use App\Tantra\Http\Controllers\Web\ClerkSessionController;
 use App\Tantra\Http\Controllers\Web\ConnectorController;
@@ -128,4 +129,24 @@ Route::middleware(['web', 'auth', EnsureAccountReady::class, EnsureHasWorkspace:
     ->group(function (): void {
         Route::get('youtube/{account}/playlists', [FormatsController::class, 'youtubePlaylists'])->whereUuid('account')->name('youtube.playlists');
         Route::get('pinterest/{account}/boards/{board}/sections', [FormatsController::class, 'pinterestSections'])->whereUuid('account')->name('pinterest.sections');
+    });
+
+// tantra: Studio ops (PRD 25.4): agent jobs, Claude accounts, runners. TANTRA_ADMIN_EMAILS only; 404 for anyone else.
+Route::middleware(['web', 'auth', 'tantra.admin'])
+    ->prefix('tantra/ops')
+    ->name('tantra.ops.')
+    ->group(function (): void {
+        Route::get('/', [OpsController::class, 'page'])->middleware([EnsureAccountReady::class, EnsureHasWorkspace::class])->name('index');
+        Route::get('/jobs', [OpsController::class, 'jobs'])->name('jobs.index');
+        Route::post('/jobs', [OpsController::class, 'enqueue'])->name('jobs.store');
+        Route::get('/jobs/{job}', [OpsController::class, 'job'])->whereUuid('job')->name('jobs.show');
+        Route::post('/jobs/{job}/run', [OpsController::class, 'run'])->whereUuid('job')->name('jobs.run');
+        Route::post('/jobs/{job}/retry', [OpsController::class, 'retry'])->whereUuid('job')->name('jobs.retry');
+        Route::post('/jobs/{job}/cancel', [OpsController::class, 'cancel'])->whereUuid('job')->name('jobs.cancel');
+        Route::post('/accounts', [OpsController::class, 'storeAccount'])->name('accounts.store');
+        Route::patch('/accounts/{account}', [OpsController::class, 'updateAccount'])->whereUuid('account')->name('accounts.update');
+        Route::delete('/accounts/{account}', [OpsController::class, 'destroyAccount'])->whereUuid('account')->name('accounts.destroy');
+        Route::post('/accounts/{account}/test', [OpsController::class, 'testAccount'])->whereUuid('account')->name('accounts.test');
+        Route::post('/runners', [OpsController::class, 'storeRunner'])->name('runners.store');
+        Route::delete('/runners/{runner}', [OpsController::class, 'revokeRunner'])->whereUuid('runner')->name('runners.revoke');
     });

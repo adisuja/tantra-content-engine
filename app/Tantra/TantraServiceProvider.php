@@ -12,12 +12,14 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Tantra\Agent\Admin;
 use App\Tantra\Ai\AiAlerts;
 use App\Tantra\Ai\CliTextGateway;
 use App\Tantra\Boost\Boost;
 use App\Tantra\Boost\StartBoostRun;
 use App\Tantra\Channels\ChannelApps;
 use App\Tantra\Composer\MakeComposerThread;
+use App\Tantra\Console\AgentJobsCommand;
 use App\Tantra\Console\AiConnectorCommand;
 use App\Tantra\Console\CheckConnectorsCommand;
 use App\Tantra\Console\ClerkUnlinkCommand;
@@ -37,6 +39,8 @@ use App\Tantra\Console\TeamAccountsCommand;
 use App\Tantra\Console\ZernioConnectCommand;
 use App\Tantra\Http\Controllers\Web\ReviewPageController;
 use App\Tantra\Http\Middleware\EnsureOwnerToken;
+use App\Tantra\Http\Middleware\EnsureRunnerToken;
+use App\Tantra\Http\Middleware\EnsureTantraAdmin;
 use App\Tantra\Http\Middleware\LandOnReview;
 use App\Tantra\Manual\ManualTask;
 use App\Tantra\Ops\LeanHorizon;
@@ -92,6 +96,8 @@ class TantraServiceProvider extends ServiceProvider
         $this->loadViewsFrom(__DIR__.'/views', 'tantra');
 
         $this->app->make(Router::class)->aliasMiddleware('tantra.owner-token', EnsureOwnerToken::class);
+        $this->app->make(Router::class)->aliasMiddleware('tantra.admin', EnsureTantraAdmin::class);
+        $this->app->make(Router::class)->aliasMiddleware('tantra.runner', EnsureRunnerToken::class);
         // People land on Review, not the calendar, in Tantra workspaces (PRD 10.2).
         $kernel = $this->app->make(HttpKernel::class);
         if ($kernel instanceof FoundationHttpKernel) {
@@ -150,6 +156,9 @@ class TantraServiceProvider extends ServiceProvider
             ->values()->all());
 
         // The sidebar's Review badge: posts waiting for this user's approval.
+        // Studio ops in the sidebar for admins only (PRD 25.4).
+        Inertia::share('tantraAdmin', fn (): bool => Admin::is(Auth::user()));
+
         Inertia::share('tantraReview', fn (): ?array => Auth::user() === null ? null : [
             'waiting' => ReviewGate::waitingCount(Auth::user()),
             'tasks_open' => ManualTask::query()->where('owner_user_id', Auth::id())->whereIn('status', ['waiting', 'due'])->count(),
@@ -166,6 +175,8 @@ class TantraServiceProvider extends ServiceProvider
             $schedule->command('tantra:heartbeat')->everyMinute();
             $schedule->command('tantra:heartbeat --media')->everyFifteenMinutes()->withoutOverlapping();
             // Names, headlines and photos from LinkedIn: new accounts every 15 minutes, a refresh daily.
+            // Agent jobs: re-fire unclaimed ones, requeue quiet ones, purge old inputs (PRD 25.5).
+            $schedule->command('tantra:agent-jobs')->everyMinute()->withoutOverlapping();
             $schedule->command('tantra:linkedin-sync')->everyFifteenMinutes()->withoutOverlapping();
             // Every account connected in Tantra becomes a channel (PRD engine channels, 2026-11-13).
             $schedule->command('tantra:sync-channels')->everyFifteenMinutes()->withoutOverlapping();
@@ -175,7 +186,7 @@ class TantraServiceProvider extends ServiceProvider
         });
 
         if ($this->app->runningInConsole()) {
-            $this->commands([AiConnectorCommand::class, CheckConnectorsCommand::class, CollectMetricsCommand::class, CreateOwnerCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class, TeamAccountsCommand::class, TeamAccountCommand::class, ClerkUnlinkCommand::class, LinkedInSyncCommand::class, GiveawayRepliesCommand::class, HealthCommand::class, HeartbeatCommand::class, ReconnectRemindersCommand::class, SyncChannelsCommand::class]);
+            $this->commands([AiConnectorCommand::class, CheckConnectorsCommand::class, CollectMetricsCommand::class, CreateOwnerCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class, TeamAccountsCommand::class, TeamAccountCommand::class, ClerkUnlinkCommand::class, LinkedInSyncCommand::class, AgentJobsCommand::class, GiveawayRepliesCommand::class, HealthCommand::class, HeartbeatCommand::class, ReconnectRemindersCommand::class, SyncChannelsCommand::class]);
         }
 
         if ($this->app->environment('production') && config('tantra.lean_workers.enabled')) {

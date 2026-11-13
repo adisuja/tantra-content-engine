@@ -28,6 +28,7 @@ Env: `TANTRA_CLERK_LOGIN`, `CLERK_SECRET_KEY`, and only to override the defaults
 | `tantra:collect-metrics` | 06:00 and 18:00 UTC | post and page numbers |
 | `tantra:reconnect-reminders` | 03:41 UTC | LinkedIn connections about to run out or dropped |
 | `tantra:check-connectors` | hourly | tests every Connectors tab entry and records which ones fail and why |
+| `tantra:agent-jobs` | every minute | agent jobs: re-fire ones no run picked up, requeue a run that went quiet, purge inputs 30 days after a job ends |
 | `tantra:linkedin-sync` | every 15 minutes | matches new Unipile LinkedIn accounts to teammates by name, reads each person's LinkedIn identity once a day, and the page's from Zernio |
 
 One-off commands: `tantra:ai-connector` (add a connector, key on STDIN), `tantra:create-owner`, `tantra:team-account`, `tantra:clerk-unlink`, `tantra:map-profile`, `tantra:invite`, `tantra:zernio-connect`, `tantra:team-accounts`, `tantra:health`.
@@ -43,6 +44,15 @@ Nobody's name, headline or photo is typed in. `app/Tantra/LinkedIn`:
 - `LinkedInSync` matches each LinkedIn account in Tantra's Unipile to the Engine user with the same name (one to one, never confirmed on its own: Adi confirms on the Team page before anything is posted in someone's name). It then reads `users/me` through that account: name, headline (`description`), member id, profile URL, followers and the large photo. The photo is copied to `tantra/linkedin/{user}.jpg`, since LinkedIn's links expire, and becomes the person's Engine photo unless they uploaded their own. A 401 marks the account disconnected. The Tantra page gets its name, logo and followers from Zernio.
 - `SyncLinkedInIdentity` reads a person at once when Adi matches their account on the Team page.
 - `Identity` is what the previews show: the page channel for page posts, the person's LinkedIn identity, else their LinkedIn channel, else their Engine name; the X channel for X. A `profile_card` from an older batch only fills gaps.
+
+## Studio ops and agent jobs
+
+`/tantra/ops` (`OpsController`, `pages/tantra/ops/Index.vue`) and `api/tantra/ops/*`, for `TANTRA_ADMIN_EMAILS` with a verified email only (`App\Tantra\Agent\Admin`, `EnsureTantraAdmin`); everyone else gets a 404 and no sidebar entry. PRD 25.4 and 25.5.
+
+- `tantra_agent_jobs`: one piece of work for our Claude Code. Jobs an admin starts are queued and fire the first enabled cloud task (`CloudTask`, the scheduled task's API trigger); jobs anyone else starts wait as `awaiting_admin` until an admin presses Run, because a Claude subscription is its owner's own.
+- Runners (`tantra_agent_runners`) take jobs over `api/tantra/agent/*` with their own token: `claim` (atomic, optionally one `job_id`), then `GET`, `log`, `complete`, `fail` with the `X-Claim-Token` from that claim. A run that lost its claim gets 409.
+- The Engine applies results (`Appliers`, one `JobApplier` per kind, idempotent); the agent never writes to the Engine directly. Features register their appliers in `TantraServiceProvider`.
+- The worker side is in tantra-content `kits/agent/` (`job.py`, `runner.py`, `cloud-task.md`, `prompts/`).
 
 ## Connectors tab
 
