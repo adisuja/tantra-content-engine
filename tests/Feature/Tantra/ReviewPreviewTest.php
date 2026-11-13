@@ -44,17 +44,23 @@ it('plays a held video in the preview before the drafts exist', function () {
             ->where('items.0.media.video', $this->videoUrl));
 });
 
-it('sets a teammate\'s photo from their LinkedIn picture, and the preview uses it', function () {
+it('shows the author as LinkedIn has them once their account is read', function () {
     config(['tantra.unipile.dsn' => 'https://unipile.test/v2', 'tantra.unipile.key' => 'k']);
     Http::fake([
-        'unipile.test/v2/accounts*' => Http::response(['items' => [['id' => 'acc_ben', 'name' => 'Ben Basil Tomy']]]),
-        'unipile.test/v2/acc_ben/users/me' => Http::response(['profile_picture_url' => 'https://media.licdn.test/ben.jpg']),
+        'unipile.test/v2/accounts*' => Http::response(['items' => [['id' => 'acc_ben', 'name' => 'Ben Basil Tomy', 'provider' => 'LINKEDIN', 'status' => 'OK']]]),
+        'unipile.test/v2/acc_ben/users/me' => Http::response([
+            'id' => 'ACoAABen', 'display_name' => 'Ben Basil Tomy', 'description' => 'Backend Engineer | Node.js',
+            'public_picture_url_large' => 'https://media.licdn.test/ben.jpg?e=1&t=x', 'profile_url' => 'https://www.linkedin.com/in/ben',
+        ]),
         'media.licdn.test/*' => Http::response(base64_decode('/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q=='), 200, ['Content-Type' => 'image/jpeg']),
     ]);
 
-    $this->artisan('tantra:team-photos')->assertSuccessful();
+    $this->artisan('tantra:linkedin-sync')->assertSuccessful();
 
     expect($this->ben->refresh()->has_photo)->toBeTrue();
     $this->actingAs($this->adi)->get(route('tantra.review.index'))
-        ->assertInertia(fn (Assert $page) => $page->where('items.0.profile.avatar', $this->ben->refresh()->photo_url));
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('items.0.profile.name', 'Ben Basil Tomy')
+            ->where('items.0.profile.headline', 'Backend Engineer | Node.js')
+            ->where('items.0.profile.avatar', Storage::url('tantra/linkedin/'.$this->ben->id.'.jpg')));
 });

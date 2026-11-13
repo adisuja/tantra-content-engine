@@ -273,7 +273,7 @@ return [
         'expertise_placeholder' => 'One to three sentences on what you know best, so comments and replies sound like you.',
         'save' => 'Save',
         'matches' => 'LinkedIn accounts',
-        'matches_help' => 'Pick the LinkedIn account in Tantra\'s Unipile that belongs to each person. A suggestion by name is preselected; only confirmed matches are ever used.',
+        'matches_help' => 'The LinkedIn account in Tantra\'s Unipile that belongs to each person. An account with the same name as a teammate is matched on its own, and their name, headline and photo come straight from LinkedIn. Confirm the match before anything is posted in their name.',
         'account_for' => 'LinkedIn account for :name',
         'none' => 'No account',
         'confirm' => 'Confirm',
@@ -281,5 +281,8 @@ return [
         'consent_on' => 'Consent given',
         'consent_off' => 'No consent yet',
         'paused' => 'Paused after a LinkedIn restriction',
+        'linkedin_disconnected' => 'LinkedIn disconnected in Unipile',
+        'linkedin_waiting' => 'Reading their LinkedIn profile',
+        'linkedin_from' => 'From LinkedIn',
     ],
 ];

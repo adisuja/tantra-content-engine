@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tantra\Http\Controllers\Web;
 
+use App\Enums\SocialAccount\Platform;
 use App\Http\Controllers\Controller;
 use App\Models\Media;
 use App\Models\Post;
@@ -14,11 +15,11 @@ use App\Tantra\Analytics\MetricSnapshot;
 use App\Tantra\Boost\ThreadDelivery;
 use App\Tantra\Channels\ReconnectReminders;
 use App\Tantra\Giveaway\GiveawayReply;
+use App\Tantra\LinkedIn\Identity;
 use App\Tantra\Review\Enums\ReviewStatus;
 use App\Tantra\Review\Models\Batch;
 use App\Tantra\Review\Models\ReviewEvent;
 use App\Tantra\Review\Models\ReviewItem;
-use App\Tantra\Review\Models\WorkspaceSettings;
 use App\Tantra\Review\ReviewGate;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -41,7 +42,7 @@ class ReviewPageController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
-        self::$avatars = [];
+        Identity::flush();
         $tab = in_array($request->query('tab'), ['scheduled', 'published'], true) ? (string) $request->query('tab') : 'review';
         $batch = $request->filled('batch') && Str::isUuid((string) $request->query('batch'))
             ? Batch::query()->whereIn('workspace_id', self::visibleWorkspaceIds($user))->find($request->query('batch'))
@@ -101,31 +102,32 @@ class ReviewPageController extends Controller
         return redirect()->route('tantra.review.index', ['batch' => $batch->id]);
     }
 
-    /** @var array<string, ?string> */
-    private static array $avatars = [];
-
     /**
-     * A person's picture by profile key, when the batch did not carry one: their
-     * connected LinkedIn's picture, else their Engine profile photo (filled from
-     * LinkedIn by tantra:team-photos).
+     * The author as LinkedIn (or X) shows them, from Identity. A profile card sent
+     * with an older batch fills only what LinkedIn did not give us.
+     *
+     * @param  array<string, mixed>  $card
+     * @return array<string, mixed>
      */
-    private static function avatarFor(string $accountId, string $key): ?string
+    private static function profile(ReviewItem $i, ?SocialAccount $channel, array $card): array
     {
-        if ($key === '') {
-            return null;
-        }
+        $network = match (true) {
+            $i->platform === 'x' => 'x',
+            $channel !== null && in_array($channel->platform, [Platform::ZernioLinkedInPage, Platform::LinkedInPage], true) => 'linkedin_page',
+            ($card['kind'] ?? null) === 'company' => 'linkedin_page',
+            default => 'linkedin',
+        };
+        $id = Identity::forWorkspace((string) $i->workspace_id, $network) ?? [];
 
-        return self::$avatars["{$accountId}|{$key}"] ??= (function () use ($accountId, $key): ?string {
-            $settings = WorkspaceSettings::query()->where('brand_profile_key', $key)
-                ->whereHas('workspace', fn ($q) => $q->where('account_id', $accountId))->first();
-            if ($settings === null) {
-                return null;
-            }
-            $channel = SocialAccount::query()->where('workspace_id', $settings->workspace_id)->whereNotNull('avatar_url')->orderBy('created_at')->value('avatar_url');
-            $owner = $settings->review_owner_user_id ? User::query()->find($settings->review_owner_user_id) : null;
-
-            return $channel ?: $owner?->photo_url;
-        })();
+        return [
+            'name' => (string) (($id['name'] ?? '') ?: ($card['name'] ?? $i->workspace?->name ?? '')),
+            'headline' => (string) (($id['headline'] ?? '') ?: ($card['headline'] ?? '')),
+            'avatar' => ($id['avatar'] ?? null) ?: ($card['avatar'] ?? null),
+            'kind' => ($id['kind'] ?? null) ?: (($card['kind'] ?? null) === 'company' ? 'company' : 'person'),
+            'followers_line' => ($id['followers_line'] ?? null) ?: ($card['followers_line'] ?? null),
+            'x_handle' => ($id['x_handle'] ?? null) ?: ($card['x_handle'] ?? null),
+            'profile_url' => $id['profile_url'] ?? null,
+        ];
     }
 
     /** @return Collection<int, string> */
@@ -183,7 +185,6 @@ class ReviewPageController extends Controller
         $images = $postMedia->filter(fn (array $m): bool => str_starts_with((string) ($m['mime_type'] ?? ''), 'image/'))->pluck('url')->filter()->values();
         $video = $postMedia->first(fn (array $m): bool => str_starts_with((string) ($m['mime_type'] ?? ''), 'video/'));
         $scheduled = $posts->pluck('scheduled_at')->filter()->sort()->first();
-        $card = (array) ($p['profile_card'] ?? []);
 
         return [
             'id' => $i->id,
@@ -220,9 +221,10 @@ class ReviewPageController extends Controller
             'team_comments' => collect($i->thread())->map(fn (array $c): array => [
                 'index' => (int) $c['index'],
                 'by' => (string) ($c['by'] ?? ''),
-                'name' => $c['name'] ?? null,
-                'headline' => $c['headline'] ?? null,
-                'avatar' => $c['avatar'] ?? self::avatarFor((string) $i->account_id, (string) ($c['by'] ?? '')),
+                // Who they are comes from LinkedIn (Identity); the batch's names are a last resort.
+                'name' => Identity::forKey((string) $i->account_id, (string) ($c['by'] ?? ''))['name'] ?? $c['name'] ?? null,
+                'headline' => Identity::forKey((string) $i->account_id, (string) ($c['by'] ?? ''))['headline'] ?? $c['headline'] ?? null,
+                'avatar' => Identity::forKey((string) $i->account_id, (string) ($c['by'] ?? ''))['avatar'] ?? $c['avatar'] ?? null,
                 'text' => (string) $c['text'],
                 'reply_to' => isset($c['reply_to']) ? (int) $c['reply_to'] : null,
                 'tone' => $c['tone'] ?? null,
@@ -243,14 +245,7 @@ class ReviewPageController extends Controller
                 'tall' => (bool) ($manifest['tall'] ?? false),
                 'download' => self::download($manifest, $postMedia),
             ],
-            'profile' => [
-                'name' => (string) ($card['name'] ?? $channel?->display_name ?? $i->workspace?->name ?? ''),
-                'headline' => (string) ($card['headline'] ?? ''),
-                'avatar' => $card['avatar'] ?? $channel?->avatar_url ?? self::avatarFor((string) $i->account_id, (string) ($p['profile'] ?? '')),
-                'kind' => ($card['kind'] ?? null) === 'company' ? 'company' : 'person',
-                'followers_line' => $card['followers_line'] ?? null,
-                'x_handle' => $card['x_handle'] ?? null,
-            ],
+            'profile' => self::profile($i, $channel, (array) ($p['profile_card'] ?? [])),
             'can_review' => ReviewGate::isReviewOwner($user, $i),
             'events' => $i->events->map(fn (ReviewEvent $e): array => [
                 'kind' => $e->kind->value,

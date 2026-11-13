@@ -74,9 +74,20 @@ class UnipileClient
     /** @return array<string, mixed>|null the account's own LinkedIn profile (users/me is rate limited) */
     public function me(string $accountId): ?array
     {
+        return $this->profile($accountId)['data'];
+    }
+
+    /**
+     * The account's own LinkedIn profile with the HTTP status, so a disconnected
+     * account (401) can be told from a busy one (429).
+     *
+     * @return array{status: int, data: array<string, mixed>|null}
+     */
+    public function profile(string $accountId): array
+    {
         $response = $this->get("/{$accountId}/users/me", allowFailure: true);
 
-        return $response->successful() ? (array) $response->json() : null;
+        return ['status' => $response->status(), 'data' => $response->successful() ? (array) $response->json() : null];
     }
 
     /** The LinkedIn member id of the account itself, to tell its own comments apart. */

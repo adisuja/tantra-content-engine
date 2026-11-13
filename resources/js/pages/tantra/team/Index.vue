@@ -28,6 +28,14 @@ interface Member {
     paused_until: string | null;
     expertise: string | null;
     checklist: Record<ChecklistStep, boolean>;
+    linkedin: {
+        name: string | null;
+        headline: string | null;
+        photo: string | null;
+        url: string | null;
+        status: string | null;
+        synced_at: string | null;
+    } | null;
 }
 
 type ChecklistStep =
@@ -209,8 +217,21 @@ const send = async (url: string, body: Record<string, unknown>) => {
                     :key="m.id"
                     class="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-3 text-sm"
                 >
+                    <img
+                        v-if="m.linkedin?.photo"
+                        :src="m.linkedin.photo"
+                        :alt="m.linkedin.name ?? m.name"
+                        class="size-10 shrink-0 rounded-full object-cover"
+                    />
                     <div class="min-w-48">
-                        <b>{{ m.name }}</b>
+                        <b>{{ m.linkedin?.name || m.name }}</b>
+                        <div
+                            v-if="m.linkedin?.headline"
+                            class="max-w-80 truncate text-xs text-muted-foreground"
+                            :title="$t('tantra.team.linkedin_from')"
+                        >
+                            {{ m.linkedin.headline }}
+                        </div>
                         <div class="text-xs text-muted-foreground">
                             {{ m.email }}
                         </div>
@@ -261,6 +282,16 @@ const send = async (url: string, body: Record<string, unknown>) => {
                     <Badge v-if="m.paused_until" variant="destructive">{{
                         $t('tantra.team.paused')
                     }}</Badge>
+                    <Badge
+                        v-if="m.linkedin?.status === 'disconnected'"
+                        variant="destructive"
+                        >{{ $t('tantra.team.linkedin_disconnected') }}</Badge
+                    >
+                    <Badge
+                        v-else-if="m.linkedin && !m.linkedin.synced_at"
+                        variant="outline"
+                        >{{ $t('tantra.team.linkedin_waiting') }}</Badge
+                    >
                 </div>
             </section>
         </div>

@@ -23,11 +23,11 @@ use App\Tantra\Console\GiveawayRepliesCommand;
 use App\Tantra\Console\HealthCommand;
 use App\Tantra\Console\HeartbeatCommand;
 use App\Tantra\Console\InviteTeammateCommand;
+use App\Tantra\Console\LinkedInSyncCommand;
 use App\Tantra\Console\ManualTasksCommand;
 use App\Tantra\Console\MapProfileCommand;
 use App\Tantra\Console\ReconnectRemindersCommand;
 use App\Tantra\Console\TeamAccountsCommand;
-use App\Tantra\Console\TeamPhotosCommand;
 use App\Tantra\Console\ZernioConnectCommand;
 use App\Tantra\Http\Controllers\Web\ReviewPageController;
 use App\Tantra\Http\Middleware\EnsureOwnerToken;
@@ -139,15 +139,15 @@ class TantraServiceProvider extends ServiceProvider
             // The health report's scheduler tick, and the media-exists check for posts due in a day (PRD 8.5).
             $schedule->command('tantra:heartbeat')->everyMinute();
             $schedule->command('tantra:heartbeat --media')->everyFifteenMinutes()->withoutOverlapping();
-            // Teammates without a photo get their LinkedIn picture (the review previews).
-            $schedule->command('tantra:team-photos')->dailyAt('04:13');
+            // Names, headlines and photos from LinkedIn: new accounts every 15 minutes, a refresh daily.
+            $schedule->command('tantra:linkedin-sync')->everyFifteenMinutes()->withoutOverlapping();
             // Post and page numbers (PRD 10.6).
             $schedule->command('tantra:check-connectors')->hourly()->withoutOverlapping();
             $schedule->command('tantra:collect-metrics')->twiceDaily(6, 18)->withoutOverlapping();
         });
 
         if ($this->app->runningInConsole()) {
-            $this->commands([AiConnectorCommand::class, CheckConnectorsCommand::class, CollectMetricsCommand::class, CreateOwnerCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class, TeamAccountsCommand::class, TeamPhotosCommand::class, GiveawayRepliesCommand::class, HealthCommand::class, HeartbeatCommand::class, ReconnectRemindersCommand::class]);
+            $this->commands([AiConnectorCommand::class, CheckConnectorsCommand::class, CollectMetricsCommand::class, CreateOwnerCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class, TeamAccountsCommand::class, LinkedInSyncCommand::class, GiveawayRepliesCommand::class, HealthCommand::class, HeartbeatCommand::class, ReconnectRemindersCommand::class]);
         }
 
         if ($this->app->environment('production') && config('tantra.lean_workers.enabled')) {

@@ -121,7 +121,7 @@ final class ThreadDelivery
                 'kind' => $parent === null ? 'comment' : 'reply',
                 'reply_to' => $parent,
                 'by' => $by,
-                'poster' => $via === 'zernio' ? ($channel?->display_name ?: 'the page') : ($person['user']?->name ?: $by),
+                'poster' => $via === 'zernio' ? ($channel?->display_name ?: 'the page') : ($person['profile']?->linkedin_name ?: $person['user']?->name ?: $by),
                 'via' => $via,
                 'state' => $state,
                 'reason' => $reason,

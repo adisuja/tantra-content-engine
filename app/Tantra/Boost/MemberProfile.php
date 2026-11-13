@@ -7,6 +7,7 @@ namespace App\Tantra\Boost;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * tantra: a teammate's boost settings (PRD 9): their confirmed Unipile account
@@ -25,6 +26,9 @@ class MemberProfile extends Model
     protected $fillable = [
         'user_id', 'unipile_account_id', 'unipile_name', 'unipile_match_method', 'unipile_confirmed_by', 'unipile_confirmed_at',
         'boost_consent_at', 'expertise', 'daily_boost_cap', 'boost_paused_until',
+        // Read from LinkedIn through Unipile (App\Tantra\LinkedIn\LinkedInSync), never typed in.
+        'unipile_status', 'linkedin_member_id', 'linkedin_public_identifier', 'linkedin_name', 'linkedin_headline',
+        'linkedin_profile_url', 'linkedin_followers', 'linkedin_picture_path', 'linkedin_picture_source', 'linkedin_synced_at',
     ];
 
     protected function casts(): array
@@ -34,12 +38,20 @@ class MemberProfile extends Model
             'boost_consent_at' => 'datetime',
             'boost_paused_until' => 'datetime',
             'daily_boost_cap' => 'integer',
+            'linkedin_followers' => 'integer',
+            'linkedin_synced_at' => 'datetime',
         ];
     }
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /** Their LinkedIn picture, as stored by the sync (a public URL), or null. */
+    public function linkedinPictureUrl(): ?string
+    {
+        return $this->linkedin_picture_path ? Storage::url($this->linkedin_picture_path) : null;
     }
 
     /** Why this person cannot post a boost entry right now, or null when they can. */

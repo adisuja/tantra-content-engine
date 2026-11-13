@@ -220,16 +220,19 @@ final class GiveawayReplies
     {
         $accountId = $post->workspace?->account_id;
 
-        return collect(MemberProfile::query()->whereNotNull('unipile_account_id')->pluck('unipile_name'))
+        return collect(MemberProfile::query()->whereNotNull('unipile_account_id')->get(['unipile_name', 'linkedin_name']))
+            ->flatMap(fn (MemberProfile $p): array => [$p->unipile_name, $p->linkedin_name])
             ->merge($accountId ? User::query()->where('account_id', $accountId)->pluck('name') : [])
             ->filter()->map(fn ($n) => Str::lower((string) $n))->unique()->values()->all();
     }
 
-    /** @return list<string> the LinkedIn ids of everyone with a confirmed Unipile account */
+    /** @return list<string> the LinkedIn member ids of everyone with a confirmed Unipile account */
     private static function teamLinkedInIds(UnipileClient $unipile): array
     {
-        return MemberProfile::query()->whereNotNull('unipile_confirmed_at')->pluck('unipile_account_id')->filter()
-            ->map(fn (string $acc): ?string => self::linkedInId($unipile, $acc))->filter()->values()->all();
+        // The member id read from LinkedIn by the identity sync; asked once only for anyone not synced yet.
+        return MemberProfile::query()->whereNotNull('unipile_confirmed_at')->whereNotNull('unipile_account_id')->get()
+            ->map(fn (MemberProfile $p): ?string => $p->linkedin_member_id ?: self::linkedInId($unipile, (string) $p->unipile_account_id))
+            ->filter()->values()->all();
     }
 
     /** An account's own LinkedIn id, kept once read: users/me is rate limited (S7 got a 429). */

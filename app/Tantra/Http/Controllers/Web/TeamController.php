@@ -11,6 +11,8 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Tantra\Boost\Boost;
 use App\Tantra\Boost\MemberProfile;
+use App\Tantra\LinkedIn\LinkedInSync;
+use App\Tantra\LinkedIn\SyncLinkedInIdentity;
 use App\Tantra\Review\Models\WorkspaceSettings;
 use App\Tantra\Review\ReviewGate;
 use App\Tantra\Unipile\UnipileClient;
@@ -49,6 +51,7 @@ class TeamController extends Controller
                 'paused_until' => $profiles->get($u->id)?->boost_paused_until?->isFuture() ? $profiles->get($u->id)->boost_paused_until->toIso8601String() : null,
                 'expertise' => $profiles->get($u->id)?->expertise,
                 'checklist' => $this->checklist($u, $profiles->get($u->id)),
+                'linkedin' => $this->linkedin($profiles->get($u->id)),
             ])->values();
 
         return Inertia::render('tantra/team/Index', [
@@ -57,6 +60,27 @@ class TeamController extends Controller
             'boostEnabled' => Boost::enabled(),
             'unipileAccounts' => $isOwner ? $this->unipileAccounts($members->pluck('name')->all()) : [],
         ]);
+    }
+
+    /**
+     * What LinkedIn says about them, read through their Unipile account.
+     *
+     * @return array{name: ?string, headline: ?string, photo: ?string, url: ?string, status: ?string, synced_at: ?string}|null
+     */
+    private function linkedin(?MemberProfile $profile): ?array
+    {
+        if ($profile?->unipile_account_id === null) {
+            return null;
+        }
+
+        return [
+            'name' => $profile->linkedin_name,
+            'headline' => $profile->linkedin_headline,
+            'photo' => $profile->linkedinPictureUrl(),
+            'url' => $profile->linkedin_profile_url,
+            'status' => $profile->unipile_status,
+            'synced_at' => $profile->linkedin_synced_at?->toIso8601String(),
+        ];
     }
 
     /**
@@ -113,6 +137,10 @@ class TeamController extends Controller
             return response()->json(['message' => 'That account is already matched to someone else.'], 422);
         }
 
+        $before = MemberProfile::query()->find($member->id);
+        if ($before !== null && $before->unipile_account_id !== $accountId) {
+            LinkedInSync::forget($before);
+        }
         MemberProfile::query()->updateOrCreate(['user_id' => $member->id], [
             'unipile_account_id' => $accountId,
             'unipile_name' => $name,
@@ -120,6 +148,10 @@ class TeamController extends Controller
             'unipile_confirmed_by' => $accountId ? $owner->id : null,
             'unipile_confirmed_at' => $accountId ? now() : null,
         ]);
+
+        if ($accountId !== null) {
+            SyncLinkedInIdentity::dispatch($member->id); // their name, headline and photo from LinkedIn
+        }
 
         return response()->json(['message' => $accountId ? "{$member->name} is matched to {$name}." : "{$member->name} has no account now."]);
     }
