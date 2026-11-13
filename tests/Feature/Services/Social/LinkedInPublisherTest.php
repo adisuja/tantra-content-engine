@@ -557,7 +557,7 @@ test('linkedin publisher sends per-image alt text on a carousel, not the filenam
 
 test('linkedin publisher caps a carousel at the platform max images', function () {
     $media = [];
-    for ($i = 1; $i <= 22; // tantra: the cap is 20 $i++) {
+    for ($i = 1; $i <= 22; $i++) { // tantra: the cap is 20
         $media[] = [
             'id' => "test-media-{$i}",
             'path' => "media/2026-01/carousel-{$i}.jpg",

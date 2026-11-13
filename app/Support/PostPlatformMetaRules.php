@@ -40,7 +40,7 @@ class PostPlatformMetaRules
      * taken from a request, and kept when the post's settings are edited.
      */
     // tantra: a provider's post id marks the post as sent; a duplicate must post again.
-    public const SYSTEM_KEYS = ['reactions', 'zernio_post_id', 'unipile_post_id', 'unipile_post_url', 'unipile_attempt_at', 'unipile_first_comment_id', 'unipile_first_comment_failed', 'unipile_first_comment_tries'];
+    public const SYSTEM_KEYS = ['reactions', 'zernio_post_id', 'unipile_post_id', 'unipile_post_url', 'unipile_attempt_at', 'unipile_first_comment_id', 'unipile_first_comment_failed', 'unipile_first_comment_tries', 'first_comment_failed', 'youtube_followup_failed'];
 
     /** What an Instagram music pick stores; anything else sent with it is dropped. */
     private const array INSTAGRAM_AUDIO_FIELDS = ['id', 'title', 'artist', 'cover_url', 'preview_url', 'audio_volume', 'video_volume'];

@@ -21,7 +21,8 @@ const props = withDefaults(
 const emit = defineEmits<{ 'update:meta': [value: Record<string, any>] }>();
 
 const text = computed({
-    get: (): string => (props.meta?.[props.metaKey] as string | undefined) ?? '',
+    get: (): string =>
+        (props.meta?.[props.metaKey] as string | undefined) ?? '',
     set: (value: string) =>
         emit('update:meta', {
             ...props.meta,

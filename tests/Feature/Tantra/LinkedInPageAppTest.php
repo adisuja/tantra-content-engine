@@ -6,6 +6,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\Social\ConnectionVerifier;
 use App\Support\Social\PendingConnection;
 use App\Tantra\Channels\LinkedInPageApp;
 use Illuminate\Http\Client\Request;
@@ -119,7 +120,7 @@ test('a company page refreshes its token with the page app keys', function () {
     ]);
     Http::fake([config('trypost.platforms.linkedin.oauth_api').'/oauth/v2/accessToken' => Http::response(['access_token' => 'new', 'expires_in' => 3600])]);
 
-    app(\App\Services\Social\ConnectionVerifier::class)->refreshToken($page);
+    app(ConnectionVerifier::class)->refreshToken($page);
 
     Http::assertSent(fn (Request $r): bool => $r['client_id'] === 'page-app' && $r['client_secret'] === 'page-secret');
 });

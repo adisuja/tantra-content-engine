@@ -7,6 +7,7 @@ import MetaPollRow from '@/components/tantra/formats/MetaPollRow.vue'; // tantra
 import MetaSelectRow from '@/components/tantra/formats/MetaSelectRow.vue'; // tantra:
 import MetaSwitchRow from '@/components/tantra/formats/MetaSwitchRow.vue'; // tantra:
 import MetaTextRow from '@/components/tantra/formats/MetaTextRow.vue'; // tantra:
+import type { PollDurationOption } from '@/components/tantra/formats/types'; // tantra:
 import { Input } from '@/components/ui/input';
 import { isDocumentMedia } from '@/composables/useMedia';
 import { isVideo } from '@/lib/mediaType'; // tantra:
@@ -81,14 +82,17 @@ const DURATION_LABELS: Record<string, { labelKey: string; count?: string }> = {
     ONE_WEEK: { labelKey: 'posts.form.formats.week' },
     TWO_WEEKS: { labelKey: 'posts.form.formats.weeks', count: '2' },
 };
-const pollDurations = computed(() =>
-    (pollLimits.value.durations as string[]).map((value) => ({
-        value,
-        labelKey: DURATION_LABELS[value]?.labelKey ?? value,
-        params: DURATION_LABELS[value]?.count
-            ? { count: DURATION_LABELS[value].count as string }
-            : {},
-    })),
+const pollDurations = computed((): PollDurationOption[] =>
+    (pollLimits.value.durations as string[]).map((value) => {
+        const count = DURATION_LABELS[value]?.count;
+        const params: Record<string, string> = count ? { count } : {};
+
+        return {
+            value,
+            labelKey: DURATION_LABELS[value]?.labelKey ?? value,
+            params,
+        };
+    }),
 );
 const hasVideo = computed(() => props.media.some((item) => isVideo(item)));
 const visibilityOptions = [

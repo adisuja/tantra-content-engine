@@ -387,7 +387,7 @@ abstract class AbstractLinkedInPublisher
                 'thirdPartyDistributionChannels' => [],
             ],
             'lifecycleState' => 'PUBLISHED',
-            'isReshareDisabledByAuthor' => data_get($meta, 'disable_reshare') === true, // tantra:
+            ...(data_get($meta, 'disable_reshare') === true ? ['isReshareDisabledByAuthor' => true] : []), // tantra: only when turned off
         ];
     }
 

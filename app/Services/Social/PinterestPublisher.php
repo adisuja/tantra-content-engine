@@ -76,6 +76,11 @@ class PinterestPublisher
             $payload['link'] = data_get($post->meta, 'link');
         }
 
+        // tantra: the section of the board the pin goes into.
+        if (filled(data_get($post->meta, 'board_section_id'))) {
+            $payload['board_section_id'] = (string) data_get($post->meta, 'board_section_id');
+        }
+
         return $payload;
     }
 

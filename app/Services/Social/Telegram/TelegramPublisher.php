@@ -10,8 +10,10 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\ContentSanitizer;
+use App\Tantra\Composer\TantraMetaRules;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 class TelegramPublisher
 {
@@ -26,6 +28,12 @@ class TelegramPublisher
 
     private const ALBUM_CHUNK = 10;
 
+    /** tantra: options every message of the post is sent with (silent, protected). */
+    private array $tantraSendOptions = [];
+
+    /** tantra: whether photos and videos go out behind a spoiler. */
+    private bool $tantraSpoiler = false;
+
     public function publish(Post $post): array
     {
         $this->validateContentLength($post);
@@ -37,9 +45,18 @@ class TelegramPublisher
 
         $media = $post->mediaItems->take(self::ALBUM_CHUNK);
 
+        // tantra: send silently, protect from forwarding and saving, spoiler media.
+        $this->tantraSendOptions = array_filter([
+            'disable_notification' => data_get($post->meta, 'disable_notification') === true,
+            'protect_content' => data_get($post->meta, 'protect_content') === true,
+        ]);
+        $this->tantraSpoiler = data_get($post->meta, 'has_spoiler') === true;
+
         $messageId = $media->isEmpty()
             ? $this->sendText($chatId, $content)
             : $this->sendWithMedia($chatId, $content, $media);
+
+        $this->tantraAfterPost($post, $chatId, (int) $messageId); // tantra: poll and pin
 
         return [
             'id' => (string) $messageId,
@@ -89,6 +106,7 @@ class TelegramPublisher
             $type->value => $item['url'],
             'caption' => $caption,
             'parse_mode' => 'HTML',
+            ...($this->tantraSpoiler && in_array($type->value, ['photo', 'video', 'animation'], true) ? ['has_spoiler' => true] : []), // tantra:
         ]);
 
         return (int) data_get($response->json(), 'result.message_id');
@@ -103,6 +121,10 @@ class TelegramPublisher
 
         foreach ($items as $index => $item) {
             $entry = ['type' => $item['type']->value, 'media' => $item['url']];
+
+            if ($this->tantraSpoiler && in_array($entry['type'], ['photo', 'video'], true)) {
+                $entry['has_spoiler'] = true; // tantra:
+            }
 
             if ($index === 0 && $caption !== '') {
                 $entry['caption'] = $caption;
@@ -130,6 +152,11 @@ class TelegramPublisher
 
     private function call(string $method, array $payload): Response
     {
+        // tantra: every send carries the post's send options.
+        if (str_starts_with($method, 'send')) {
+            $payload = [...$payload, ...$this->tantraSendOptions];
+        }
+
         $response = $this->socialHttp()->post(TelegramApi::endpoint($method), $payload);
 
         if ($response->failed() || data_get($response->json(), 'ok') !== true) {
@@ -137,6 +164,32 @@ class TelegramPublisher
         }
 
         return $response;
+    }
+
+    /**
+     * tantra: the poll after the post (sendPoll) and pinning the post. The post
+     * is live by then, so neither ever fails it: a refusal is logged.
+     */
+    private function tantraAfterPost(Post $post, string $chatId, int $messageId): void
+    {
+        $options = TantraMetaRules::choices(data_get($post->meta, 'telegram_poll.options'));
+        $question = trim((string) data_get($post->meta, 'telegram_poll.question'));
+
+        if (count($options) >= 2 && $question !== '') {
+            rescue(fn () => $this->call('sendPoll', [
+                'chat_id' => $chatId,
+                'question' => mb_substr($question, 0, 300),
+                'options' => json_encode(array_map(fn (string $text): array => ['text' => $text], array_slice($options, 0, 10))),
+            ]), fn (\Throwable $e) => Log::warning('tantra: Telegram poll not sent', ['post_id' => $post->id, 'error' => $e->getMessage()]), report: false);
+        }
+
+        if (data_get($post->meta, 'pin') === true && $messageId > 0) {
+            rescue(fn () => $this->call('pinChatMessage', [
+                'chat_id' => $chatId,
+                'message_id' => $messageId,
+                'disable_notification' => data_get($post->meta, 'disable_notification') === true,
+            ]), fn (\Throwable $e) => Log::warning('tantra: Telegram pin failed', ['post_id' => $post->id, 'error' => $e->getMessage()]), report: false);
+        }
     }
 
     private function buildPostUrl(SocialAccount $account, int $messageId): string

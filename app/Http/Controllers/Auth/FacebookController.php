@@ -31,6 +31,7 @@ class FacebookController extends MetaController
         'pages_manage_posts',
         'read_insights',
         'business_management',
+        'pages_manage_engagement', // tantra: first comments
     ];
 
     public function connect(Request $request): Response

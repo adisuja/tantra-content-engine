@@ -62,10 +62,7 @@ const options = computed((): string[] => {
 
     return stored.length >= props.minOptions
         ? stored
-        : [
-              ...stored,
-              ...Array(props.minOptions - stored.length).fill(''),
-          ];
+        : [...stored, ...Array(props.minOptions - stored.length).fill('')];
 });
 
 const write = (patch: Record<string, any> | null): void => {
@@ -153,7 +150,9 @@ const multiple = computed({
                 v-model="question"
                 :data-testid="`${testId}-question`"
                 :maxlength="questionMaxLength"
-                :placeholder="$t('posts.form.formats.poll_question_placeholder')"
+                :placeholder="
+                    $t('posts.form.formats.poll_question_placeholder')
+                "
                 :disabled="disabled"
             />
         </SettingsRow>
@@ -249,7 +248,9 @@ const multiple = computed({
                         v-for="option in durations"
                         :key="String(option.value)"
                         :value="String(option.value)"
-                        >{{ $t(option.labelKey, option.params ?? {}) }}</SelectItem
+                        >{{
+                            $t(option.labelKey, option.params ?? {})
+                        }}</SelectItem
                     >
                 </SelectContent>
             </Select>

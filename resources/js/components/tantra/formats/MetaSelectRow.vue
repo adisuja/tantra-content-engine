@@ -4,6 +4,7 @@
 import { computed } from 'vue';
 
 import SettingsRow from '@/components/posts/editor/SettingsRow.vue';
+import type { MetaOption } from '@/components/tantra/formats/types';
 import {
     Select,
     SelectContent,
@@ -11,7 +12,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import type { MetaOption } from '@/components/tantra/formats/types';
 
 const props = withDefaults(
     defineProps<{

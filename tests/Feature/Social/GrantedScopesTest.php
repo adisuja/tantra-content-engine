@@ -243,7 +243,7 @@ test('a network that reports no scopes keeps the requested ones', function () {
     finishSocialConnect(Platform::Threads)->assertRedirect();
 
     expect(SocialAccount::query()->sole()->scopes)
-        ->toBe(['threads_basic', 'threads_content_publish', 'threads_manage_insights']);
+        ->toBe(['threads_basic', 'threads_content_publish', 'threads_manage_insights', 'threads_manage_replies']); // tantra: reply chains
 });
 
 test('threads reads the granted scopes by inspecting the long-lived user token on the threads graph', function () {

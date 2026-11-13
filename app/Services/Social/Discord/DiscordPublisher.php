@@ -13,6 +13,7 @@ use App\Models\Post;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\ContentSanitizer;
+use App\Tantra\Composer\TantraMetaRules;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Collection;
@@ -70,6 +71,7 @@ class DiscordPublisher
             'content' => $content !== '' ? $content : null,
             'embeds' => $embeds !== [] ? $embeds : null,
             'allowed_mentions' => $this->allowedMentions($post),
+            'poll' => $this->tantraPoll($post), // tantra:
         ], fn ($value) => $value !== null);
 
         $messageId = $media->isEmpty()
@@ -274,6 +276,30 @@ class DiscordPublisher
         }
 
         return min((int) hexdec($hex), self::MAX_EMBED_COLOR);
+    }
+
+    /**
+     * tantra: a native Discord poll on the message.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function tantraPoll(Post $post): ?array
+    {
+        $options = TantraMetaRules::choices(data_get($post->meta, 'discord_poll.options'));
+        $question = trim((string) data_get($post->meta, 'discord_poll.question'));
+
+        if (count($options) < 2 || $question === '') {
+            return null;
+        }
+
+        $hours = (int) data_get($post->meta, 'discord_poll.duration_hours', TantraMetaRules::DISCORD_POLL_DEFAULT_HOURS);
+
+        return [
+            'question' => ['text' => mb_substr($question, 0, 300)],
+            'answers' => array_map(fn (string $text): array => ['poll_media' => ['text' => mb_substr($text, 0, 55)]], array_slice($options, 0, 10)),
+            'duration' => max(1, min(TantraMetaRules::DISCORD_POLL_MAX_HOURS, $hours)),
+            'allow_multiselect' => false,
+        ];
     }
 
     private function endpoint(string $channelId): string

@@ -10,6 +10,7 @@ use App\Enums\YouTube\Category;
 use App\Support\Hashtags;
 use App\Support\Social\XPoll;
 use App\Tantra\Channels\ChannelApps;
+use App\Tantra\LinkedIn\LinkedInPoll;
 use Illuminate\Support\Str;
 
 enum Platform: string
@@ -622,7 +623,7 @@ enum Platform: string
                 'poll' => XPoll::limits(),
             ],
             self::LinkedIn, self::LinkedInPage => [
-                'linkedinPoll' => \App\Tantra\LinkedIn\LinkedInPoll::limits(), // tantra:
+                'linkedinPoll' => LinkedInPoll::limits(), // tantra:
             ],
             default => [],
         };

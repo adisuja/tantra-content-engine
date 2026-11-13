@@ -151,7 +151,7 @@ test('a linkedin post stays public with reshares on by default', function () {
     (new LinkedInPublisher)->publish(linkedInFormatPost($this->member, ['content_type' => ContentType::LinkedInPost]));
 
     expect(linkedInPostRequest()['visibility'])->toBe('PUBLIC')
-        ->and(linkedInPostRequest()['isReshareDisabledByAuthor'])->toBeFalse();
+        ->and(isset(linkedInPostRequest()['isReshareDisabledByAuthor']))->toBeFalse();
 });
 
 test('a linkedin video post carries its title', function () {
