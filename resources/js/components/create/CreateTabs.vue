@@ -15,6 +15,7 @@ const tabs: { key: CreateTab; href: () => string }[] = [
     { key: 'templates', href: () => templatesIndex.url() },
     // tantra: content templates, one per sample (PRD 25.9).
     { key: 'content-templates', href: () => '/tantra/templates' },
+    { key: 'repurposing', href: () => '/tantra/repurposing' },
     { key: 'feeds', href: () => feedsIndex.url() },
 ];
 </script>
@@ -44,7 +45,9 @@ const tabs: { key: CreateTab; href: () => string }[] = [
                 {{
                     tab.key === 'content-templates'
                         ? $t('tantra.templates.tab')
-                        : $t(`create.tabs.${tab.key}`)
+                        : tab.key === 'repurposing'
+                          ? $t('tantra.repurposing.tab')
+                          : $t(`create.tabs.${tab.key}`)
                 }}<!-- tantra: content templates label -->
             </Link>
         </nav>
