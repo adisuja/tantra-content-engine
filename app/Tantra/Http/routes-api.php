@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Tantra\Http\Controllers\Api\AgentRunnerController;
 use App\Tantra\Http\Controllers\Api\BatchController;
+use App\Tantra\Http\Controllers\Api\ChannelScheduleController;
 use App\Tantra\Http\Controllers\Api\ProfileController;
 use App\Tantra\Http\Controllers\Api\ResultsController;
 use App\Tantra\Http\Controllers\Api\UploadController;
@@ -26,6 +27,9 @@ Route::middleware(['api', 'auth:api', 'tantra.owner-token', 'throttle:api'])
         Route::post('/templates', [TemplatesController::class, 'seed'])->name('templates.seed');
         Route::post('/templates/{key}/preview', [TemplatesController::class, 'preview'])->where('key', '[A-Z]{1,4}\\d{1,3}')->name('templates.preview');
         Route::get('/results/{engineBatchId}', [ResultsController::class, 'show'])->where('engineBatchId', '[A-Za-z0-9_-]{1,32}')->name('results.show');
+        // tantra: each channel's posting days and times (PRD 25.6).
+        Route::get('/channels/{channel}/schedule', [ChannelScheduleController::class, 'show'])->whereUuid('channel')->name('channels.schedule.show');
+        Route::put('/channels/{channel}/schedule', [ChannelScheduleController::class, 'update'])->whereUuid('channel')->name('channels.schedule.update');
     });
 
 // tantra: content templates anyone in the Account reads or adds from a post (PRD 25.9).
