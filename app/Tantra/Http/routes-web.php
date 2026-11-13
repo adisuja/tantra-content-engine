@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Middleware\App\EnsureAccountReady;
 use App\Http\Middleware\App\EnsureHasWorkspace;
 use App\Tantra\Http\Controllers\OpsController;
+use App\Tantra\Http\Controllers\TemplatesController;
 use App\Tantra\Http\Controllers\Web\ChannelAppController;
 use App\Tantra\Http\Controllers\Web\ClerkSessionController;
 use App\Tantra\Http\Controllers\Web\ConnectorController;
@@ -149,4 +150,14 @@ Route::middleware(['web', 'auth', 'tantra.admin'])
         Route::post('/accounts/{account}/test', [OpsController::class, 'testAccount'])->whereUuid('account')->name('accounts.test');
         Route::post('/runners', [OpsController::class, 'storeRunner'])->name('runners.store');
         Route::delete('/runners/{runner}', [OpsController::class, 'revokeRunner'])->whereUuid('runner')->name('runners.revoke');
+    });
+
+// tantra: content templates under Create (PRD 25.9).
+Route::middleware(['web', 'auth'])
+    ->prefix('tantra/templates')
+    ->name('tantra.templates.')
+    ->group(function (): void {
+        Route::get('/', [TemplatesController::class, 'page'])->middleware([EnsureAccountReady::class, EnsureHasWorkspace::class])->name('index');
+        Route::post('/intake', [TemplatesController::class, 'intake'])->name('intake');
+        Route::get('/{template}', [TemplatesController::class, 'show'])->whereUuid('template')->name('show');
     });

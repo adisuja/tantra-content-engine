@@ -2,7 +2,7 @@ import type { InjectionKey } from 'vue';
 
 import type { MediaItem } from '@/types/media';
 
-export type CreateTab = 'ideas' | 'templates' | 'feeds';
+export type CreateTab = 'ideas' | 'templates' | 'content-templates' | 'feeds'; // tantra: content templates
 
 export interface IdeaStage {
     id: string;

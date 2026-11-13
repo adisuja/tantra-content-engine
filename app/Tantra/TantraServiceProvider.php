@@ -13,9 +13,11 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Tantra\Agent\Admin;
+use App\Tantra\Agent\Appliers;
 use App\Tantra\Ai\AiAlerts;
 use App\Tantra\Ai\CliTextGateway;
 use App\Tantra\Boost\Boost;
+use App\Tantra\Boost\MemberProfile;
 use App\Tantra\Boost\StartBoostRun;
 use App\Tantra\Channels\ChannelApps;
 use App\Tantra\Composer\MakeComposerThread;
@@ -47,13 +49,17 @@ use App\Tantra\Ops\LeanHorizon;
 use App\Tantra\Review\Actions\DraftMaker;
 use App\Tantra\Review\Listeners\RecordComposerEdit;
 use App\Tantra\Review\Models\Batch;
+use App\Tantra\Review\Models\ReviewItem;
 use App\Tantra\Review\Models\WorkspaceSettings;
 use App\Tantra\Review\OwnerApproval;
 use App\Tantra\Review\ReviewChips;
 use App\Tantra\Review\ReviewGate;
+use App\Tantra\Templates\ContentTemplate;
+use App\Tantra\Templates\TemplateFromPostApplier;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Http\Kernel as HttpKernel;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Foundation\Http\Kernel as FoundationHttpKernel;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Auth;
@@ -156,6 +162,16 @@ class TantraServiceProvider extends ServiceProvider
             ->values()->all());
 
         // The sidebar's Review badge: posts waiting for this user's approval.
+        // Things an agent job can be about (the app enforces a morph map).
+        Relation::morphMap([
+            'tantraContentTemplate' => ContentTemplate::class,
+            'tantraReviewItem' => ReviewItem::class,
+            'tantraMemberProfile' => MemberProfile::class,
+        ]);
+
+        // What the Engine does with each kind of agent job result (PRD 25.5).
+        Appliers::register('template_from_post', TemplateFromPostApplier::class);
+
         // Studio ops in the sidebar for admins only (PRD 25.4).
         Inertia::share('tantraAdmin', fn (): bool => Admin::is(Auth::user()));
 

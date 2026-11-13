@@ -54,6 +54,10 @@ Nobody's name, headline or photo is typed in. `app/Tantra/LinkedIn`:
 - The Engine applies results (`Appliers`, one `JobApplier` per kind, idempotent); the agent never writes to the Engine directly. Features register their appliers in `TantraServiceProvider`.
 - The worker side is in tantra-content `kits/agent/` (`job.py`, `runner.py`, `cloud-task.md`, `prompts/`).
 
+## Content templates
+
+`/tantra/templates` (`TemplatesController`, `pages/tantra/templates/Index.vue`), the fourth Create tab. `tantra_content_templates` holds one row per sample (seeded from tantra-content with `POST api/tantra/templates`, owner token, upsert by key, plus `POST api/tantra/templates/{key}/preview`) and one per post someone added (`POST /tantra/templates/intake` or `api/tantra/templates/intake`): `TemplateIntake` makes it `building`, reads a LinkedIn post itself through Unipile, and queues a `template_from_post` agent job; `TemplateFromPostApplier` makes it live and keeps its preview under `tantra/templates/<key>/`. `GET api/tantra/templates?origin=intake&since=&full=1` is how the content repo pulls new samples. PRD 25.9.
+
 ## Connectors tab
 
 `/settings/workspace/connectors` (`app/Tantra/Ai`, `ConnectorController`, `pages/tantra/connectors`). One row per Account and provider in `tantra_ai_connectors`, key encrypted with the app key. Every AI call goes through `TantraAi::prompt()`: the default connector first, then the other working AI connectors; each failure is classified (`AiFailure`: out of credits, rate limited, key rejected, model not available, signed out, unreachable) and shown where the AI was used, on the card and in the app banner (`tantraAlerts`). With no connector it runs on the `.env` provider as upstream did. Claude and ChatGPT plans run through the official Claude Code and Codex CLIs installed in the image (`CliTextGateway`).
@@ -67,7 +71,8 @@ Each change is small and marked `// tantra:` (or `<!-- tantra: -->`). After merg
 - Slots held by polls posted by hand: `app/Actions/Post/Queue/ListFreeQueueSlots.php`, `ReflowChannelQueue.php`, `ListTakenSlots.php` (a UNION, so it stays one query), `BuildQueueTimeline.php`, and the calendar strip in `BuildCalendarPageProps.php` and `pages/posts/Calendar.vue`.
 - Review chips on post cards: `app/Http/Resources/App/PostCardResource.php`, `PostTimelineCard.vue`, `PostDetailsDialog.vue`, `types/publish.ts`.
 - Sign in with Clerk: `app/Http/Controllers/Auth/AuthenticatedSessionController.php` (the login page and sign out), `NewPasswordController.php` (back to the password form), `app/Http/Requests/App/Settings/ProfileUpdateRequest.php` (emails lowercase and unique in any case).
-- Navigation and branding: `AppSidebar.vue`, `AppLogo.vue`, `WorkspaceMenuContent.vue`, `auth/LegalLinks.vue`, `layouts/auth/AuthSplitLayout.vue`.
+- Content templates tab: `components/create/CreateTabs.vue`, `types/idea.ts` (`CreateTab`).
+- Navigation and branding: `AppSidebar.vue` (also the Studio ops entry for admins), `AppLogo.vue`, `WorkspaceMenuContent.vue`, `auth/LegalLinks.vue`, `layouts/auth/AuthSplitLayout.vue`.
 - MCP: the Tantra tools on `app/Mcp/Servers/TryPostServer.php`.
 - AI through the Connectors tab: `app/Actions/Idea/GenerateIdea.php`, `app/Actions/Ai/AssistPostContent.php`, `app/Actions/Ai/GenerateMediaAltText.php`, the error paths of `IdeaGenerateController`, `PostAiAssistantController`, `MediaAltTextController`, the error line in `GenerateIdeasDialog.vue`, `WritingAssistantPanel.vue`, `MediaEditorAltTextPanel.vue`, the banner in `AppSidebarLayout.vue`, the nav item in `useSettingsNavigation.ts`, the CLIs in `docker/Dockerfile`, and the `connectors` label in `lang/*/settings.php` (16 locales, no marker).
 - Branding: `app/Services/Http/SafeHttpFetcher.php` (our user agent).

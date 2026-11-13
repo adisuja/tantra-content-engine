@@ -9,6 +9,7 @@ use App\Tantra\Http\Controllers\Api\ResultsController;
 use App\Tantra\Http\Controllers\Api\UploadController;
 use App\Tantra\Http\Controllers\HealthController;
 use App\Tantra\Http\Controllers\OpsController;
+use App\Tantra\Http\Controllers\TemplatesController;
 use App\Tantra\Http\Controllers\ZernioWebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -22,7 +23,18 @@ Route::middleware(['api', 'auth:api', 'tantra.owner-token', 'throttle:api'])
         Route::post('/previews', [UploadController::class, 'preview'])->name('previews.store');
         Route::post('/batches', [BatchController::class, 'store'])->name('batches.store');
         Route::get('/batches/{batch}/feedback', [BatchController::class, 'feedback'])->whereUuid('batch')->name('batches.feedback');
+        Route::post('/templates', [TemplatesController::class, 'seed'])->name('templates.seed');
+        Route::post('/templates/{key}/preview', [TemplatesController::class, 'preview'])->where('key', '[A-Z]{1,4}\\d{1,3}')->name('templates.preview');
         Route::get('/results/{engineBatchId}', [ResultsController::class, 'show'])->where('engineBatchId', '[A-Za-z0-9_-]{1,32}')->name('results.show');
+    });
+
+// tantra: content templates anyone in the Account reads or adds from a post (PRD 25.9).
+Route::middleware(['api', 'auth:api', 'throttle:api'])
+    ->prefix('api/tantra')
+    ->name('tantra.api.')
+    ->group(function (): void {
+        Route::get('/templates', [TemplatesController::class, 'index'])->name('templates.index');
+        Route::post('/templates/intake', [TemplatesController::class, 'intake'])->name('templates.intake');
     });
 
 // tantra: Studio ops over the API (PRD 25.4): any admin's own token (review M2).
