@@ -189,14 +189,14 @@ final class LinkedInSync
                 continue;
             }
 
-            $avatar = $channel->avatar_url;
+            $avatar = $channel->getRawOriginal('avatar_url'); // a storage path: the model turns it into a URL
             $logo = $a['profilePicture'] ?? null;
             $meta = (array) ($channel->meta ?? []);
             if (is_string($logo) && str_starts_with($logo, 'https://') && self::pictureKey($logo) !== self::pictureKey((string) ($meta['linkedin_logo_source'] ?? ''))) {
                 try {
                     $path = "tantra/linkedin/page-{$channel->id}.jpg";
                     Storage::put($path, Http::timeout(20)->get($logo)->throw()->body(), 'public');
-                    $avatar = Storage::url($path);
+                    $avatar = $path;
                     $meta['linkedin_logo_source'] = $logo;
                 } catch (Throwable $e) {
                     report($e);
