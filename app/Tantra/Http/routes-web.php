@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Middleware\App\EnsureAccountReady;
 use App\Http\Middleware\App\EnsureHasWorkspace;
 use App\Tantra\Http\Controllers\Web\ChannelAppController;
+use App\Tantra\Http\Controllers\Web\ClerkSessionController;
 use App\Tantra\Http\Controllers\Web\ConnectorController;
 use App\Tantra\Http\Controllers\Web\InsightsController;
 use App\Tantra\Http\Controllers\Web\JoinController;
@@ -109,3 +110,11 @@ Route::middleware(['web', 'auth', EnsureAccountReady::class])
     ->post('tantra/channels/{account}/open', OpenChannelController::class)
     ->whereUuid('account')
     ->name('tantra.channels.open');
+
+// tantra: sign in with the usetantra.com login (Clerk), behind TANTRA_CLERK_LOGIN (2026-11-14).
+Route::middleware(['web', 'throttle:20,1'])
+    ->post('auth/clerk/session', [ClerkSessionController::class, 'store'])
+    ->name('tantra.clerk.session');
+Route::middleware(['web'])
+    ->get('auth/clerk/no-access', [ClerkSessionController::class, 'noAccess'])
+    ->name('tantra.clerk.no-access');

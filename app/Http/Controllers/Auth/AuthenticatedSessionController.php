@@ -9,6 +9,8 @@ use App\Http\Requests\App\Auth\LoginRequest;
 use App\Jobs\PostHog\SyncUser;
 use App\Models\Invite;
 use App\Services\PostHogService;
+use App\Tantra\Auth\ClerkLogin;
+use App\Tantra\Http\Controllers\Web\ClerkSessionController;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -22,6 +24,11 @@ class AuthenticatedSessionController extends Controller
      */
     public function create(Request $request): Response
     {
+        // tantra: the usetantra.com login (Clerk); ?password=1 keeps this form.
+        if (ClerkLogin::enabled() && ! $request->boolean('password')) {
+            return ClerkSessionController::page($request);
+        }
+
         return Inertia::render('auth/Login', [
             'status' => session('status'),
             'email' => $request->query('email'),
@@ -64,6 +71,11 @@ class AuthenticatedSessionController extends Controller
         $request->session()->invalidate();
 
         $request->session()->regenerateToken();
+
+        // tantra: end the Clerk session too, or the sign in page would sign straight back in.
+        if (ClerkLogin::enabled()) {
+            return redirect()->route('login', ['signed_out' => 1]);
+        }
 
         return redirect()->route('app.home');
     }
