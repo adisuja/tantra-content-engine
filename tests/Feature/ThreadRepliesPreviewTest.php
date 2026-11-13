@@ -34,7 +34,7 @@ test('a linkedin preview shows its comment with the linkedin sanitizer', functio
 });
 
 test('networks that cannot chain get no thread preview', function () {
-    $post = Post::factory()->threads()->create([
+    $post = Post::factory()->telegram()->create([ // tantra: Threads chains now
         'content' => 'Root',
         'meta' => ['thread_replies' => ['Two']],
     ]);

@@ -102,7 +102,15 @@ const brand = computed(() => {
 const leaving = ref(false);
 
 const continueOAuth = (): void => {
-    const url = connectUrl(route.value);
+    // LinkedIn: the profile and company pages may use separate apps
+    // (LinkedInPageApp::kindFor); each tile asks for its own consent screen.
+    const kind: Record<string, string> =
+        props.network.value === Platform.LinkedInPage
+            ? { kind: 'page' }
+            : props.network.value === Platform.LinkedIn
+              ? { kind: 'profile' }
+              : {};
+    const url = connectUrl(route.value, undefined, kind);
     if (!url) return;
     leaving.value = true;
     // The server answers with the network's sign-in page (another site).

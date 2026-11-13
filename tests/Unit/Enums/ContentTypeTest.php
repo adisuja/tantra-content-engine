@@ -130,7 +130,7 @@ test('instagram_carousel is not a content type — it is an AI generation format
 test('content type has correct max media count', function () {
     expect(ContentType::InstagramFeed->maxMediaCount())->toBe(10);
     expect(ContentType::InstagramReel->maxMediaCount())->toBe(1);
-    expect(ContentType::LinkedInPost->maxMediaCount())->toBe(10);
+    expect(ContentType::LinkedInPost->maxMediaCount())->toBe(20); // tantra:
     expect(ContentType::XPost->maxMediaCount())->toBe(4);
     expect(ContentType::XPoll->maxMediaCount())->toBe(0);
     expect(ContentType::PinterestCarousel->maxMediaCount())->toBe(5);
@@ -241,7 +241,7 @@ test('media rules preserve pre-centralization editor limits for mapped types', f
         'linkedin_post' => [
             'requires_media' => false,
             'accepts_gif' => false,
-            'max_files' => 10,
+            'max_files' => 20, // tantra: LinkedIn takes 20 images
             'max_document_bytes' => min(100 * $mb, $hardDocument),
             'max_video_bytes' => $hardVideo,
         ],
@@ -400,7 +400,7 @@ test('linkedin post content types accept images, videos and documents but never 
         expect($type->supportsDocument())->toBeTrue();
         expect($type->supportsMixedMedia())->toBeFalse();
         expect($type->requiresMedia())->toBeFalse();
-        expect($type->maxMediaCount())->toBe(10);
+        expect($type->maxMediaCount())->toBe(20); // tantra:
     }
 });
 
@@ -411,9 +411,11 @@ test('only linkedin post content types support documents', function () {
     expect(ContentType::XPost->supportsDocument())->toBeFalse();
 });
 
-test('linkedin exposes a single post content type per account kind', function () {
-    expect(ContentType::forPlatform(Platform::LinkedIn))->toHaveCount(1)->toContain(ContentType::LinkedInPost);
-    expect(ContentType::forPlatform(Platform::LinkedInPage))->toHaveCount(1)->toContain(ContentType::LinkedInPagePost);
+// tantra: each LinkedIn account kind has a post and a poll.
+test('linkedin exposes a post and a poll content type per account kind', function () {
+    expect(ContentType::forPlatform(Platform::LinkedIn))->toHaveCount(2)->toContain(ContentType::LinkedInPost, ContentType::LinkedInPoll);
+    expect(ContentType::forPlatform(Platform::LinkedInPage))->toHaveCount(2)->toContain(ContentType::LinkedInPagePost, ContentType::LinkedInPagePoll);
+    expect(ContentType::forPlatform(Platform::ZernioLinkedInPage))->toHaveCount(1)->toContain(ContentType::ZernioLinkedInPagePost);
 });
 
 test('google business post maps to the google business platform', function () {

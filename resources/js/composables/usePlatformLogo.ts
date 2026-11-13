@@ -47,13 +47,13 @@ const PLATFORM_CONTENT_TYPES: Record<string, string[]> = {
         'instagram_reel',
         'instagram_story',
     ],
-    linkedin: ['linkedin_post'],
-    'linkedin-page': ['linkedin_page_post'],
+    linkedin: ['linkedin_post', 'linkedin_poll'], // tantra: polls
+    'linkedin-page': ['linkedin_page_post', 'linkedin_page_poll'], // tantra: polls
     'zernio-linkedin-page': ['zernio_linkedin_page_post'], // tantra:
     'unipile-linkedin': ['unipile_linkedin_post'], // tantra:
     facebook: ['facebook_post', 'facebook_reel', 'facebook_story'],
     tiktok: ['tiktok_video', 'tiktok_photo'],
-    youtube: ['youtube_short'],
+    youtube: ['youtube_short', 'youtube_video'], // tantra: long-form video
     x: ['x_post', 'x_poll'],
     threads: ['threads_post', 'threads_ghost_post'],
     pinterest: ['pinterest_pin', 'pinterest_video_pin', 'pinterest_carousel'],
@@ -70,6 +70,9 @@ const PLATFORM_CONTENT_TYPE_BADGES: Record<string, string[]> = {
     facebook: ['facebook_reel', 'facebook_story'],
     threads: ['threads_ghost_post'],
     x: ['x_poll'],
+    linkedin: ['linkedin_poll'], // tantra:
+    'linkedin-page': ['linkedin_page_poll'], // tantra:
+    youtube: ['youtube_video'], // tantra:
 };
 
 export interface ContentTypeOption {

@@ -9,6 +9,7 @@ use App\Models\SocialAccount;
 use App\Services\Social\ConnectionVerifier;
 use App\Services\Social\Meta\ManagedPages;
 use App\Support\Social\PendingConnection;
+use App\Tantra\Social\EngagementScopes;
 use Exception;
 use Illuminate\Http\Client\Pool;
 use Illuminate\Http\Client\Response as ClientResponse;
@@ -57,6 +58,7 @@ class InstagramFacebookController extends MetaController
         $this->authorize('manageAccounts', $workspace);
 
         $this->rememberConnectSession($request, $workspace);
+        $this->scopes = EngagementScopes::with($this->platform, $this->scopes); // tantra: comment and reply scopes, when switched on
 
         $driver = Socialite::driver($this->driver)
             ->usingGraphVersion($this->graphVersion())

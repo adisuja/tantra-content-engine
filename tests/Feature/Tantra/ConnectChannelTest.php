@@ -138,6 +138,9 @@ it('gives the owner a set up link on tiles that are not ready, and nothing more'
                 $n = collect($n)->keyBy('value');
 
                 expect($n['pinterest']['setup_app'])->toBe('pinterest')
+                    // LinkedIn Page has its own developer app (falls back to the profile app's keys).
+                    ->and($n['linkedin-page']['ready'])->toBeFalse()
+                    ->and($n['linkedin-page']['setup_app'])->toBe('linkedin_page')
                     ->and($n['tiktok']['setup_app'])->toBe('tiktok')
                     ->and($n['bluesky']['setup_app'])->toBeNull()
                     ->and($n['x']['setup_app'])->toBeNull();
@@ -155,7 +158,9 @@ it('opens the Developer apps page for the owner with every developer detail', fu
             ->where('channelApps', fn ($apps) => collect($apps)->pluck('key')->all() === array_keys(ChannelApps::catalog())
                 && collect($apps)->firstWhere('key', 'linkedin')['portal'] === 'https://www.linkedin.com/developers/apps'
                 && str_ends_with(collect($apps)->firstWhere('key', 'linkedin')['callbacks'][0], '/accounts/linkedin/callback')
-                && collect(collect($apps)->firstWhere('key', 'linkedin')['fields'])->contains('key', 'community_management'))
+                // Company pages have their own app card, with the Community Management switch.
+                && collect(collect($apps)->firstWhere('key', 'linkedin_page')['fields'])->contains('key', 'community_management')
+                && collect($apps)->firstWhere('key', 'linkedin_page')['networks'][0]['value'] === 'linkedin-page')
             ->where('linkedAccounts.total', 0)
         );
 });

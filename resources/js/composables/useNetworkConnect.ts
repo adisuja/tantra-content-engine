@@ -40,11 +40,13 @@ const CONNECT_ROUTES: Record<
 export const connectUrl = (
     platform: string,
     reconnectId?: string,
+    extra: Record<string, string> = {},
 ): string | undefined =>
     CONNECT_ROUTES[platform]?.url({
         query: {
             return_to: window.location.pathname,
             ...(reconnectId ? { reconnect: reconnectId } : {}),
+            ...extra,
         },
     });
 

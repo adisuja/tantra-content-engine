@@ -46,7 +46,7 @@ test('platform has correct allowed media types', function () {
 });
 
 test('platform has correct max images', function () {
-    expect(Platform::LinkedIn->maxImages())->toBe(10);
+    expect(Platform::LinkedIn->maxImages())->toBe(20); // tantra: LinkedIn takes 20 images
     expect(Platform::X->maxImages())->toBe(4);
     expect(Platform::TikTok->maxImages())->toBe(0);
     expect(Platform::YouTube->maxImages())->toBe(0);
@@ -439,7 +439,7 @@ test('x publish config serves the poll limits', function () {
         'maxDuration' => 10080,
         'defaultDuration' => 1440,
         'questionMaxLength' => 280,
-    ]]);
+    ], 'quotesEnabled' => false]); // tantra: quotes stay off until the X plan allows them
 });
 
 test('youtube publish config exposes only the fixed categories and the default', function () {

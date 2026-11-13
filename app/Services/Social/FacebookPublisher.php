@@ -16,6 +16,7 @@ use App\Services\Social\Concerns\FitsImageToCanvas;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\Meta\GraphError;
 use App\Support\FacebookLinkPreview;
+use App\Tantra\Social\PublishesFirstComments;
 use Closure;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
@@ -28,6 +29,7 @@ class FacebookPublisher
 {
     use FitsImageToCanvas;
     use HasSocialHttpClient;
+    use PublishesFirstComments; // tantra:
 
     private const int VIDEO_UPLOAD_POLL_SECONDS = 5;
 
@@ -36,6 +38,9 @@ class FacebookPublisher
     private const int UNREACHABLE_RETRY_DELAY_SECONDS = 60;
 
     private string $baseUrl;
+
+    /** tantra: the post being published, for its video title. */
+    private ?Post $tantraPost = null;
 
     public function __construct()
     {
@@ -48,6 +53,7 @@ class FacebookPublisher
     public function publish(Post $post): array
     {
         $this->validateContentLength($post);
+        $this->tantraPost = $post; // tantra:
 
         $account = $post->socialAccount;
         $pageId = $account->platform_user_id;
@@ -56,7 +62,7 @@ class FacebookPublisher
         $media = $post->mediaItems;
         $contentType = $post->content_type;
 
-        return match ($contentType) {
+        return $this->tantraFirstComment($post, match ($contentType) { // tantra: first comment
             ContentType::FacebookReel => $this->publishReel($pageId, $accessToken, $content, $this->requireVideo($media->first(), 'Reels')),
             ContentType::FacebookStory => $this->publishStory($pageId, $accessToken, $this->requireMedia($media->first(), 'Stories')),
             ContentType::FacebookPost => $this->publishPost($pageId, $accessToken, $content, $media, $post->attachesLinkPreview()),
@@ -64,7 +70,33 @@ class FacebookPublisher
                 userMessage: "Unsupported Facebook content type: {$contentType?->value}",
                 category: ErrorCategory::MediaFormat,
             ),
-        };
+        });
+    }
+
+    /**
+     * tantra: the first comment under a post, video or reel (stories take none).
+     *
+     * @param  array<string, mixed>  $result
+     * @return array<string, mixed>
+     */
+    private function tantraFirstComment(Post $post, array $result): array
+    {
+        if ($post->content_type === ContentType::FacebookStory) {
+            return $result;
+        }
+
+        return $this->withFirstComments($post, $result, function (string $text, $media, array $previous, array $root) use ($post): array {
+            $response = $this->socialHttp()->post("{$this->baseUrl}/{$root['id']}/comments", [
+                'message' => $text,
+                'access_token' => $post->socialAccount->access_token,
+            ]);
+
+            if ($response->failed() || blank($response->json('id'))) {
+                throw new \RuntimeException('Facebook refused the first comment: '.$response->status().' '.$this->redactResponseBody($response->body()));
+            }
+
+            return ['id' => (string) $response->json('id')];
+        });
     }
 
     /**
@@ -242,6 +274,7 @@ class FacebookPublisher
             'file_url' => $media->url,
             'access_token' => $accessToken,
             ...$this->optionalField('description', $content),
+            ...$this->optionalField('title', transform(data_get($this->tantraPost?->meta, 'video_title'), fn (mixed $title): string => (string) $title)), // tantra: video title
         ], 'video post');
 
         $videoId = data_get($response->json(), 'id');

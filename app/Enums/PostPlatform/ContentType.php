@@ -11,6 +11,7 @@ use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Models\SocialAccount;
 use App\Support\Social\XPoll;
 use App\Support\ThreadReplies;
+use App\Tantra\LinkedIn\LinkedInPoll;
 use Illuminate\Support\Str;
 
 enum ContentType: string
@@ -29,6 +30,9 @@ enum ContentType: string
     // tantra: a Tantra page post published through Zernio (PRD 10.4).
     case ZernioLinkedInPagePost = 'zernio_linkedin_page_post';
     case UnipileLinkedInPost = 'unipile_linkedin_post'; // tantra:
+    // tantra: native LinkedIn polls (profile and page), meta.linkedin_poll.
+    case LinkedInPoll = 'linkedin_poll';
+    case LinkedInPagePoll = 'linkedin_page_poll';
 
     case LinkedInComment = 'linkedin_comment';
 
@@ -43,6 +47,7 @@ enum ContentType: string
 
     // YouTube
     case YouTubeShort = 'youtube_short';
+    case YouTubeVideo = 'youtube_video'; // tantra: long-form video, no 3-minute cap
 
     // X (Twitter)
     case XPost = 'x_post';
@@ -95,12 +100,14 @@ enum ContentType: string
             self::InstagramStory => 'Story',
             self::LinkedInPost, self::LinkedInPagePost, self::ZernioLinkedInPagePost, self::UnipileLinkedInPost => 'Post',
             self::LinkedInComment => 'Comment',
+            self::LinkedInPoll, self::LinkedInPagePoll => 'Poll', // tantra:
             self::FacebookPost => 'Post',
             self::FacebookReel => 'Reel',
             self::FacebookStory => 'Story',
             self::TikTokVideo => 'Video',
             self::TikTokPhoto => 'Photo carousel',
             self::YouTubeShort => 'Short',
+            self::YouTubeVideo => 'Video', // tantra:
             self::XPost => 'Post',
             self::XPoll => 'Poll',
             self::ThreadsPost => 'Thread',
@@ -120,6 +127,7 @@ enum ContentType: string
     {
         $replacements = match ($this) {
             self::XPoll => ['min' => XPoll::MIN_OPTIONS, 'max' => XPoll::MAX_OPTIONS],
+            self::LinkedInPoll, self::LinkedInPagePoll => ['min' => LinkedInPoll::MIN_OPTIONS, 'max' => LinkedInPoll::MAX_OPTIONS], // tantra:
             default => [],
         };
 
@@ -132,11 +140,13 @@ enum ContentType: string
             self::InstagramFeed, self::InstagramReel, self::InstagramStory => SocialPlatform::Instagram,
             self::LinkedInPost, self::LinkedInComment => SocialPlatform::LinkedIn,
             self::LinkedInPagePost => SocialPlatform::LinkedInPage,
+            self::LinkedInPoll => SocialPlatform::LinkedIn, // tantra:
+            self::LinkedInPagePoll => SocialPlatform::LinkedInPage, // tantra:
             self::ZernioLinkedInPagePost => SocialPlatform::ZernioLinkedInPage,
             self::UnipileLinkedInPost => SocialPlatform::UnipileLinkedIn, // tantra:
             self::FacebookPost, self::FacebookReel, self::FacebookStory => SocialPlatform::Facebook,
             self::TikTokVideo, self::TikTokPhoto => SocialPlatform::TikTok,
-            self::YouTubeShort => SocialPlatform::YouTube,
+            self::YouTubeShort, self::YouTubeVideo => SocialPlatform::YouTube,
             self::XPost, self::XPoll => SocialPlatform::X,
             self::ThreadsPost, self::ThreadsGhostPost => SocialPlatform::Threads,
             self::PinterestPin, self::PinterestVideoPin, self::PinterestCarousel => SocialPlatform::Pinterest,
@@ -189,6 +199,7 @@ enum ContentType: string
             self::InstagramReel, self::InstagramStory => '9:16',
             self::FacebookReel, self::FacebookStory => '9:16',
             self::TikTokVideo, self::YouTubeShort => '9:16',
+            self::YouTubeVideo => '16:9', // tantra:
             self::TikTokPhoto => '1:1',
             self::PinterestPin, self::PinterestCarousel => '2:3',
             self::PinterestVideoPin => '9:16',
@@ -223,13 +234,15 @@ enum ContentType: string
         return match ($this) {
             self::InstagramFeed => 10,
             self::InstagramReel, self::InstagramStory => 1,
-            self::LinkedInPost, self::LinkedInPagePost, self::ZernioLinkedInPagePost, self::UnipileLinkedInPost => 10,
-            self::LinkedInComment => 0,
+            // tantra: LinkedIn takes up to 20 images (Unipile stays at 10).
+            self::LinkedInPost, self::LinkedInPagePost, self::ZernioLinkedInPagePost => 20,
+            self::UnipileLinkedInPost => 10,
+            self::LinkedInComment, self::LinkedInPoll, self::LinkedInPagePoll => 0, // tantra: polls carry no media
             self::FacebookPost => 10,
             self::FacebookReel, self::FacebookStory => 1,
             self::TikTokVideo => 1,
             self::TikTokPhoto => 35,
-            self::YouTubeShort => 1,
+            self::YouTubeShort, self::YouTubeVideo => 1, // tantra:
             self::XPost => 4,
             self::XPoll => 0,
             self::ThreadsPost => 10,
@@ -353,7 +366,7 @@ enum ContentType: string
             self::FacebookReel, self::FacebookStory => self::bytesFromGb(1),
             self::LinkedInPost, self::LinkedInPagePost, self::ZernioLinkedInPagePost => self::bytesFromGb(5),
             self::UnipileLinkedInPost => self::bytesFromMb(50), // tantra: one JSON request carries the file, base64
-            self::YouTubeShort => self::bytesFromGb(256),
+            self::YouTubeShort, self::YouTubeVideo => self::bytesFromGb(256), // tantra:
             self::PinterestVideoPin => self::bytesFromGb(2),
             self::XPost => self::bytesFromGb(8),
             self::ThreadsPost => self::bytesFromGb(1),
@@ -493,6 +506,7 @@ enum ContentType: string
             self::InstagramFeed => ['3:4', '4:5', '1:1', '1.91:1'],
             self::InstagramStory, self::InstagramReel, self::FacebookStory, self::FacebookReel,
             self::TikTokVideo, self::YouTubeShort => ['9:16'],
+            self::YouTubeVideo => ['16:9'], // tantra:
             self::XPost, self::XPoll => ['1:1', '4:3', '16:9', '2:1'],
             self::TikTokPhoto => ['4:3', '16:9', '9:16', '1:1'],
             self::FacebookPost, self::LinkedInPost, self::LinkedInPagePost, self::ZernioLinkedInPagePost, self::UnipileLinkedInPost => ['1:1', '1.91:1'],
@@ -501,7 +515,7 @@ enum ContentType: string
             self::ThreadsPost, self::ThreadsGhostPost => ['1:1', '4:5', '1.91:1'],
             self::BlueskyPost, self::MastodonPost => ['1:1', '16:9'],
             self::GoogleBusinessPost => ['4:3', '1:1'],
-            self::TelegramPost, self::DiscordMessage, self::LinkedInComment => self::defaultCropPresets(),
+            self::TelegramPost, self::DiscordMessage, self::LinkedInComment, self::LinkedInPoll, self::LinkedInPagePoll => self::defaultCropPresets(), // tantra: polls
         };
     }
 
@@ -536,7 +550,7 @@ enum ContentType: string
      */
     public function supportsVideoCover(): bool
     {
-        return in_array($this, [self::InstagramFeed, self::InstagramReel, self::TikTokVideo, self::PinterestVideoPin], true);
+        return in_array($this, [self::InstagramFeed, self::InstagramReel, self::TikTokVideo, self::PinterestVideoPin, self::YouTubeVideo], true); // tantra: YouTube video thumbnail
     }
 
     /**
@@ -746,11 +760,11 @@ enum ContentType: string
         return match ($this) {
             self::InstagramFeed, self::InstagramReel, self::InstagramStory => true,
             self::LinkedInPost, self::LinkedInPagePost, self::ZernioLinkedInPagePost, self::UnipileLinkedInPost => true,
-            self::LinkedInComment => false,
+            self::LinkedInComment, self::LinkedInPoll, self::LinkedInPagePoll => false, // tantra: polls
             self::FacebookPost, self::FacebookReel, self::FacebookStory => true,
             self::TikTokVideo => true,
             self::TikTokPhoto => false,
-            self::YouTubeShort => true,
+            self::YouTubeShort, self::YouTubeVideo => true, // tantra:
             self::XPost => true,
             self::XPoll => false,
             self::ThreadsPost => true,
@@ -772,8 +786,9 @@ enum ContentType: string
             self::FacebookReel => false,
             self::TikTokVideo => false,
             self::TikTokPhoto => true,
-            self::YouTubeShort => false,
+            self::YouTubeShort, self::YouTubeVideo => false, // tantra:
             self::ThreadsGhostPost => false,
+            self::LinkedInPoll, self::LinkedInPagePoll => false, // tantra:
             self::XPoll => false,
             self::PinterestVideoPin => false,
             self::LinkedInComment => false,
@@ -828,6 +843,7 @@ enum ContentType: string
     {
         return match ($this) {
             self::LinkedInPost, self::LinkedInPagePost, self::ZernioLinkedInPagePost, self::UnipileLinkedInPost, self::LinkedInComment => false,
+            self::LinkedInPoll, self::LinkedInPagePoll => false, // tantra:
             self::XPost, self::XPoll => false,
             self::ThreadsPost, self::ThreadsGhostPost => false,
             self::BlueskyPost => false,

@@ -41,6 +41,9 @@ class ThreadReplies
             Platform::Mastodon => ContentType::MastodonPost,
             Platform::X => ContentType::XPost,
             Platform::LinkedIn, Platform::LinkedInPage, Platform::ZernioLinkedInPage, Platform::UnipileLinkedIn => ContentType::LinkedInComment, // tantra: Zernio's firstComment
+            // tantra: a first comment on Instagram, Facebook and YouTube; a reply chain on Threads.
+            Platform::Instagram, Platform::InstagramFacebook, Platform::Facebook, Platform::YouTube => ContentType::LinkedInComment,
+            Platform::Threads => ContentType::ThreadsPost,
             default => null,
         };
     }
@@ -53,8 +56,9 @@ class ThreadReplies
     public static function maxReplies(?Platform $platform): int
     {
         return match ($platform) {
-            Platform::Bluesky, Platform::Mastodon, Platform::X => self::MAX_REPLIES,
+            Platform::Bluesky, Platform::Mastodon, Platform::X, Platform::Threads => self::MAX_REPLIES, // tantra: Threads
             Platform::LinkedIn, Platform::LinkedInPage, Platform::ZernioLinkedInPage, Platform::UnipileLinkedIn => 1, // tantra:
+            Platform::Instagram, Platform::InstagramFacebook, Platform::Facebook, Platform::YouTube => 1, // tantra:
             default => 0,
         };
     }

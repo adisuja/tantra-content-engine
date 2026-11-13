@@ -23,6 +23,12 @@ export const THREAD_REPLY_CONTENT_TYPES: Readonly<Record<string, string>> = {
     'linkedin-page': ContentType.LinkedInComment,
     'zernio-linkedin-page': ContentType.LinkedInComment, // tantra:
     'unipile-linkedin': ContentType.LinkedInComment, // tantra:
+    // tantra: first comments and the Threads reply chain.
+    instagram: ContentType.LinkedInComment,
+    'instagram-facebook': ContentType.LinkedInComment,
+    facebook: ContentType.LinkedInComment,
+    youtube: ContentType.LinkedInComment,
+    threads: ContentType.ThreadsPost,
 };
 export const THREAD_PLATFORMS: readonly string[] = Object.keys(
     THREAD_REPLY_CONTENT_TYPES,
@@ -35,5 +41,9 @@ export const THREAD_MAX_REPLIES: Readonly<Record<string, number>> = {
     'linkedin-page': 1,
     'zernio-linkedin-page': 1, // tantra:
     'unipile-linkedin': 1, // tantra:
+    instagram: 1, // tantra:
+    'instagram-facebook': 1, // tantra:
+    facebook: 1, // tantra:
+    youtube: 1, // tantra:
+    threads: 24, // tantra:
 };
-
