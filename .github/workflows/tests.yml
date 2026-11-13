@@ -2,7 +2,7 @@ name: Tests
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, 'r/**'] # tantra: round 2 work branches get their own CI
   pull_request:
     branches: [main, develop]
 
