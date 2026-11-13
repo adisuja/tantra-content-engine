@@ -302,8 +302,9 @@ class ConnectionVerifier
             ->post(config('trypost.platforms.linkedin.oauth_api').'/oauth/v2/accessToken', [
                 'grant_type' => 'refresh_token',
                 'refresh_token' => $account->refresh_token,
-                'client_id' => config('services.linkedin.client_id'),
-                'client_secret' => config('services.linkedin.client_secret'),
+                // tantra: a company page refreshes with the page app's keys (they fall back to the profile app's).
+                'client_id' => config($account->platform === Platform::LinkedInPage ? 'services.linkedin-page.client_id' : 'services.linkedin.client_id'),
+                'client_secret' => config($account->platform === Platform::LinkedInPage ? 'services.linkedin-page.client_secret' : 'services.linkedin.client_secret'),
             ]));
 
         $data = $response->json();

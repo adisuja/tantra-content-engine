@@ -6,7 +6,9 @@ namespace App\Http\Controllers\Auth;
 
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Models\SocialAccount;
+use App\Models\Workspace;
 use App\Support\Social\PendingConnection;
+use App\Tantra\Channels\LinkedInPageApp;
 use Exception;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -45,6 +47,12 @@ class LinkedInController extends SocialController
 
         $this->rememberConnectSession($request, $workspace);
 
+        // tantra: company pages may connect through a LinkedIn app of their own.
+        $kind = LinkedInPageApp::kindFor($request, $this->reconnectAccount($workspace)?->platform);
+        if ($kind !== null) {
+            return Inertia::location(LinkedInPageApp::redirectUrl($kind));
+        }
+
         return Inertia::location(
             Socialite::driver($this->driver)
                 ->scopes($this->connectScopes())
@@ -56,6 +64,12 @@ class LinkedInController extends SocialController
     public function callback(Request $request): RedirectResponse
     {
         $workspace = $this->connectWorkspace($request);
+
+        // tantra: the page app's consent screen comes back here too.
+        $kind = LinkedInPageApp::pullKind();
+        if ($kind === LinkedInPageApp::PAGE) {
+            return $this->tantraPageCallback($workspace, $request);
+        }
 
         try {
             $socialUser = Socialite::driver($this->driver)->user();
@@ -78,9 +92,16 @@ class LinkedInController extends SocialController
                 ...($this->personEnabled() ? [$this->personIdentity($person, $credentials)] : []),
                 ...array_map(
                     fn (array $organization): array => $this->organizationIdentity($organization, $person, $credentials),
-                    $this->organizationEnabled() ? $this->fetchOrganizations($socialUser->token) : [],
+                    $this->organizationEnabled() && $kind === null ? $this->fetchOrganizations($socialUser->token) : [], // tantra: pages come from their own app
                 ),
             ];
+
+            // tantra: on to the page app's consent screen, keeping the profile.
+            if ($kind === LinkedInPageApp::PROFILE_THEN_PAGE && $identities !== []) {
+                LinkedInPageApp::stash($identities);
+
+                return redirect()->away(LinkedInPageApp::redirectUrl(LinkedInPageApp::PAGE));
+            }
 
             if ($identities === []) {
                 return $this->failConnection('not_linkedin_admin');
@@ -101,6 +122,46 @@ class LinkedInController extends SocialController
 
             return $this->failConnection('error_connecting');
         }
+    }
+
+    /**
+     * tantra: the page app's callback: its pages, plus the profile stashed
+     * before it when both were asked for. A failed page step still offers
+     * the profile.
+     */
+    private function tantraPageCallback(Workspace $workspace, Request $request): RedirectResponse
+    {
+        $profile = LinkedInPageApp::pullStash();
+
+        try {
+            $credentials = LinkedInPageApp::credentials($request);
+            $pages = array_map(
+                fn (array $organization): array => $this->organizationIdentity($organization, [], $credentials),
+                $this->fetchOrganizations($credentials['access_token']),
+            );
+        } catch (Exception $e) {
+            Log::error('LinkedIn page OAuth Error', ['error' => $e->getMessage()]);
+
+            if ($profile === []) {
+                return $this->failConnection('error_connecting');
+            }
+            $pages = [];
+        }
+
+        $identities = [...$profile, ...$pages];
+
+        if ($identities === []) {
+            return $this->failConnection('not_linkedin_admin');
+        }
+
+        $reconnect = $this->reconnectAccount($workspace);
+
+        return $this->offerIdentities(
+            $workspace,
+            $identities,
+            $reconnect,
+            $reconnect?->platform === SocialPlatform::LinkedInPage ? 'page_not_found' : 'wrong_account',
+        );
     }
 
     /**

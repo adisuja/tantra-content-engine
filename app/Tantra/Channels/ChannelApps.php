@@ -43,15 +43,29 @@ final class ChannelApps
             'linkedin' => [
                 'label' => 'LinkedIn',
                 'portal' => 'https://www.linkedin.com/developers/apps',
-                'help' => 'Add the "Share on LinkedIn" and "Sign In with LinkedIn using OpenID Connect" products. Company pages also need the Community Management API.',
-                'catch' => 'Profiles reconnect every 60 days. Company pages need LinkedIn to approve Community Management; the Tantra page posts through Zernio until then.',
+                'help' => 'Add the "Share on LinkedIn" and "Sign In with LinkedIn using OpenID Connect" products. Company pages use their own app (LinkedIn: company pages).',
+                'catch' => 'Profiles reconnect every 60 days.',
                 'fields' => [
                     'client_id' => ['label' => 'Client ID', 'config' => ['services.linkedin.client_id', 'services.linkedin-openid.client_id']],
                     'client_secret' => ['label' => 'Client secret', 'secret' => true, 'config' => ['services.linkedin.client_secret', 'services.linkedin-openid.client_secret']],
-                    'community_management' => ['label' => 'Community Management API approved (company pages)', 'switch' => true, 'config' => []],
                 ],
                 'networks' => [
                     Platform::LinkedIn->value => ['client_id', 'client_secret'],
+                ],
+                'callbacks' => ['accounts/linkedin/callback'],
+            ],
+            // Company pages need an app whose only product is Community Management.
+            'linkedin_page' => [
+                'label' => 'LinkedIn: company pages',
+                'portal' => 'https://www.linkedin.com/developers/apps',
+                'help' => 'Create a second app with only the "Community Management API" product and copy its Client ID and secret. Left empty, pages use the LinkedIn app keys.',
+                'catch' => 'LinkedIn must approve Community Management first; the Tantra page posts through Zernio until then. Pages already connected with the LinkedIn app reconnect once after you add these keys.',
+                'fields' => [
+                    'client_id' => ['label' => 'Client ID', 'config' => ['services.linkedin-page.client_id']],
+                    'client_secret' => ['label' => 'Client secret', 'secret' => true, 'config' => ['services.linkedin-page.client_secret']],
+                    'community_management' => ['label' => 'Community Management API approved', 'switch' => true, 'config' => []],
+                ],
+                'networks' => [
                     Platform::LinkedInPage->value => ['client_id', 'client_secret', 'community_management'],
                 ],
                 'callbacks' => ['accounts/linkedin/callback'],
@@ -111,7 +125,7 @@ final class ChannelApps
                 'label' => 'Google: YouTube',
                 'portal' => 'https://console.cloud.google.com/apis/credentials',
                 'help' => 'Enable "YouTube Data API v3" and "YouTube Analytics API", then create an OAuth client (Web application).',
-                'catch' => 'Free. Until Google verifies the app, videos it uploads are set to private, and only test users you list can connect.',
+                'catch' => 'Free. While the OAuth consent screen is in Testing, until Google verifies the app, only the 100 test users you list can connect and they reconnect every 7 days. Since 2 November 2026 uploads from unverified projects are no longer locked to private.',
                 'fields' => [
                     'client_id' => ['label' => 'Client ID', 'config' => ['services.google.client_id']],
                     'client_secret' => ['label' => 'Client secret', 'secret' => true, 'config' => ['services.google.client_secret']],
@@ -226,6 +240,14 @@ final class ChannelApps
             }
         }
 
+        // Company pages fall back to the LinkedIn app while their own app has no keys.
+        if (blank(config('services.linkedin-page.client_id')) || blank(config('services.linkedin-page.client_secret'))) {
+            config([
+                'services.linkedin-page.client_id' => config('services.linkedin.client_id'),
+                'services.linkedin-page.client_secret' => config('services.linkedin.client_secret'),
+            ]);
+        }
+
         // Socialite needs a redirect; the .env never set one for most networks.
         $base = rtrim((string) config('app.url'), '/');
         foreach (self::REDIRECTS as $service => $path) {
@@ -272,6 +294,7 @@ final class ChannelApps
     private const REDIRECTS = [
         'linkedin' => 'accounts/linkedin/callback',
         'linkedin-openid' => 'accounts/linkedin/callback',
+        'linkedin-page' => 'accounts/linkedin/callback',
         'x' => 'accounts/x/callback',
         'tiktok' => 'accounts/tiktok/callback',
         'google' => 'accounts/youtube/callback',
@@ -357,15 +380,41 @@ final class ChannelApps
                 return (bool) $value;
             }
 
-            return $app === 'linkedin' && $field === 'community_management' && (bool) config('tantra.channel_apps.linkedin_page', false);
+            // The switch lived on the LinkedIn app before pages had their own.
+            if ($app === 'linkedin_page' && array_key_exists('community_management', $saved['linkedin'] ?? [])) {
+                return (bool) $saved['linkedin']['community_management'];
+            }
+
+            return $app === 'linkedin_page' && $field === 'community_management' && (bool) config('tantra.channel_apps.linkedin_page', false);
         }
         if (filled($value)) {
             return true;
+        }
+        // Company pages use the LinkedIn app's keys while their own are empty.
+        if ($app === 'linkedin_page' && ! self::filledOwn($app, $saved)) {
+            return self::filled('linkedin', $field, $saved);
         }
         // Set in the .env (config came from it before apply() wrote over it).
         $path = $spec['config'][0] ?? null;
 
         return $path !== null && filled(self::envConfig($path));
+    }
+
+    /**
+     * Whether an app has both its own keys (saved or in the .env).
+     *
+     * @param  array<string, array<string, mixed>>  $saved
+     */
+    private static function filledOwn(string $app, array $saved): bool
+    {
+        foreach (['client_id', 'client_secret'] as $field) {
+            $path = self::catalog()[$app]['fields'][$field]['config'][0];
+            if (blank($saved[$app][$field] ?? null) && blank(self::envConfig($path))) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

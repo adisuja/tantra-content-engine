@@ -49,6 +49,13 @@ return [
         'redirect' => env('LINKEDIN_CLIENT_REDIRECT'),
     ],
 
+    // tantra: LinkedIn company pages on their own app (Community Management only); empty falls back to the linkedin keys.
+    'linkedin-page' => [
+        'client_id' => env('LINKEDIN_PAGE_CLIENT_ID'),
+        'client_secret' => env('LINKEDIN_PAGE_CLIENT_SECRET'),
+        'redirect' => env('LINKEDIN_PAGE_CLIENT_REDIRECT', env('LINKEDIN_CLIENT_REDIRECT')),
+    ],
+
     'x' => [
         'client_id' => env('X_CLIENT_ID'),
         'client_secret' => env('X_CLIENT_SECRET'),
