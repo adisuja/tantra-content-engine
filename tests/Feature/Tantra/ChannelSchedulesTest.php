@@ -211,5 +211,5 @@ it('flashes every channel one connection created, for the posting times step', f
     $created = $workspace->socialAccounts()->pluck('id')->sort()->values()->all();
     expect($created)->toHaveCount(3);
     $response->assertInertiaFlash('connectedChannel.created', true);
-    expect(collect($response->session()->get(SessionKey::FLASH_DATA)['connectedChannels'] ?? [])->sort()->values()->all())->toBe($created);
+    expect(collect(session()->get(SessionKey::FLASH_DATA)['connectedChannels'] ?? [])->sort()->values()->all())->toBe($created);
 });
