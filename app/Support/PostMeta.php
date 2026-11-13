@@ -8,6 +8,7 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Models\SocialAccount;
 use App\Services\Social\Discord\DiscordClient;
+use App\Tantra\LinkedIn\LinkedInPoll;
 use Illuminate\Support\Arr;
 
 /**
@@ -36,6 +37,11 @@ class PostMeta
 
         if (ContentType::resolve($contentType) !== ContentType::XPoll) {
             $meta = Arr::except($meta, 'poll');
+        }
+
+        // tantra: a LinkedIn poll is only kept on a LinkedIn poll.
+        if (! LinkedInPoll::isPoll($contentType)) {
+            $meta = Arr::except($meta, LinkedInPoll::META_KEY);
         }
 
         if ($account->platform !== Platform::X) {

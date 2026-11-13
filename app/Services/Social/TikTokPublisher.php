@@ -237,6 +237,11 @@ class TikTokPublisher
             'disable_comment' => ! data_get($meta, 'allow_comments', false),
         ];
 
+        // tantra: the photo post's own headline (TikTok takes up to 90 characters).
+        if (filled($title = data_get($meta, 'title'))) {
+            $postInfo['title'] = mb_substr((string) $title, 0, 90);
+        }
+
         if (data_get($meta, 'brand_content_toggle', false)) {
             $postInfo['brand_content_toggle'] = true;
         }
@@ -250,9 +255,11 @@ class TikTokPublisher
 
     private function publishVideo(Post $post, $media, ?string $content): array
     {
+        // tantra: a draft goes to the creator's TikTok inbox, where they finish it in the app.
+        $toInbox = data_get($post->meta, 'upload_to_inbox') === true;
         $response = $this->getHttpClient()
-            ->post("{$this->baseUrl}/post/publish/video/init/", [
-                'post_info' => $this->buildVideoPostInfo($post, $content, $media->coverOffsetMs()),
+            ->post($toInbox ? "{$this->baseUrl}/post/publish/inbox/video/init/" : "{$this->baseUrl}/post/publish/video/init/", [
+                ...($toInbox ? [] : ['post_info' => $this->buildVideoPostInfo($post, $content, $media->coverOffsetMs())]),
                 'source_info' => [
                     'source' => 'PULL_FROM_URL',
                     'video_url' => $media->url,
@@ -319,7 +326,7 @@ class TikTokPublisher
                         'photo_cover_index' => 0,
                         'photo_images' => $photoUrls,
                     ],
-                    'post_mode' => 'DIRECT_POST',
+                    'post_mode' => data_get($meta, 'upload_to_inbox') === true ? 'MEDIA_UPLOAD' : 'DIRECT_POST', // tantra: draft to inbox
                     'media_type' => 'PHOTO',
                 ]);
 
@@ -466,7 +473,8 @@ class TikTokPublisher
         $status = PublishStatus::tryFrom($statusValue);
 
         return match ($status) {
-            PublishStatus::PublishComplete => data_get($data, 'data', []),
+            // tantra: a draft is done once it reaches the creator's inbox.
+            PublishStatus::PublishComplete, PublishStatus::SendToUserInbox => data_get($data, 'data', []),
             PublishStatus::Failed => throw TikTokPublishException::fromFailReason(
                 (string) data_get($data, 'data.fail_reason', 'Unknown error'),
                 json_encode($data),

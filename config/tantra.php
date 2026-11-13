@@ -41,6 +41,16 @@ return [
         'token' => env('TANTRA_HEALTH_TOKEN'),
     ],
 
+    // Format gaps (2026-11-14): features that need a paid plan or app review stay off until switched on.
+    'x' => [
+        // Quoting a post (quote_tweet_id) needs an X API plan that allows it (Enterprise).
+        'quotes_enabled' => (bool) env('TANTRA_X_QUOTES_ENABLED', false),
+    ],
+    'meta' => [
+        // Comment and reply scopes, asked for only once the Meta and Threads apps have them.
+        'engagement_scopes' => (bool) env('TANTRA_META_ENGAGEMENT_SCOPES', false),
+    ],
+
     'zernio' => [
         'key' => env('ZERNIO_API_KEY'),
         'url' => env('ZERNIO_API_URL', 'https://zernio.com/api/v1'),
@@ -87,6 +97,26 @@ return [
     'cli' => [
         'claude' => env('TANTRA_CLAUDE_CLI', 'claude'),
         'codex' => env('TANTRA_CODEX_CLI', 'codex'),
+    ],
+
+    // Sign in with the same Clerk logins as usetantra.com (2026-11-14). Off
+    // until TANTRA_CLERK_LOGIN=true, so a deploy before the keys exist changes
+    // nothing. The publishable key and the Frontend API are public; the secret
+    // key is only used server side to read a person's verified email when the
+    // session token does not carry it. App\Tantra\Auth.
+    'clerk' => [
+        'enabled' => (bool) env('TANTRA_CLERK_LOGIN', false),
+        'publishable_key' => env('CLERK_PUBLISHABLE_KEY', 'pk_live_Y2xlcmsudXNldGFudHJhLmNvbSQ'),
+        'frontend_api' => rtrim((string) env('CLERK_FRONTEND_API', 'https://clerk.usetantra.com'), '/'),
+        'secret_key' => env('CLERK_SECRET_KEY'),
+        'api_url' => rtrim((string) env('CLERK_API_URL', 'https://api.clerk.com/v1'), '/'),
+        // The azp claim must be one of these origins (comma separated).
+        'authorized_parties' => array_values(array_filter(array_map('trim', explode(',', (string) env('CLERK_AUTHORIZED_PARTIES', 'https://content.usetantra.com'))))),
+        // Seconds of clock skew allowed on exp and nbf.
+        'leeway' => (int) env('CLERK_LEEWAY', 5),
+        // Admin of every workspace on the main Account, granted again at each
+        // sign in so new workspaces are covered (php artisan tantra:team-account).
+        'team_emails' => array_values(array_filter(array_map(fn (string $email): string => strtolower(trim($email)), explode(',', (string) env('TANTRA_TEAM_EMAILS', 'team@growthclubpro.com'))))),
     ],
 
 ];

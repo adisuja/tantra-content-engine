@@ -6,6 +6,8 @@ export const ContentType = {
     LinkedInPagePost: 'linkedin_page_post',
     ZernioLinkedInPagePost: 'zernio_linkedin_page_post', // tantra:
     UnipileLinkedInPost: 'unipile_linkedin_post', // tantra:
+    LinkedInPoll: 'linkedin_poll', // tantra:
+    LinkedInPagePoll: 'linkedin_page_poll', // tantra:
     LinkedInComment: 'linkedin_comment',
     FacebookPost: 'facebook_post',
     FacebookReel: 'facebook_reel',
@@ -13,6 +15,7 @@ export const ContentType = {
     TikTokVideo: 'tiktok_video',
     TikTokPhoto: 'tiktok_photo',
     YouTubeShort: 'youtube_short',
+    YouTubeVideo: 'youtube_video', // tantra:
     XPost: 'x_post',
     XPoll: 'x_poll',
     ThreadsPost: 'threads_post',
@@ -40,6 +43,8 @@ export const MEDIALESS_CONTENT_TYPE_REASONS: Readonly<Record<string, string>> = 
     [ContentType.ThreadsGhostPost]: 'posts.form.threads.ghost_post_attachments',
     [ContentType.XPoll]: 'posts.form.x.poll.attachments',
     [ContentType.LinkedInComment]: 'posts.form.thread.comment_attachments',
+    [ContentType.LinkedInPoll]: 'posts.form.x.poll.attachments', // tantra:
+    [ContentType.LinkedInPagePoll]: 'posts.form.x.poll.attachments', // tantra:
 };
 
 /** Content types that carry no media: the composer hides the media tray. */

@@ -36,6 +36,7 @@ interface Member {
         status: string | null;
         synced_at: string | null;
     } | null;
+    clerk_linked?: boolean;
 }
 
 type ChecklistStep =
@@ -291,6 +292,15 @@ const send = async (url: string, body: Record<string, unknown>) => {
                         v-else-if="m.linkedin && !m.linkedin.synced_at"
                         variant="outline"
                         >{{ $t('tantra.team.linkedin_waiting') }}</Badge
+                    >
+                    <!-- tantra: clear the usetantra.com (Clerk) login this teammate signs in as. -->
+                    <Button
+                        v-if="m.clerk_linked"
+                        size="sm"
+                        variant="ghost"
+                        data-testid="tantra-clerk-unlink"
+                        @click="send(`/tantra/team/${m.id}/clerk-unlink`, {})"
+                        >Unlink usetantra.com login</Button
                     >
                 </div>
             </section>

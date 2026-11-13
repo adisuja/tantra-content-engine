@@ -20,6 +20,7 @@ use App\Services\Social\Concerns\PublishesThreads;
 use App\Services\Social\LinkCard\LinkCardFetcher;
 use App\Services\Social\LinkCard\LinkCardMetadata;
 use App\Support\Social\ThreadProgress;
+use App\Tantra\LinkedIn\LinkedInPoll;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Collection;
@@ -84,6 +85,9 @@ abstract class AbstractLinkedInPublisher
 
     private bool $hasRetried = false;
 
+    /** tantra: the post being published, for its visibility, reshare and video title settings. */
+    private ?Post $tantraPost = null;
+
     /**
      * The LinkedIn account kind this publisher targets (member or company page).
      */
@@ -113,6 +117,7 @@ abstract class AbstractLinkedInPublisher
 
         $this->account = $post->socialAccount;
         $this->hasRetried = false;
+        $this->tantraPost = $post; // tantra:
 
         if ($this->account->needsProactiveTokenRefresh()) {
             app(ConnectionVerifier::class)->refreshToken($this->account);
@@ -146,6 +151,11 @@ abstract class AbstractLinkedInPublisher
     private function dispatchByMedia(?string $content, Post $post): array
     {
         $media = $post->mediaItems;
+
+        // tantra: a native poll; the post text is the commentary above it.
+        if (LinkedInPoll::isPoll($post->content_type)) {
+            return $this->createPost([...$this->basePayload($content), 'content' => ['poll' => LinkedInPoll::payload($post->meta)]], 'poll creation');
+        }
 
         if ($media->contains(fn ($item) => $item->isDocument())) {
             return $this->publishDocument($content, $media, $this->resolveDocumentTitle($post));
@@ -192,6 +202,8 @@ abstract class AbstractLinkedInPublisher
                 $payload['content'] = ['media' => array_filter([
                     'id' => $mediaUrn,
                     'altText' => $item->isImage() ? $item->altTextFor($this->platform()) : null,
+                    // tantra: the title shown on a video post.
+                    'title' => $item->isVideo() && filled($title = data_get($this->tantraPost?->meta, 'video_title')) ? Str::limit((string) $title, 255, '') : null,
                 ], fn ($v) => $v !== null)];
             }
         } elseif ($attachArticle) {
@@ -362,16 +374,20 @@ abstract class AbstractLinkedInPublisher
      */
     private function basePayload(?string $content): array
     {
+        $meta = $this->tantraPost?->meta;
+
         return [
             'author' => $this->authorUrn(),
             'commentary' => $this->toLittleText($content ?? ''),
-            'visibility' => 'PUBLIC',
+            // tantra: a member post may go to connections only; a page post is always public.
+            'visibility' => $this->platform() === Platform::LinkedIn && data_get($meta, 'visibility') === 'CONNECTIONS' ? 'CONNECTIONS' : 'PUBLIC',
             'distribution' => [
                 'feedDistribution' => 'MAIN_FEED',
                 'targetEntities' => [],
                 'thirdPartyDistributionChannels' => [],
             ],
             'lifecycleState' => 'PUBLISHED',
+            ...(data_get($meta, 'disable_reshare') === true ? ['isReshareDisabledByAuthor' => true] : []), // tantra: only when turned off
         ];
     }
 

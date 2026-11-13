@@ -34,6 +34,7 @@
     ],
     "require": {
         "php": "^8.2",
+        "firebase/php-jwt": "^7.0",
         "google/apiclient": "^2.19",
         "inertiajs/inertia-laravel": "^3.5.1",
         "intervention/image": "^4.0",

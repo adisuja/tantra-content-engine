@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Social;
 
 use App\Dto\MediaItem;
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\YouTube\License;
 use App\Enums\YouTube\PrivacyStatus;
 use App\Exceptions\PlatformUnavailableException;
@@ -15,6 +16,8 @@ use App\Models\SocialAccount;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Support\YouTubeDescription;
 use App\Support\YouTubeMetadata;
+use App\Tantra\Composer\TantraMetaRules;
+use App\Tantra\Social\YouTubeFollowUps;
 use Google\Client as GoogleClient;
 use Google\Service\Exception;
 use Google\Service\YouTube;
@@ -71,7 +74,8 @@ class YouTubePublisher
             );
         }
 
-        return $this->publishShort($firstMedia, $account, $content, $description, $post->meta ?? []);
+        // tantra: after the upload, the playlist, custom thumbnail and first comment.
+        return app(YouTubeFollowUps::class)->run($post, $this->publishShort($firstMedia, $account, $content, $description, $post->meta ?? [], $post->content_type === ContentType::YouTubeVideo));
     }
 
     private function createGoogleClient(SocialAccount $account): GoogleClient
@@ -102,7 +106,7 @@ class YouTubePublisher
     /**
      * @param  array<string, mixed>  $meta
      */
-    private function publishShort(MediaItem $media, SocialAccount $account, ?string $content, string $description, array $meta): array
+    private function publishShort(MediaItem $media, SocialAccount $account, ?string $content, string $description, array $meta, bool $longForm = false): array
     {
         $missingTitle = YouTubeMetadata::missingTitleViolation($meta, (string) $content);
 
@@ -129,7 +133,8 @@ class YouTubePublisher
 
             return [
                 'id' => $videoId,
-                'url' => "https://www.youtube.com/shorts/{$videoId}",
+                // tantra: a long-form video lives at watch?v=, a Short at /shorts/.
+                'url' => $longForm ? "https://www.youtube.com/watch?v={$videoId}" : "https://www.youtube.com/shorts/{$videoId}",
             ];
         } catch (Exception $e) {
             throw YouTubePublishException::fromGoogleException($e);
@@ -273,6 +278,12 @@ class YouTubePublisher
         $snippet->setTitle(YouTubeMetadata::title($meta, $content));
         $snippet->setDescription($description);
         $snippet->setCategoryId(YouTubeMetadata::categoryId($meta));
+
+        // tantra: tags, within YouTube's 500 characters.
+        $tags = TantraMetaRules::youtubeTags((array) data_get($meta, 'tags', []));
+        if ($tags !== [] && TantraMetaRules::youtubeTagsLength($tags) <= TantraMetaRules::YOUTUBE_TAGS_MAX_TOTAL) {
+            $snippet->setTags($tags);
+        }
 
         $status = new VideoStatus;
         $status->setPrivacyStatus((PrivacyStatus::tryFrom((string) data_get($meta, 'privacy_status')) ?? PrivacyStatus::DEFAULT)->value);

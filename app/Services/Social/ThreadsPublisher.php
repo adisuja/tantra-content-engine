@@ -12,6 +12,9 @@ use App\Exceptions\Social\ThreadsPublishException;
 use App\Models\Post;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Support\PostPlatformMetaRules;
+use App\Support\ThreadReplies;
+use App\Tantra\Composer\TantraMetaRules;
+use App\Tantra\Social\PublishesFirstComments;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Log;
@@ -20,6 +23,7 @@ use Illuminate\Support\Sleep;
 class ThreadsPublisher
 {
     use HasSocialHttpClient;
+    use PublishesFirstComments; // tantra:
 
     private const int MEDIA_PUBLICATION_MAX_ATTEMPTS = 3;
 
@@ -69,6 +73,51 @@ class ThreadsPublisher
             ? ['is_ghost_post' => 'true']
             : $this->postOptions($post);
 
+        // tantra: a retry after the root went out resumes the reply chain
+        // instead of posting the root again (meta.threads_chain).
+        $chain = (array) data_get($post->meta, 'threads_chain', []);
+        $root = filled(data_get($chain, 'root.id'))
+            ? (array) $chain['root']
+            : $this->publishSegment($userId, $accessToken, $content, $media);
+
+        // tantra: the reply chain under the post (ghost posts take none).
+        if ($post->content_type === ContentType::ThreadsGhostPost || ThreadReplies::of($post->meta) === []) {
+            return $root;
+        }
+
+        $this->rememberChain($post, $root, (array) ($chain['ids'] ?? []));
+
+        return $this->withFirstComments(
+            $post,
+            $root,
+            function (string $text, $replyMedia, array $previous) use ($userId, $accessToken): array {
+                $this->containerOptions = ['reply_to_id' => (string) $previous['id']];
+
+                return $this->publishSegment($userId, $accessToken, $text, $replyMedia);
+            },
+            array_map('strval', (array) ($chain['ids'] ?? [])),
+            fn (array $ids) => $this->rememberChain($post, $root, $ids),
+        );
+    }
+
+    /**
+     * tantra: the root and the replies posted so far, saved as they go out.
+     *
+     * @param  array<string, mixed>  $root
+     * @param  list<string>  $ids
+     */
+    private function rememberChain(Post $post, array $root, array $ids): void
+    {
+        $post->forceFill(['meta' => [...((array) $post->meta), 'threads_chain' => ['root' => ['id' => (string) $root['id'], 'url' => $root['url'] ?? null], 'ids' => array_values($ids)]]])->saveQuietly();
+    }
+
+    /**
+     * tantra: one post of the chain (the root or a reply), by its media.
+     *
+     * @return array{id: string, url: ?string}
+     */
+    private function publishSegment(string $userId, string $accessToken, ?string $content, $media): array
+    {
         // Text only post
         if ($media->isEmpty()) {
             if (empty($content)) {
@@ -434,7 +483,35 @@ class ThreadsPublisher
     {
         $topicTag = PostPlatformMetaRules::threadsTopicTag((string) data_get($post->meta, 'topic_tag'));
 
-        return $topicTag === '' ? [] : ['topic_tag' => $topicTag];
+        return [
+            ...($topicTag === '' ? [] : ['topic_tag' => $topicTag]),
+            ...$this->tantraOptions($post), // tantra:
+        ];
+    }
+
+    /**
+     * tantra: who may reply, the AI label, and per shape a poll and link card
+     * (text posts) or a spoiler (media posts).
+     *
+     * @return array<string, string>
+     */
+    private function tantraOptions(Post $post): array
+    {
+        $meta = $post->meta;
+        $textOnly = $post->mediaItems->isEmpty();
+        $replyControl = data_get($meta, 'reply_control');
+        $options = TantraMetaRules::choices(data_get($meta, 'threads_poll.options'));
+        $link = data_get($meta, 'link_attachment');
+
+        return array_filter([
+            'reply_control' => in_array($replyControl, TantraMetaRules::REPLY_CONTROL, true) && $replyControl !== 'everyone' ? $replyControl : null,
+            'is_made_with_ai' => data_get($meta, 'is_ai_generated') === true ? 'true' : null,
+            'link_attachment' => $textOnly && is_string($link) && $link !== '' ? $link : null,
+            'poll_attachment' => $textOnly && count($options) >= 2
+                ? (string) json_encode(array_combine(array_slice(['option_a', 'option_b', 'option_c', 'option_d'], 0, count($options)), array_slice($options, 0, 4)))
+                : null,
+            'is_spoiler_media' => ! $textOnly && data_get($meta, 'spoiler') === true ? 'true' : null,
+        ], fn (?string $value): bool => $value !== null);
     }
 
     private function handleApiError(Response $response): never

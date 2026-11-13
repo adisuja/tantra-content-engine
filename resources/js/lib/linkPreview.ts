@@ -10,6 +10,7 @@ export const LINK_PREVIEW_PLATFORMS: ReadonlySet<string> = new Set([
     Platform.Bluesky,
     Platform.LinkedIn,
     Platform.LinkedInPage,
+    Platform.ZernioLinkedInPage, // tantra: Unipile's card is opt in, a switch in LinkedInSettings
 ]);
 
 /** Threads turns the first link into a card on its own, so its card cannot be dropped. */

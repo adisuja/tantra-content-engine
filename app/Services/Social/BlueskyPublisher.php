@@ -19,6 +19,7 @@ use App\Services\Social\LinkCard\LinkCardFetcher;
 use App\Services\Social\LinkCard\LinkCardMetadata;
 use App\Support\Social\ThreadProgress;
 use App\Support\UrlDetector;
+use App\Tantra\Composer\TantraMetaRules;
 use Carbon\CarbonInterface;
 use Exception;
 use Illuminate\Http\Client\Response;
@@ -30,6 +31,9 @@ use Throwable;
 
 class BlueskyPublisher
 {
+    /** tantra: the post being published, for its replies' language and labels. */
+    private Post $tantraPost;
+
     use HasSocialHttpClient;
     use PublishesThreads;
 
@@ -67,6 +71,7 @@ class BlueskyPublisher
         }
 
         $lookForLiveReply = filled(ThreadProgress::rootHash($post->error_context));
+        $this->tantraPost = $post; // tantra:
 
         return $this->publishThread(
             $post,
@@ -126,13 +131,21 @@ class BlueskyPublisher
     private function publishRoot(Post $post, SocialAccount $account, string $service, ?string $content): array
     {
         $medias = $post->mediaItems;
+        $quote = $this->tantraQuote($post); // tantra: resolved before anything is posted
         $embed = $this->mediaEmbed($account, $service, $medias);
 
         // No image or video embed, so a bare link can carry a preview card.
         // Bluesky does not hydrate cards server-side: the client must attach an
         // app.bsky.embed.external built from the page's OpenGraph metadata.
-        if ($embed === null && $medias->isEmpty() && $content !== null && $post->attachesLinkPreview()) {
+        if ($quote === null && $embed === null && $medias->isEmpty() && $content !== null && $post->attachesLinkPreview()) {
             $embed = $this->buildExternalEmbed($post->socialAccount, $service, $content);
+        }
+
+        // tantra: a quoted post, alone or with the media.
+        if ($quote !== null) {
+            $embed = $embed === null
+                ? ['$type' => 'app.bsky.embed.record', 'record' => $quote]
+                : ['$type' => 'app.bsky.embed.recordWithMedia', 'record' => ['$type' => 'app.bsky.embed.record', 'record' => $quote], 'media' => $embed];
         }
 
         // Parse facets (links, mentions, hashtags) from text
@@ -154,7 +167,105 @@ class BlueskyPublisher
             $record['facets'] = $facets;
         }
 
-        return $this->createPostRecord($account, $service, $record);
+        $record = [...$record, ...$this->tantraRecordFields($post)]; // tantra: langs, self-labels
+
+        $created = $this->createPostRecord($account, $service, $record);
+        $this->tantraThreadgate($post, $account, $service, $created);
+
+        return $created;
+    }
+
+    /**
+     * tantra: the post's language and its content warning (self-labels).
+     *
+     * @return array<string, mixed>
+     */
+    private function tantraRecordFields(Post $post): array
+    {
+        $language = data_get($post->meta, 'language');
+        $labels = array_values(array_intersect((array) data_get($post->meta, 'self_labels', []), TantraMetaRules::BLUESKY_SELF_LABELS));
+
+        return array_filter([
+            'langs' => is_string($language) && $language !== '' ? [$language] : null,
+            'labels' => $labels === [] ? null : [
+                '$type' => 'com.atproto.label.defs#selfLabels',
+                'values' => array_map(fn (string $label): array => ['val' => $label], $labels),
+            ],
+        ], fn (mixed $value): bool => $value !== null);
+    }
+
+    /**
+     * tantra: the strong ref of the pasted bsky.app post to quote, or null.
+     *
+     * @return array{uri: string, cid: string}|null
+     */
+    private function tantraQuote(Post $post): ?array
+    {
+        $quoted = TantraMetaRules::blueskyQuote(data_get($post->meta, 'quote_url'));
+
+        if ($quoted === null) {
+            return null;
+        }
+
+        [$actor, $rkey] = $quoted;
+        $did = str_starts_with($actor, 'did:') ? $actor : $this->resolveHandleToDid($actor);
+        $response = $did === null ? null : $this->socialHttp()->get(
+            BlueskyLexicon::xrpc(config('trypost.platforms.bluesky.public_appview'), BlueskyLexicon::GET_POSTS),
+            ['uris' => ["at://{$did}/".BlueskyLexicon::FEED_POST."/{$rkey}"]],
+        );
+        $uri = $response?->successful() ? data_get($response->json(), 'posts.0.uri') : null;
+        $cid = $response?->successful() ? data_get($response->json(), 'posts.0.cid') : null;
+
+        if (! is_string($uri) || ! is_string($cid) || $uri === '' || $cid === '') {
+            throw new BlueskyPublishException(
+                userMessage: 'The Bluesky post to quote could not be found. Check the link.',
+                category: ErrorCategory::ContentPolicy,
+            );
+        }
+
+        return ['uri' => $uri, 'cid' => $cid];
+    }
+
+    /**
+     * tantra: who may reply, as a threadgate on the new post. The post is live
+     * already, so a refused threadgate is logged, never a failed post.
+     *
+     * @param  array<string, mixed>  $created
+     */
+    private function tantraThreadgate(Post $post, SocialAccount $account, string $service, array $created): void
+    {
+        $allow = match (data_get($post->meta, 'reply_control')) {
+            'accounts_you_follow' => [['$type' => 'app.bsky.feed.threadgate#followingRule']],
+            'mentioned_only' => [['$type' => 'app.bsky.feed.threadgate#mentionRule']],
+            'followers_only' => [['$type' => 'app.bsky.feed.threadgate#followerRule']],
+            'parent_post_author_only' => [],
+            default => null,
+        };
+
+        if ($allow === null || blank($created['uri'] ?? null)) {
+            return;
+        }
+
+        try {
+            $response = $this->socialHttp()->withToken($account->access_token)
+                ->post(BlueskyLexicon::xrpc($service, BlueskyLexicon::CREATE_RECORD), [
+                    'repo' => $account->platform_user_id,
+                    'collection' => 'app.bsky.feed.threadgate',
+                    'rkey' => basename((string) $created['uri']),
+                    'record' => [
+                        '$type' => 'app.bsky.feed.threadgate',
+                        'post' => $created['uri'],
+                        'allow' => $allow,
+                        'createdAt' => now()->toIso8601ZuluString(),
+                    ],
+                ]);
+
+            if ($response->failed()) {
+                Log::warning('tantra: Bluesky threadgate refused', ['post_id' => $post->id, 'status' => $response->status()]);
+            }
+        } catch (Throwable $e) {
+            Log::warning('tantra: Bluesky threadgate failed', ['post_id' => $post->id, 'error' => $e->getMessage()]);
+        }
     }
 
     /**
@@ -241,6 +352,8 @@ class BlueskyPublisher
         if ($facets !== []) {
             $record['facets'] = $facets;
         }
+
+        $record = [...$record, ...$this->tantraRecordFields($this->tantraPost)]; // tantra:
 
         return $this->createPostRecord($account, $service, $record);
     }

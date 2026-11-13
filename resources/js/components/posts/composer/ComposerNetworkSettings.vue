@@ -12,6 +12,7 @@ import PinterestSettings from '@/components/posts/editor/PinterestSettings.vue';
 import ThreadsSettings from '@/components/posts/editor/ThreadsSettings.vue';
 import TikTokSettings from '@/components/posts/editor/TikTokSettings.vue';
 import YouTubeSettings from '@/components/posts/editor/YouTubeSettings.vue';
+import TantraFormatSettings from '@/components/tantra/formats/TantraFormatSettings.vue'; // tantra:
 import { useComposerLiveState } from '@/composables/useComposerData';
 import type {
     ComposerAccount,
@@ -89,6 +90,15 @@ const AI_GENERATED_ROWS: Partial<
     [ContentType.TikTokVideo]: { metaKey: 'is_aigc', testId: 'tiktok-ai-generated' },
     [ContentType.XPost]: { metaKey: 'is_ai_generated', testId: 'x-ai-generated' },
     [ContentType.XPoll]: { metaKey: 'is_ai_generated', testId: 'x-ai-generated' },
+    // tantra: Threads AI label (is_made_with_ai) and the long-form YouTube video.
+    [ContentType.ThreadsPost]: {
+        metaKey: 'is_ai_generated',
+        testId: 'threads-ai-generated',
+    },
+    [ContentType.YouTubeVideo]: {
+        metaKey: 'is_ai_generated',
+        testId: 'youtube-ai-generated',
+    },
 };
 
 const aiRow = computed(
@@ -164,15 +174,21 @@ const aiGenerated = computed({
             :disabled="disabled"
             @update:meta="update"
         />
+        <!-- tantra: Zernio and Unipile LinkedIn routes and LinkedIn polls too. -->
         <LinkedInSettings
             v-else-if="
                 account.platform === Platform.LinkedIn ||
-                account.platform === Platform.LinkedInPage
+                account.platform === Platform.LinkedInPage ||
+                account.platform === Platform.ZernioLinkedInPage ||
+                account.platform === Platform.UnipileLinkedIn
             "
             :account-id="account.id"
             :media="destination.media"
             :meta="destination.meta"
             :disabled="disabled"
+            :platform="account.platform"
+            :content-type="destination.content_type"
+            :publish-config="platformConfig?.publishConfig ?? null"
             @update:meta="update"
         />
         <GoogleBusinessSettings
@@ -193,6 +209,18 @@ const aiGenerated = computed({
         <MastodonSettings
             v-else-if="account.platform === Platform.Mastodon"
             :meta="destination.meta"
+            :disabled="disabled"
+            @update:meta="update"
+        />
+        <!-- tantra: per-network format settings (polls, reply control, quotes, ...). -->
+        <TantraFormatSettings
+            v-if="!waitsForLiveData"
+            :account-id="account.id"
+            :platform="account.platform"
+            :content-type="destination.content_type"
+            :meta="destination.meta"
+            :media="destination.media"
+            :publish-config="platformConfig?.publishConfig ?? null"
             :disabled="disabled"
             @update:meta="update"
         />
