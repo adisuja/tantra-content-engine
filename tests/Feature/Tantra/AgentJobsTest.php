@@ -29,7 +29,9 @@ it('shows Studio ops to admins only, and only with a verified email', function (
         ->assertOk()->assertInertia(fn (Assert $page) => $page->component('tantra/ops/Index'));
     $this->actingAs($this->ben)->get('/tantra/ops')->assertNotFound();
 
-    $this->ben->forceFill(['email' => 'ADI@example.test', 'email_verified_at' => null])->save();
+    // A listed address nobody has verified does not make anyone an admin.
+    config(['tantra.admin_emails' => ['adi@example.test', 'boss@example.test']]);
+    $this->ben->forceFill(['email' => 'BOSS@example.test', 'email_verified_at' => null])->save();
     $this->actingAs($this->ben)->get('/tantra/ops')->assertNotFound();
 });
 
