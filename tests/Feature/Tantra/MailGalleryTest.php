@@ -89,7 +89,7 @@ function galleryReviewItems(User $user, Workspace $workspace): array
 
         return $path;
     };
-    SocialAccount::query()->where('workspace_id', $workspace->id)->update(['avatar_url' => $put('aquila.jpg', 'avatars/gallery-adi.jpg')]);
+    SocialAccount::query()->where('workspace_id', $workspace->id)->update(['avatar_url' => $put('avatar.jpg', 'avatars/gallery-adi.jpg')]);
     WorkspaceSettings::query()->updateOrCreate(['workspace_id' => $workspace->id], ['brand_profile_key' => 'adi', 'review_owner_user_id' => $user->id]);
     $day = now()->addDays(3)->startOfWeek();
 

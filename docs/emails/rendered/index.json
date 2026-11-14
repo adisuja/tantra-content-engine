@@ -1,0 +1,126 @@
+{
+  "billing-welcome": {
+    "subject": "Welcome to Content OS: your receipt and the first three steps",
+    "bytes": 13420
+  },
+  "billing-receipt": {
+    "subject": "Receipt: Content OS for November 2026",
+    "bytes": 10873
+  },
+  "billing-renewal-notice": {
+    "subject": "Content OS renews on 14 Dec 2026",
+    "bytes": 10112
+  },
+  "billing-payment-failed-day-0": {
+    "subject": "Your Content OS payment did not go through",
+    "bytes": 10135
+  },
+  "billing-payment-failed-day-3": {
+    "subject": "Reminder: update your card to keep Content OS publishing",
+    "bytes": 10095
+  },
+  "billing-payment-failed-day-7": {
+    "subject": "Last reminder: publishing pauses on 24 Nov 2026",
+    "bytes": 10147
+  },
+  "billing-paused": {
+    "subject": "Publishing is paused for Tantra",
+    "bytes": 8701
+  },
+  "billing-cancelled": {
+    "subject": "Content OS is cancelled. It runs until 14 Dec 2026",
+    "bytes": 8579
+  },
+  "billing-expired": {
+    "subject": "Your Content OS plan has ended",
+    "bytes": 8742
+  },
+  "billing-winback": {
+    "subject": "Your posts are still here, ready to go out",
+    "bytes": 9438
+  },
+  "review-ready": {
+    "subject": "4 posts ready for review, week of 16 Nov",
+    "bytes": 26164
+  },
+  "daily-digest": {
+    "subject": "Your day on Tantra: 4 posts to review, 3 went live, +2,240 views",
+    "bytes": 31895
+  },
+  "numbers-to-sign-off": {
+    "subject": "2 numbers to sign off in Tantra's posts",
+    "bytes": 9344
+  },
+  "manual-task-due": {
+    "subject": "Post your LinkedIn poll now",
+    "bytes": 10126
+  },
+  "media-missing": {
+    "subject": "Fix before Sat 14 Nov, 13:12 UTC: a post is missing its file",
+    "bytes": 10404
+  },
+  "reconnect-channel": {
+    "subject": "Your LinkedIn connection runs out in 5 days",
+    "bytes": 8497
+  },
+  "connect-access-requested": {
+    "subject": "Kavya Rao is waiting on you to connect Instagram",
+    "bytes": 10356
+  },
+  "teammate-welcome": {
+    "subject": "Your LinkedIn posts are ready for you to review",
+    "bytes": 10307
+  },
+  "account-disconnected": {
+    "subject": "Posting to LinkedIn has stopped: reconnect Adi Murali",
+    "bytes": 10467
+  },
+  "workspace-connections-disconnected": {
+    "subject": "1 channel in Tantra needs reconnecting",
+    "bytes": 8206
+  },
+  "post-at-risk": {
+    "subject": "1 scheduled post in Tantra will not go out unless you reconnect",
+    "bytes": 10380
+  },
+  "post-note-added": {
+    "subject": "Kavya Rao left a note on your post",
+    "bytes": 11018
+  },
+  "post-approval-requested": {
+    "subject": "Kavya Rao needs your approval on a post",
+    "bytes": 10326
+  },
+  "post-approved": {
+    "subject": "Approved: your post is scheduled",
+    "bytes": 10062
+  },
+  "post-rejected": {
+    "subject": "Adi Murali sent your post back with changes",
+    "bytes": 10138
+  },
+  "post-published": {
+    "subject": "Live on LinkedIn: your post just went out",
+    "bytes": 10379
+  },
+  "post-publish-failed": {
+    "subject": "Your LinkedIn post did not go out",
+    "bytes": 11846
+  },
+  "webhook-paused": {
+    "subject": "Webhook paused after 5 failed deliveries",
+    "bytes": 9335
+  },
+  "workspace-invite": {
+    "subject": "Adi Murali invited you to Tantra",
+    "bytes": 9912
+  },
+  "email-verification": {
+    "subject": "Confirm your email for Tantra",
+    "bytes": 8654
+  },
+  "password-reset": {
+    "subject": "Reset your Tantra password",
+    "bytes": 8463
+  }
+}
