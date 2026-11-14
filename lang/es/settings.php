@@ -46,6 +46,8 @@ return [
         'post_note_added_description' => 'Recibir un correo cuando un miembro del equipo añada una nota a una publicación',
         'collaboration' => 'Colaboración',
         'collaboration_description' => 'Recibe correos sobre solicitudes de aprobación y publicaciones aprobadas o rechazadas',
+        'daily_digest' => 'Resumen diario',
+        'daily_digest_description' => 'Un correo al día con las publicaciones que te esperan, lo que se publicó y cuántas vistas tuvieron',
         'save_failed' => 'No se pudieron guardar las preferencias de notificaciones. Inténtalo de nuevo.',
     ],
 

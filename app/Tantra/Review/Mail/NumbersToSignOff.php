@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tantra\Review\Mail;
 
+use App\Tantra\Mail\Letter;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -32,12 +33,20 @@ class NumbersToSignOff extends Mailable implements ShouldQueue
 
     public function content(): Content
     {
-        return new Content(view: 'tantra::mail.review-ready', with: [
-            'heading' => 'Your numbers need your sign off',
-            'intro' => "These posts in {$this->workspaceName} quote numbers that are yours. They cannot be approved until you sign each one off.",
-            'posts' => $this->posts,
-            'url' => url('/tantra/review/'.$this->batchId),
-            'button' => 'Sign them off',
-        ]);
+        $n = array_sum(array_map(fn (array $p): int => count($p['numbers']), $this->posts));
+        $lines = [];
+        foreach ($this->posts as $post) {
+            foreach ($post['numbers'] as $number) {
+                $lines[] = $number.(filled($post['short'] ?? null) ? ' (in "'.$post['short'].'")' : '');
+            }
+        }
+
+        return Letter::make($n === 1 ? 'A number of yours needs your sign off' : "{$n} numbers of yours need your sign off")
+            ->eyebrow('Sign off needed', 'warn')
+            ->lead("These posts in {$this->workspaceName} quote your numbers. They stay on hold until you confirm each one is right, so nothing goes out with a figure you did not check.")
+            ->steps($lines)
+            ->cta($n === 1 ? 'Check and sign off' : 'Check and sign them off', url('/tantra/review/'.$this->batchId))
+            ->reason('You get this because these numbers are attributed to you.')
+            ->content();
     }
 }

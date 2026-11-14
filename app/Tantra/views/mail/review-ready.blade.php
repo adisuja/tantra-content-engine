@@ -1,37 +1,30 @@
-{{-- tantra: review emails. Plain HTML with inline styles so every mail client shows it the same. --}}
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ $heading }}</title>
-</head>
-<body style="margin:0;padding:0;background:#f4f2ee;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#1d1d1f;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f2ee;">
-<tr><td align="center" style="padding:32px 16px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:12px;">
-<tr><td style="padding:28px 28px 8px;">
-<div style="font-size:13px;font-weight:600;color:#6b6b6b;letter-spacing:.3px;">{{ config('app.name') }}</div>
-<h1 style="margin:10px 0 8px;font-size:22px;line-height:1.3;">{{ $heading }}</h1>
-<p style="margin:0 0 18px;font-size:15px;line-height:1.5;color:#3d3d3d;">{{ $intro }}</p>
+{{-- tantra: review emails (ReviewReady). Shared layout and post cards from mail/kit. --}}
+@extends('tantra::mail.kit.layout')
+@php($k = \App\Tantra\Mail\Kit::class)
+@section('body')
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td class="tm-pad" style="padding:30px 32px 8px;font-family:{{ $k::FONT }};">
+  <div style="font-size:13px;line-height:18px;font-weight:600;color:{{ $k::C['accent'] }};margin:0 0 10px;" class="tm-accent">Ready for review</div>
+  <h1 class="tm-ink tm-h1" style="margin:0 0 12px;font-size:26px;line-height:33px;font-weight:700;letter-spacing:-.3px;color:{{ $k::C['ink'] }};">{{ $heading }}</h1>
+  <p class="tm-body" style="margin:0 0 18px;font-size:16px;line-height:25px;color:{{ $k::C['body'] }};">{{ $lead }}</p>
+  @include('tantra::mail.kit.button', ['url' => $url, 'label' => $button])
 </td></tr>
-<tr><td style="padding:0 28px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-@foreach ($posts as $post)
-<tr><td style="padding:10px 0;border-top:1px solid #ecebe7;font-size:14px;line-height:1.45;">
-<b>{{ $post['id'] }}</b>@if (! empty($post['date'])) <span style="color:#6b6b6b;">· {{ \Illuminate\Support\Carbon::parse($post['date'])->format('D j M') }}</span>@endif
-@if (! empty($post['revised'])) <span style="color:#a15c00;">· new version</span>@endif
-@if (! empty($post['short']))<div style="color:#3d3d3d;">{{ $post['short'] }}</div>@endif
-@foreach ($post['numbers'] ?? [] as $number)<div style="color:#3d3d3d;">· {{ $number }}</div>@endforeach
+@foreach ($cards as $card)
+<tr><td class="tm-pad" style="padding:{{ $loop->first ? '22px' : '0' }} 32px 14px;">@include('tantra::mail.kit.post-card', ['card' => $card])</td></tr>
+@endforeach
+@foreach ($legacy as $post)
+<tr><td class="tm-pad tm-line" style="padding:12px 32px;border-top:1px solid {{ $k::C['line'] }};font-family:{{ $k::FONT }};font-size:15px;line-height:22px;">
+  <span class="tm-ink" style="color:{{ $k::C['ink'] }};font-weight:600;">{{ $post['id'] }}</span>@if (! empty($post['date']))<span class="tm-muted" style="color:{{ $k::C['muted'] }};"> &middot; {{ \Illuminate\Support\Carbon::parse($post['date'])->format('D j M') }}</span>@endif
+  @if (! empty($post['revised']))<span class="tm-chip" style="display:inline-block;margin-left:6px;padding:2px 8px;border-radius:999px;background:{{ $k::C['chip'] }};color:{{ $k::C['accent'] }};font-size:12px;font-weight:600;">New version</span>@endif
+  @if (! empty($post['short']))<div class="tm-body" style="color:{{ $k::C['body'] }};">{{ $post['short'] }}</div>@endif
+  @foreach ($post['numbers'] ?? [] as $number)<div class="tm-body" style="color:{{ $k::C['body'] }};">&bull; {{ $number }}</div>@endforeach
 </td></tr>
 @endforeach
-</table>
+@if ($more > 0)
+<tr><td class="tm-pad" style="padding:0 32px 12px;font-family:{{ $k::FONT }};font-size:15px;line-height:22px;">
+  <a href="{{ $url }}" class="tm-accent" style="color:{{ $k::C['accent'] }};font-weight:600;text-decoration:none;">And {{ $more }} more {{ $more === 1 ? 'post' : 'posts' }} in the review studio &rarr;</a>
 </td></tr>
-<tr><td style="padding:22px 28px 30px;">
-<a href="{{ $url }}" style="display:inline-block;background:#141414;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:12px 22px;border-radius:999px;">{{ $button }}</a>
-</td></tr>
+@endif
+<tr><td class="tm-pad" style="padding:10px 32px 30px;">@include('tantra::mail.kit.button', ['url' => $url, 'label' => $button])</td></tr>
 </table>
-</td></tr>
-</table>
-</body>
-</html>
+@endsection

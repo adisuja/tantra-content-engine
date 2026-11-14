@@ -64,6 +64,19 @@ return [
     // Team engagement through Unipile V2 (PRD 10.5). Off until Adi turns it on.
     // Notifications go out through the Tantra CRM's automation (email, Slack, WhatsApp, SMS, AI calls), 2026-11-14.
     // Without a key, or if the CRM does not answer, the Engine sends its own email as before.
+    // Content OS billing on Dodo Payments (App\Tantra\Billing). Keys only on the server
+    // (tantra-ops sync-env). Off until TANTRA_BILLING_ENFORCE=true: then a workspace whose
+    // plan has lapsed past its grace period stops publishing; its data stays.
+    'billing' => [
+        'api_key' => env('DODO_PAYMENTS_API_KEY'),
+        'webhook_secret' => env('DODO_WEBHOOK_SECRET'),
+        'environment' => env('DODO_ENV', 'test_mode'),
+        'product_id' => env('DODO_CONTENT_OS_PRODUCT_ID', 'pdt_0Nrun85o9IVj9jlux7Nsf'),
+        'price_label' => '$199 a month',
+        'grace_days' => (int) env('TANTRA_BILLING_GRACE_DAYS', 10),
+        'enforce' => (bool) env('TANTRA_BILLING_ENFORCE', false),
+    ],
+
     'crm' => [
         'url' => env('TANTRA_CRM_URL', 'https://crm-api.usetantra.com'),
         'intake_key' => env('TANTRA_CRM_INTAKE_KEY'),

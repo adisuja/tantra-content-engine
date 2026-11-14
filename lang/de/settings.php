@@ -46,6 +46,8 @@ return [
         'post_note_added_description' => 'Erhalte eine E-Mail, wenn ein Teammitglied eine Notiz zu einem Beitrag hinzufügt',
         'collaboration' => 'Zusammenarbeit',
         'collaboration_description' => 'Erhalte E-Mails zu Freigabeanfragen und freigegebenen oder abgelehnten Beiträgen',
+        'daily_digest' => 'Tägliche Zusammenfassung',
+        'daily_digest_description' => 'Eine E-Mail pro Tag mit Beiträgen, die auf dich warten, was live ging und wie viele Aufrufe deine Beiträge hatten',
         'save_failed' => 'Die Benachrichtigungseinstellungen konnten nicht gespeichert werden. Bitte versuche es erneut.',
     ],
 

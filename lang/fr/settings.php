@@ -46,6 +46,8 @@ return [
         'post_note_added_description' => 'Recevoir un e-mail quand un membre de l\'équipe ajoute une note à une publication',
         'collaboration' => 'Collaboration',
         'collaboration_description' => 'Recevez des e-mails sur les demandes d\'approbation et les publications approuvées ou refusées',
+        'daily_digest' => 'Résumé quotidien',
+        'daily_digest_description' => 'Un e-mail par jour avec les publications qui vous attendent, ce qui a été publié et le nombre de vues',
         'save_failed' => 'Impossible d’enregistrer les préférences de notification. Veuillez réessayer.',
     ],
 

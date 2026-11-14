@@ -7,6 +7,7 @@ namespace App\Mail;
 use App\Enums\Post\ScheduleMode;
 use App\Models\User;
 use App\Support\Mail\ApprovalEmailPost;
+use App\Tantra\Mail\CoreEmails;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -26,6 +27,11 @@ class PostApprovalRequested extends Mailable implements ShouldQueue
 
     public function envelope(): Envelope
     {
+        // tantra: Tantra's subject when branding is on (App\Tantra\Mail\CoreEmails).
+        if (($tantra = CoreEmails::subject($this)) !== null) {
+            return new Envelope(subject: $tantra);
+        }
+
         return new Envelope(
             subject: __('mail.post_approval_requested.subject', ['name' => $this->requester->name]),
         );
@@ -33,6 +39,11 @@ class PostApprovalRequested extends Mailable implements ShouldQueue
 
     public function content(): Content
     {
+        // tantra: the shared Tantra email layout when branding is on.
+        if (($tantra = CoreEmails::content($this)) !== null) {
+            return $tantra;
+        }
+
         $post = ApprovalEmailPost::find($this->postId);
         $workspaceName = (string) $post?->workspace?->name;
 

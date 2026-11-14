@@ -46,6 +46,8 @@ return [
         'post_note_added_description' => '팀원이 게시물에 메모를 추가하면 이메일을 받습니다',
         'collaboration' => '협업',
         'collaboration_description' => '승인 요청과 승인 또는 거절된 게시물에 대한 이메일 받기',
+        'daily_digest' => '일일 요약',
+        'daily_digest_description' => '검토를 기다리는 게시물, 게시된 내용, 조회수를 하루 한 번 이메일로 받아보세요',
         'save_failed' => '알림 설정을 저장하지 못했습니다. 다시 시도해 주세요.',
     ],
 

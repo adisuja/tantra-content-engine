@@ -8,6 +8,7 @@ use App\Models\Post;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Support\Mail\RecipientTime;
+use App\Tantra\Mail\CoreEmails;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -54,6 +55,11 @@ class PostAtRisk extends Mailable implements ShouldQueue
 
     public function envelope(): Envelope
     {
+        // tantra: Tantra's subject when branding is on (App\Tantra\Mail\CoreEmails).
+        if (($tantra = CoreEmails::subject($this)) !== null) {
+            return new Envelope(subject: $tantra);
+        }
+
         return new Envelope(
             subject: trans_choice('mail.post_at_risk.subject', $this->count, [
                 'count' => $this->count,
@@ -64,6 +70,11 @@ class PostAtRisk extends Mailable implements ShouldQueue
 
     public function content(): Content
     {
+        // tantra: the shared Tantra email layout when branding is on.
+        if (($tantra = CoreEmails::content($this)) !== null) {
+            return $tantra;
+        }
+
         return new Content(
             view: 'mail.post-at-risk',
             with: [

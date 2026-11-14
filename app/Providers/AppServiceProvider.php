@@ -43,6 +43,7 @@ use App\Socialite\DiscordProvider;
 use App\Socialite\InstagramProvider;
 use App\Socialite\LinkedInPageExtendSocialite;
 use App\Support\Auth\PasswordRequirements;
+use App\Tantra\Mail\CoreEmails;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
@@ -298,6 +299,10 @@ class AppServiceProvider extends ServiceProvider
 
         // Custom email verification template
         VerifyEmail::toMailUsing(function (User $user, string $url) {
+            if (CoreEmails::enabled()) {
+                return CoreEmails::verifyEmail($url)->toMailMessage('Confirm your email for Tantra');
+            }
+
             return (new MailMessage)
                 ->from(config('mail.from.address'), config('mail.from.name'))
                 ->subject(__('mail.email_verification.subject'))
@@ -315,6 +320,10 @@ class AppServiceProvider extends ServiceProvider
                 'token' => $token,
                 'email' => $user->getEmailForPasswordReset(),
             ], false));
+
+            if (CoreEmails::enabled()) {
+                return CoreEmails::resetPassword($url)->toMailMessage('Reset your Tantra password');
+            }
 
             return (new MailMessage)
                 ->from(config('mail.from.address'), config('mail.from.name'))

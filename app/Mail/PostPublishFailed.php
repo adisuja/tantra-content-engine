@@ -6,6 +6,7 @@ namespace App\Mail;
 
 use App\Models\Post;
 use App\Support\Mail\PostPreview;
+use App\Tantra\Mail\CoreEmails;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -23,6 +24,11 @@ class PostPublishFailed extends Mailable implements ShouldQueue
 
     public function envelope(): Envelope
     {
+        // tantra: Tantra's subject when branding is on (App\Tantra\Mail\CoreEmails).
+        if (($tantra = CoreEmails::subject($this)) !== null) {
+            return new Envelope(subject: $tantra);
+        }
+
         return new Envelope(
             subject: __('mail.post_publish_failed.subject', ['workspace' => $this->post->workspace->name]),
         );
@@ -30,6 +36,11 @@ class PostPublishFailed extends Mailable implements ShouldQueue
 
     public function content(): Content
     {
+        // tantra: the shared Tantra email layout when branding is on.
+        if (($tantra = CoreEmails::content($this)) !== null) {
+            return $tantra;
+        }
+
         $this->post->loadMissing('socialAccount');
 
         return new Content(

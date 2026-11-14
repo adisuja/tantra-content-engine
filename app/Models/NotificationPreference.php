@@ -22,6 +22,8 @@ class NotificationPreference extends Model
         'account_disconnected',
         'post_note_added',
         'collaboration',
+        // tantra: the daily digest (App\Tantra\Digest)
+        'daily_digest',
     ];
 
     protected function casts(): array
@@ -32,6 +34,8 @@ class NotificationPreference extends Model
             'account_disconnected' => 'boolean',
             'post_note_added' => 'boolean',
             'collaboration' => 'boolean',
+            'daily_digest' => 'boolean',
+            'daily_digest_sent_on' => 'date',
         ];
     }
 

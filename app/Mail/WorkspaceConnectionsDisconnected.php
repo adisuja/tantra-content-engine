@@ -6,6 +6,7 @@ namespace App\Mail;
 
 use App\Models\SocialAccount;
 use App\Models\Workspace;
+use App\Tantra\Mail\CoreEmails;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -28,6 +29,11 @@ class WorkspaceConnectionsDisconnected extends Mailable implements ShouldQueue
 
     public function envelope(): Envelope
     {
+        // tantra: Tantra's subject when branding is on (App\Tantra\Mail\CoreEmails).
+        if (($tantra = CoreEmails::subject($this)) !== null) {
+            return new Envelope(subject: $tantra);
+        }
+
         $count = $this->disconnectedAccounts->count();
 
         return new Envelope(
@@ -40,6 +46,11 @@ class WorkspaceConnectionsDisconnected extends Mailable implements ShouldQueue
 
     public function content(): Content
     {
+        // tantra: the shared Tantra email layout when branding is on.
+        if (($tantra = CoreEmails::content($this)) !== null) {
+            return $tantra;
+        }
+
         $count = $this->disconnectedAccounts->count();
         $workspaceName = $this->workspace->name;
 

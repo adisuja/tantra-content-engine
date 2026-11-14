@@ -46,6 +46,8 @@ return [
         'post_note_added_description' => 'Receive an email when a team member adds a note to a post',
         'collaboration' => 'Collaboration',
         'collaboration_description' => 'Get emails about approval requests and approved or rejected posts',
+        'daily_digest' => 'Daily digest',
+        'daily_digest_description' => 'One email a day with posts waiting for you, what went live and how many views your posts got',
         'save_failed' => 'Could not save your notification preferences. Please try again.',
     ],
 

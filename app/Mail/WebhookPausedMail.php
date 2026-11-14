@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Mail;
 
 use App\Models\Webhook;
+use App\Tantra\Mail\CoreEmails;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -20,6 +21,11 @@ class WebhookPausedMail extends Mailable implements ShouldQueue
 
     public function envelope(): Envelope
     {
+        // tantra: Tantra's subject when branding is on (App\Tantra\Mail\CoreEmails).
+        if (($tantra = CoreEmails::subject($this)) !== null) {
+            return new Envelope(subject: $tantra);
+        }
+
         return new Envelope(
             subject: __('mail.webhook_paused.subject', ['endpoint' => $this->webhook->endpoint]),
         );
@@ -27,6 +33,11 @@ class WebhookPausedMail extends Mailable implements ShouldQueue
 
     public function content(): Content
     {
+        // tantra: the shared Tantra email layout when branding is on.
+        if (($tantra = CoreEmails::content($this)) !== null) {
+            return $tantra;
+        }
+
         return new Content(
             view: 'mail.webhook-paused',
             with: [

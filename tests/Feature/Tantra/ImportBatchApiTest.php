@@ -254,12 +254,12 @@ it('emails each review owner, and Adi for his numbers in a teammate post', funct
     ])->assertOk();
 
     Mail::assertQueued(ReviewReady::class, fn (ReviewReady $m): bool => $m->hasTo($this->teammate->email)
-        && $m->envelope()->subject === '2 new posts to review for the week of 16 Nov');
+        && $m->envelope()->subject === '2 posts ready for review, week of 16 Nov');
     Mail::assertQueued(ReviewReady::class, fn (ReviewReady $m): bool => $m->hasTo($this->owner->email)
-        && $m->envelope()->subject === '1 new post to review for the week of 16 Nov');
+        && $m->envelope()->subject === '1 post ready for review, week of 16 Nov');
     Mail::assertQueued(NumbersToSignOff::class, fn (NumbersToSignOff $m): bool => $m->hasTo($this->owner->email)
         && $m->posts[0]['numbers'] === ['six stages']
         && count($m->posts) === 1);
 
-    (new ReviewReady('b', 'Shweta', '16 Nov', [['id' => 'S1', 'date' => '2026-11-18', 'short' => 'Hook', 'revised' => false]]))->assertSeeInHtml('Review them');
+    (new ReviewReady('b', 'Shweta', '16 Nov', [['id' => 'S1', 'date' => '2026-11-18', 'short' => 'Hook', 'revised' => false]]))->assertSeeInHtml('Review the post');
 });

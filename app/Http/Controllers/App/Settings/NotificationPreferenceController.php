@@ -24,6 +24,7 @@ class NotificationPreferenceController extends Controller
                 'account_disconnected' => true,
                 'post_note_added' => true,
                 'collaboration' => true,
+                'daily_digest' => true,
             ],
         );
 

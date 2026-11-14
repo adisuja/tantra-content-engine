@@ -46,6 +46,8 @@ return [
         'post_note_added_description' => 'Otrzymuj e-mail, gdy członek zespołu doda notatkę do posta',
         'collaboration' => 'Współpraca',
         'collaboration_description' => 'Otrzymuj e-maile o prośbach o zatwierdzenie oraz zatwierdzonych lub odrzuconych postach',
+        'daily_digest' => 'Dzienne podsumowanie',
+        'daily_digest_description' => 'Jeden e-mail dziennie z postami czekającymi na Ciebie, tym, co opublikowano, i liczbą wyświetleń',
         'save_failed' => 'Nie udało się zapisać preferencji powiadomień. Spróbuj ponownie.',
     ],
 

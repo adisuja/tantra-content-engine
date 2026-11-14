@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tantra\Channels;
 
+use App\Tantra\Mail\Letter;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -34,24 +35,28 @@ class ConnectAccessRequested extends Mailable implements ShouldQueue
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: "{$this->requesterName} wants to connect {$this->network}");
+        return new Envelope(subject: "{$this->requesterName} is waiting on you to connect {$this->network}");
     }
 
     public function content(): Content
     {
-        $who = $this->handle !== '' ? "{$this->requesterName} ({$this->requesterEmail}, {$this->network} username {$this->handle})" : "{$this->requesterName} ({$this->requesterEmail})";
         $where = $this->workspaceName !== '' ? " in {$this->workspaceName}" : '';
+        $letter = Letter::make("{$this->requesterName} is waiting to connect {$this->network}")
+            ->eyebrow('Your step', 'warn')
+            ->lead($this->ready
+                ? "{$this->requesterName} tried to connect {$this->network}{$where}. The {$this->network} app is still in testing, so only people you add as testers can sign in."
+                : "{$this->requesterName} tried to connect {$this->network}{$where}, but the {$this->network} app keys are not in yet, so nobody can connect it.")
+            ->facts([['Who', "{$this->requesterName} ({$this->requesterEmail})"], ['Username', $this->handle], ['Network', $this->network]]);
 
-        $intro = $this->ready
-            ? "{$who} tried to connect {$this->network}{$where}, but the {$this->network} app is still in testing, so only testers can sign in. The step we showed {$this->requesterName} says: \"{$this->ownerSteps}\" Once you have added them, they accept the invite and press Continue."
-            : "{$who} tried to connect {$this->network}{$where}, but its app keys are not in yet. Add them in Settings, Connectors, Channels, then let them know they can connect.";
+        if ($this->ready) {
+            $letter->quote($this->ownerSteps, 'What to do')
+                ->para('Once you add them, they accept the invite and press Continue. Nothing else is needed from you.')
+                ->cta('Open the developer dashboard', $this->consoleUrl !== '' ? $this->consoleUrl : $this->settingsUrl);
+        } else {
+            $letter->para('Add the keys in Settings, Connectors, Channels. Then tell them they can connect.')
+                ->cta('Open Channels settings', $this->settingsUrl);
+        }
 
-        return new Content(view: 'tantra::mail.review-ready', with: [
-            'heading' => "{$this->requesterName} wants to connect {$this->network}",
-            'intro' => $intro,
-            'posts' => [],
-            'url' => $this->ready && $this->consoleUrl !== '' ? $this->consoleUrl : $this->settingsUrl,
-            'button' => $this->ready ? 'Open the developer dashboard' : 'Open Channels settings',
-        ]);
+        return $letter->reason('You get this because you manage the channel apps for this account.')->content();
     }
 }

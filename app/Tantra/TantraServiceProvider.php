@@ -18,6 +18,7 @@ use App\Tantra\Agent\Appliers;
 use App\Tantra\Ai\AiAlerts;
 use App\Tantra\Ai\CliTextGateway;
 use App\Tantra\Analytics\InsightsScope;
+use App\Tantra\Billing\BillingTickCommand;
 use App\Tantra\Boost\Boost;
 use App\Tantra\Boost\MemberProfile;
 use App\Tantra\Boost\StartBoostRun;
@@ -30,6 +31,7 @@ use App\Tantra\Console\CheckConnectorsCommand;
 use App\Tantra\Console\ClerkUnlinkCommand;
 use App\Tantra\Console\CollectMetricsCommand;
 use App\Tantra\Console\CreateOwnerCommand;
+use App\Tantra\Console\DailyDigestCommand;
 use App\Tantra\Console\GiveawayRepliesCommand;
 use App\Tantra\Console\HealthCommand;
 use App\Tantra\Console\HeartbeatCommand;
@@ -224,6 +226,9 @@ class TantraServiceProvider extends ServiceProvider
             $schedule->command('tantra:giveaway-replies')->hourly()->withoutOverlapping();
             // 09:11 in Kolkata: reconnect reminders for LinkedIn channels.
             $schedule->command('tantra:reconnect-reminders')->dailyAt('03:41');
+            // Hourly: each member gets it at the digest hour in their own timezone.
+            $schedule->command('tantra:daily-digest')->hourlyAt(2)->withoutOverlapping();
+            $schedule->command('tantra:billing-tick')->hourlyAt(17)->withoutOverlapping();
             // The health report's scheduler tick, and the media-exists check for posts due in a day (PRD 8.5).
             $schedule->command('tantra:heartbeat')->everyMinute();
             $schedule->command('tantra:heartbeat --media')->everyFifteenMinutes()->withoutOverlapping();
@@ -243,7 +248,7 @@ class TantraServiceProvider extends ServiceProvider
         });
 
         if ($this->app->runningInConsole()) {
-            $this->commands([AiConnectorCommand::class, CheckConnectorsCommand::class, CollectMetricsCommand::class, CreateOwnerCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class, TeamAccountsCommand::class, TeamAccountCommand::class, ClerkUnlinkCommand::class, LinkedInSyncCommand::class, AgentJobsCommand::class, RepurposeCadenceCommand::class, GiveawayRepliesCommand::class, HealthCommand::class, HeartbeatCommand::class, ReconnectRemindersCommand::class, SyncChannelsCommand::class, RoadmapKeyCommand::class, TrackLinksCommand::class]);
+            $this->commands([AiConnectorCommand::class, CheckConnectorsCommand::class, CollectMetricsCommand::class, CreateOwnerCommand::class, DailyDigestCommand::class, BillingTickCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class, TeamAccountsCommand::class, TeamAccountCommand::class, ClerkUnlinkCommand::class, LinkedInSyncCommand::class, AgentJobsCommand::class, RepurposeCadenceCommand::class, GiveawayRepliesCommand::class, HealthCommand::class, HeartbeatCommand::class, ReconnectRemindersCommand::class, SyncChannelsCommand::class, RoadmapKeyCommand::class, TrackLinksCommand::class]);
         }
 
         if ($this->app->environment('production') && config('tantra.lean_workers.enabled')) {
