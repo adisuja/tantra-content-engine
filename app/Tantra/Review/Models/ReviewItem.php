@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 /**
  * One engine post under review. It can span several channel posts (one
@@ -58,6 +59,7 @@ class ReviewItem extends Model
             'media_manifest' => 'array',
             'payload' => 'array',
             'thread_overrides' => 'array',
+            'message_overrides' => 'array',
             'review_status' => ReviewStatus::class,
             'approved_at' => 'datetime',
             'revision' => 'integer',
@@ -125,6 +127,34 @@ class ReviewItem extends Model
         }
 
         return $out;
+    }
+
+    /** The link a teammate opens to review exactly this post (survives the sign in redirect). */
+    public function shareUrl(): string
+    {
+        return route('tantra.review.index', ['item' => $this->id]);
+    }
+
+    /**
+     * The public, unguessable link to this post's asset (/previewlink/{token}):
+     * the resource's pages, or the post's own images. Made once, on first use.
+     */
+    public function previewToken(): string
+    {
+        if (blank($this->preview_token)) {
+            // A plain column write: making the link is not an edit of the post.
+            $token = Str::random(40);
+            self::query()->whereKey($this->getKey())->whereNull('preview_token')->update(['preview_token' => $token]);
+            $this->setAttribute('preview_token', self::query()->whereKey($this->getKey())->value('preview_token') ?? $token);
+            $this->syncOriginalAttribute('preview_token');
+        }
+
+        return (string) $this->preview_token;
+    }
+
+    public function previewUrl(): string
+    {
+        return route('tantra.previewlink', ['token' => $this->previewToken()]);
     }
 
     /** @param array<string, mixed>|null $value */

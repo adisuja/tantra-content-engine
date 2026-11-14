@@ -76,6 +76,16 @@ class ReviewItemActionController extends Controller
         return $this->ok($item, 'Saved.');
     }
 
+    /** tantra: edit one follow-up message (email, WhatsApp, SMS, LinkedIn) on the review screen. */
+    public function message(Request $request, ReviewItem $item, string $channel): JsonResponse
+    {
+        $this->authorizeView($request, $item);
+        $data = $request->validate(['text' => ['nullable', 'string', 'max:10000']]);
+        ReviewActions::editMessage($request->user(), $item, $channel, $data['text'] ?? null);
+
+        return $this->ok($item, 'Saved.');
+    }
+
     /** tantra: tick a commenter off the "DMs to send" list once the resource is sent. */
     public function dmSent(Request $request, ReviewItem $item, GiveawayReply $reply): JsonResponse
     {

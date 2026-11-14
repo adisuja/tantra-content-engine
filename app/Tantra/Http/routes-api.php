@@ -6,6 +6,7 @@ use App\Tantra\Http\Controllers\Api\AgentRunnerController;
 use App\Tantra\Http\Controllers\Api\BatchController;
 use App\Tantra\Http\Controllers\Api\ChannelScheduleController;
 use App\Tantra\Http\Controllers\Api\IdeaController;
+use App\Tantra\Http\Controllers\Api\MessagesController;
 use App\Tantra\Http\Controllers\Api\ProfileController;
 use App\Tantra\Http\Controllers\Api\ResultsController;
 use App\Tantra\Http\Controllers\Api\TantraReadController;
@@ -32,6 +33,7 @@ Route::middleware(['api', 'auth:api', 'tantra.owner-token', 'throttle:api'])
         Route::post('/previews', [UploadController::class, 'preview'])->name('previews.store');
         Route::post('/batches', [BatchController::class, 'store'])->name('batches.store');
         Route::get('/batches/{batch}/feedback', [BatchController::class, 'feedback'])->whereUuid('batch')->name('batches.feedback');
+        Route::get('/messages/{engineBatchId}/{enginePostId}', [MessagesController::class, 'show'])->where(['engineBatchId' => '[A-Za-z0-9_-]{1,32}', 'enginePostId' => '[A-Za-z0-9_-]{1,32}'])->name('messages.show');
         Route::post('/templates', [TemplatesController::class, 'seed'])->name('templates.seed');
         Route::post('/templates/{key}/preview', [TemplatesController::class, 'preview'])->where('key', '[A-Z]{1,4}\\d{1,3}')->name('templates.preview');
         // Ideas with a network, a phone preview and a path to Review (PRD 25.8).

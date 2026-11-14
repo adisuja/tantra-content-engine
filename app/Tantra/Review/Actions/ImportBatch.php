@@ -220,11 +220,12 @@ final class ImportBatch
                 'type' => $media['type'] ?? null,
                 'title' => $media['title'] ?? null,
                 'previews' => array_values((array) ($post['preview_paths'] ?? [])),
+                'resource_previews' => array_values((array) ($post['resource_preview_paths'] ?? [])),
                 'poll' => $isPoll ? Arr::only($media, ['question', 'options', 'duration']) : null,
                 'placement' => $media['placement'] ?? null,
                 'tall' => (bool) ($media['tall'] ?? false),
             ],
-            'payload' => Arr::except($post, ['upload_tokens']),
+            'payload' => Arr::except($post, ['upload_tokens', 'resource_preview_paths']),
         ];
     }
 
