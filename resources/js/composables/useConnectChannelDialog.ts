@@ -5,8 +5,7 @@ export type ConnectChannelStep =
     | 'details'
     | 'instagram'
     | 'instagram-facebook'
-    | 'telegram'
-    | 'setup';
+    | 'telegram';
 
 export interface ConnectChannelState {
     id: number;
@@ -15,8 +14,6 @@ export interface ConnectChannelState {
     reconnectId?: string;
     goalAccountId?: string;
     detailsPlatform?: string;
-    // tantra: the network whose "Needs setup" step is open.
-    setupPlatform?: string;
     canGoBack: boolean;
 }
 
@@ -75,25 +72,6 @@ const showDetails = (platform: string): void => {
     };
 };
 
-// tantra: a network without developer app keys opens its setup step.
-const showSetup = (platform: string, fromGrid = true): void => {
-    state.value =
-        state.value && fromGrid
-            ? {
-                  ...state.value,
-                  step: 'setup',
-                  setupPlatform: platform,
-                  canGoBack: true,
-              }
-            : {
-                  id: ++nextId,
-                  flow: 'connect',
-                  step: 'setup',
-                  setupPlatform: platform,
-                  canGoBack: false,
-              };
-};
-
 const back = (): void => {
     if (!state.value) return;
 
@@ -101,7 +79,6 @@ const back = (): void => {
         ...state.value,
         step: 'grid',
         detailsPlatform: undefined,
-        setupPlatform: undefined,
         canGoBack: false,
     };
 };
@@ -117,7 +94,6 @@ export const useConnectChannelDialog = () => ({
     openGoal,
     goTo,
     showDetails,
-    showSetup,
     back,
     close,
 });

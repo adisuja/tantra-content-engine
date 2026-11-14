@@ -168,7 +168,7 @@ test('threads callback handles token exchange failure', function () {
 
     $response->assertRedirect(route('app.social.connect.show', Platform::Threads));
 
-    expect(socialConnectFailure())->toBe('error_connecting');
+    expect(socialConnectFailure())->toBe('code_expired'); // tantra: its own reason (ConnectFailures)
 });
 
 test('threads callback fails the connect when the long-lived token exchange fails', function () {
@@ -194,7 +194,7 @@ test('threads callback fails the connect when the long-lived token exchange fail
 
     $response->assertRedirect(route('app.social.connect.show', Platform::Threads));
 
-    expect(socialConnectFailure())->toBe('error_connecting');
+    expect(socialConnectFailure())->toBe('provider_unavailable'); // tantra: its own reason (ConnectFailures)
 
     // A short-lived-only account would silently die within the hour and never be
     // picked up by the refresh cron, so the connect must not persist one.

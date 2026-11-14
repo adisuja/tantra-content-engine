@@ -10,6 +10,7 @@ use App\Exceptions\SocialAccount\ConnectFlowException;
 use App\Models\SocialAccount;
 use App\Services\Social\BlueskyLexicon;
 use App\Support\Social\PendingConnection;
+use App\Tantra\Channels\ConnectFailures;
 use Exception;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -71,7 +72,8 @@ class BlueskyController extends SocialController
                     'body' => $response->body(),
                 ]);
 
-                throw ValidationException::withMessages(['password' => __('accounts.bluesky.invalid_credentials')]);
+                // tantra: rate limits, email codes and suspensions are not wrong passwords.
+                throw ValidationException::withMessages(['password' => ConnectFailures::blueskySignIn($response) ?? __('accounts.bluesky.invalid_credentials')]);
             }
 
             $session = ReadBlueskySession::execute($response);

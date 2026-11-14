@@ -16,6 +16,9 @@ import {
 import { computed, ref } from 'vue';
 
 import PlatformLogo from '@/components/PlatformLogo.vue';
+import ConnectNextStep, {
+    type ConnectHelp,
+} from '@/components/tantra/connect/ConnectNextStep.vue'; // tantra:
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -59,6 +62,8 @@ const props = defineProps<{
     retryUrl: string | null;
     switchUrl: string | null;
     backUrl: string;
+    // tantra: the next step under the reason (ConnectFailures::present()).
+    tantraHelp?: ConnectHelp | null;
 }>();
 
 const FORM_STEP_PLATFORMS = ['bluesky', 'mastodon'];
@@ -395,6 +400,8 @@ const identityCardClass = (identity: ConnectIdentity): string =>
                     }}
                 </p>
             </div>
+            <!-- tantra: what to do next -->
+            <ConnectNextStep v-if="tantraHelp" :help="tantraHelp" />
             <div class="flex w-full flex-col-reverse gap-2 sm:w-auto sm:flex-row">
                 <Button as-child variant="outline" size="lg">
                     <Link :href="backUrl" data-testid="connect-back">

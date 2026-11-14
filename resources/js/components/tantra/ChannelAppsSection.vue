@@ -43,7 +43,19 @@ export interface ChannelAppEntry {
     networks: { value: string; label: string; ready: boolean }[];
     fields: ChannelAppField[];
     saved_in_app: boolean;
+    // Testing (only invited testers connect) or live (anyone does).
+    mode: 'development' | 'live';
+    default_mode: 'development' | 'live';
+    testing: {
+        owner: string;
+        you: string;
+        live: string;
+        console: string;
+        accept: string | null;
+    };
 }
+
+const MODES = ['development', 'live'] as const;
 
 const props = defineProps<{
     apps: ChannelAppEntry[];
@@ -73,12 +85,15 @@ const error = ref('');
 
 const openApp = (app: ChannelAppEntry): void => {
     current.value = app;
-    form.value = Object.fromEntries(
-        app.fields.map((f) => [
-            f.key,
-            f.switch ? Boolean(f.on) : f.secret ? '' : (f.value ?? ''),
-        ]),
-    );
+    form.value = {
+        ...Object.fromEntries(
+            app.fields.map((f) => [
+                f.key,
+                f.switch ? Boolean(f.on) : f.secret ? '' : (f.value ?? ''),
+            ]),
+        ),
+        mode: app.mode,
+    };
     error.value = '';
     open.value = true;
 };
@@ -205,18 +220,28 @@ onMounted(() => {
                             </span>
                         </div>
                     </div>
-                    <Badge
-                        v-if="isReady(app)"
-                        class="bg-success/15 text-success"
-                        :data-testid="`channel-app-status-${app.key}`"
-                        ><IconCircleCheck class="size-3.5" /> Ready</Badge
-                    >
-                    <Badge
-                        v-else
-                        variant="outline"
-                        :data-testid="`channel-app-status-${app.key}`"
-                        >Needs keys</Badge
-                    >
+                    <div class="flex shrink-0 flex-col items-end gap-1">
+                        <Badge
+                            v-if="isReady(app)"
+                            class="bg-success/15 text-success"
+                            :data-testid="`channel-app-status-${app.key}`"
+                            ><IconCircleCheck class="size-3.5" /> Ready</Badge
+                        >
+                        <Badge
+                            v-else
+                            variant="outline"
+                            :data-testid="`channel-app-status-${app.key}`"
+                            >Needs keys</Badge
+                        >
+                        <Badge
+                            v-if="app.mode === 'development'"
+                            variant="outline"
+                            :data-testid="`channel-app-mode-${app.key}`"
+                            >{{
+                                $t('tantra.connect.settings.modes.development')
+                            }}</Badge
+                        >
+                    </div>
                 </div>
 
                 <p v-if="app.catch" class="text-xs text-muted-foreground">
@@ -279,6 +304,54 @@ onMounted(() => {
                         <span class="truncate">{{ url }}</span>
                         <IconCopy class="size-3.5 shrink-0" />
                     </button>
+                </div>
+
+                <div class="flex flex-col gap-2">
+                    <Label>{{ $t('tantra.connect.settings.mode') }}</Label>
+                    <div class="flex gap-2" role="radiogroup">
+                        <Button
+                            v-for="m in MODES"
+                            :key="m"
+                            type="button"
+                            size="sm"
+                            role="radio"
+                            :aria-checked="form.mode === m"
+                            :variant="form.mode === m ? 'default' : 'outline'"
+                            :data-testid="`channel-app-mode-${m}`"
+                            @click="form.mode = m"
+                            >{{
+                                $t(`tantra.connect.settings.modes.${m}`)
+                            }}</Button
+                        >
+                    </div>
+                    <p class="text-xs text-muted-foreground">
+                        {{ $t('tantra.connect.settings.mode_help') }}
+                    </p>
+                    <div
+                        class="flex flex-col gap-2 rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground"
+                    >
+                        <p>
+                            <span class="font-medium text-foreground">{{
+                                $t('tantra.connect.settings.testers')
+                            }}</span>
+                            {{ current.testing.owner }}
+                            {{ current.testing.you }}
+                        </p>
+                        <p>
+                            <span class="font-medium text-foreground">{{
+                                $t('tantra.connect.settings.go_live')
+                            }}</span>
+                            {{ current.testing.live }}
+                        </p>
+                        <a
+                            :href="current.testing.console"
+                            target="_blank"
+                            rel="noopener"
+                            class="inline-flex items-center gap-1 underline underline-offset-2"
+                            >{{ $t('tantra.connect.prepare.open_console') }}
+                            <IconExternalLink class="size-3"
+                        /></a>
+                    </div>
                 </div>
 
                 <div class="flex flex-col gap-4">

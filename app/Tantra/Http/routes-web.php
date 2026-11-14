@@ -18,6 +18,7 @@ use App\Tantra\Http\Controllers\Web\InsightsController;
 use App\Tantra\Http\Controllers\Web\JoinController;
 use App\Tantra\Http\Controllers\Web\ManualTaskController;
 use App\Tantra\Http\Controllers\Web\OpenChannelController;
+use App\Tantra\Http\Controllers\Web\PreConnectController;
 use App\Tantra\Http\Controllers\Web\PreviewLinkController;
 use App\Tantra\Http\Controllers\Web\ReconnectController;
 use App\Tantra\Http\Controllers\Web\ReviewItemActionController;
@@ -101,6 +102,14 @@ Route::middleware(['web', 'signed', 'throttle:6,1'])
     ->get('tantra/join/{user}', JoinController::class)
     ->whereUuid('user')
     ->name('tantra.join');
+
+// tantra: the step before a network's sign in while its app is in testing or has no keys (PreConnectGate).
+Route::middleware(['web', 'auth', EnsureHasWorkspace::class])->group(function (): void {
+    Route::get('connect/{network}/prepare', [PreConnectController::class, 'show'])
+        ->where('network', '[a-z-]+')->name('tantra.connect.prepare');
+    Route::post('connect/{network}/request-access', [PreConnectController::class, 'requestAccess'])
+        ->where('network', '[a-z-]+')->middleware('throttle:10,1')->name('tantra.connect.request-access');
+});
 
 // tantra: the Connectors tab: AI providers, Claude and Codex subscriptions, the Tantra API.
 Route::middleware(['web', 'auth'])

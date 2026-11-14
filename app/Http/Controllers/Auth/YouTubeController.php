@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Support\Social\PendingConnection;
+use App\Tantra\Channels\ConnectFailures;
 use Exception;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -87,7 +88,7 @@ class YouTubeController extends SocialController
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return $this->failConnection('error_connecting');
+            return $this->failConnection(ConnectFailures::fromException($e, $this->platform)); // tantra: say which failure
         }
     }
 
@@ -105,40 +106,42 @@ class YouTubeController extends SocialController
         );
     }
 
+    /**
+     * tantra: a failed read is no longer "no channels". A Google account with
+     * no channel yet answers 200 with no items (or youtubeSignupRequired); any
+     * other failure (quota, outage, API not enabled) reaches the callback's
+     * catch, which names it.
+     */
     private function fetchChannels(string $accessToken): array
     {
-        try {
-            $response = Http::withToken($accessToken)
-                ->get(config('trypost.platforms.youtube.data_api').'/channels', [
-                    'part' => 'snippet,contentDetails,statistics',
-                    'mine' => 'true',
-                ]);
+        $response = Http::withToken($accessToken)
+            ->get(config('trypost.platforms.youtube.data_api').'/channels', [
+                'part' => 'snippet,contentDetails,statistics',
+                'mine' => 'true',
+            ]);
 
-            if ($response->failed()) {
-                Log::error('YouTube channels fetch failed', [
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                ]);
+        if ($response->failed()) {
+            Log::error('YouTube channels fetch failed', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
 
+            if (str_contains($response->body(), 'youtubeSignupRequired')) {
                 return [];
             }
 
-            $data = $response->json();
-
-            return collect(data_get($data, 'items', []))->map(fn ($channel) => [
-                'id' => data_get($channel, 'id'),
-                'title' => data_get($channel, 'snippet.title'),
-                'description' => data_get($channel, 'snippet.description', ''),
-                'thumbnail' => data_get($channel, 'snippet.thumbnails.default.url'),
-                'custom_url' => data_get($channel, 'snippet.customUrl'),
-                'subscriber_count' => data_get($channel, 'statistics.subscriberCount', 0),
-            ])->toArray();
-        } catch (Exception $e) {
-            Log::error('YouTube channels fetch error', [
-                'error' => $e->getMessage(),
-            ]);
-
-            return [];
+            $response->throw();
         }
+
+        $data = $response->json();
+
+        return collect(data_get($data, 'items', []))->map(fn ($channel) => [
+            'id' => data_get($channel, 'id'),
+            'title' => data_get($channel, 'snippet.title'),
+            'description' => data_get($channel, 'snippet.description', ''),
+            'thumbnail' => data_get($channel, 'snippet.thumbnails.default.url'),
+            'custom_url' => data_get($channel, 'snippet.customUrl'),
+            'subscriber_count' => data_get($channel, 'statistics.subscriberCount', 0),
+        ])->toArray();
     }
 }

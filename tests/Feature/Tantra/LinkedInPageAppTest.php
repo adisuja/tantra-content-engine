@@ -110,7 +110,7 @@ test('a page callback with a forged state connects nothing', function () {
     $this->actingAs($this->user)->get(route('app.social.linkedin.callback', ['code' => 'abc', 'state' => 'wrong']));
 
     Http::assertNothingSent();
-    expect(socialConnectFailure())->toBe('error_connecting');
+    expect(socialConnectFailure())->toBe('invalid_state');
 });
 
 function refreshLinkedInPage(array $meta): Request
