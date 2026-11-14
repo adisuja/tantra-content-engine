@@ -308,7 +308,11 @@ const accountColors = computed<Record<string, string>>(() => {
             </template>
             <!-- tantra: with no numbers yet, each channel still says why (PRD 26) -->
             <InsightsChannelsTable
-                v-if="tantraInsights && !report.bounds.min"
+                v-if="
+                    tantraInsights &&
+                    !report.bounds.min &&
+                    tantraInsights.channels.length
+                "
                 :channels="tantraInsights.channels"
             />
         </div>
