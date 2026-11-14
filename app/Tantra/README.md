@@ -99,6 +99,10 @@ PRD 25.10. `Repurposing` is the fifth Create tab (`RepurposingController`, `page
 
 PRD 25.11. On the Team page (`RebrandPanel.vue`, `RebrandController`): the person, the Account owner or an admin asks for one; `Rebrands::start` reads the profile through the person's own Unipile account and queues a `rebrand` agent job; `RebrandApplier` stores the proposal (headline options, About, banner, featured). Only the person applies the headline (`PATCH users/me` through `UnipileClient::updateProfile`, then read back to check it took); the rest is copied by hand.
 
+## API for everything
+
+PRD 25.12. Every screen has an API under `api/tantra/*` (reference: tantra-content `knowledge/content/engine-api.md`, made by `kits/engine/routes_doc.py`; one CLI over it: `kits/engine/engine.py`). The read side of the screens (`TantraReadController`: review items, posts by hand, team, Insights) and the screens' own action controllers answer as the token's own user, with the same rights. Owner-only stays for cross-workspace writes (batches, bulk ideas, the template seed); ops needs an admin; runners use their own token.
+
 ## Connectors tab
 
 `/settings/workspace/connectors` (`app/Tantra/Ai`, `ConnectorController`, `pages/tantra/connectors`). One row per Account and provider in `tantra_ai_connectors`, key encrypted with the app key. Every AI call goes through `TantraAi::prompt()`: the default connector first, then the other working AI connectors; each failure is classified (`AiFailure`: out of credits, rate limited, key rejected, model not available, signed out, unreachable) and shown where the AI was used, on the card and in the app banner (`tantraAlerts`). With no connector it runs on the `.env` provider as upstream did. Claude and ChatGPT plans run through the official Claude Code and Codex CLIs installed in the image (`CliTextGateway`).
