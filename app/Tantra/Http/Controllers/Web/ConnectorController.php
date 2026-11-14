@@ -4,10 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tantra\Http\Controllers\Web;
 
-use App\Enums\SocialAccount\Platform;
-use App\Enums\SocialAccount\Status;
 use App\Http\Controllers\Controller;
-use App\Models\SocialAccount;
 use App\Models\User;
 use App\Tantra\Ai\AiAlerts;
 use App\Tantra\Ai\AiConnector;
@@ -37,7 +34,7 @@ class ConnectorController extends Controller
         $saved = AiConnector::query()->where('account_id', $user->account_id)->get()->keyBy('provider');
 
         $canManage = $this->canManage($user);
-        $providers = collect(ProviderCatalog::all())->map(function (array $p, string $key) use ($saved, $canManage, $user): array {
+        $providers = collect(ProviderCatalog::all())->map(function (array $p, string $key) use ($saved, $canManage): array {
             $c = $saved->get($key);
 
             return [
@@ -57,8 +54,6 @@ class ConnectorController extends Controller
                 'supports_images' => $p['supports_images'],
                 'setup' => $p['setup'],
                 'connector' => $c === null ? null : self::present($c, $canManage),
-                // tantra: accounts from the Tantra app now in the Engine as channels (PRD D3).
-                'linked_accounts' => $key === 'tantra_api' ? self::linkedAccounts($user->account_id) : null,
             ];
         })->values();
 
@@ -66,9 +61,8 @@ class ConnectorController extends Controller
             'providers' => $providers,
             'canManage' => $canManage,
             'serverFallback' => TantraAi::serverProviderConfigured(),
-            // tantra: developer app keys per network (PRD prd-engine-all-channels.md, D2).
-            'channelApps' => ChannelAppController::present(\App\Tantra\Channels\ChannelApps::canManage($user)),
-            'canManageChannels' => \App\Tantra\Channels\ChannelApps::canManage($user),
+            // Social channels show as the logo grid (shared tantraChannels.networks);
+            // their developer app keys live on the owner's Developer apps page.
         ]);
     }
 
@@ -258,16 +252,6 @@ class ConnectorController extends Controller
     }
 
     /** @return array<string, mixed> */
-    /** Channels in this Account that came from the Tantra app (Unipile), and how many are live. */
-    private static function linkedAccounts(string $accountId): array
-    {
-        $channels = SocialAccount::query()
-            ->whereHas('workspace', fn ($q) => $q->where('account_id', $accountId))
-            ->where('platform', Platform::UnipileLinkedIn)->get(['status']);
-
-        return ['total' => $channels->count(), 'connected' => $channels->filter(fn ($c): bool => $c->status === Status::Connected)->count()];
-    }
-
     private static function present(AiConnector $c, bool $withDetail): array
     {
         $failing = $c->last_failed_at !== null && ($c->last_verified_at === null || $c->last_failed_at->gt($c->last_verified_at));

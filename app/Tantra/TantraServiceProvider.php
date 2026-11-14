@@ -113,10 +113,8 @@ class TantraServiceProvider extends ServiceProvider
         // without a restart.
         ChannelApps::apply();
         Queue::before(fn () => ChannelApps::apply());
-        // The connect dialog offers "Add the keys" only to the Account owner.
-        Inertia::share('tantraChannels', fn (): array => [
-            'canSetUp' => ChannelApps::canManage(Auth::user()),
-        ]);
+        // The "Connect a channel" grid is shared per request by
+        // HandleInertiaRequests (tantraChannels, ConnectNetworks::share).
         // Whatever escapes a sign in still ends on the confirmation page, never a 500.
         $handler = $this->app->make(ExceptionHandler::class);
         if ($handler instanceof FoundationExceptionHandler) {

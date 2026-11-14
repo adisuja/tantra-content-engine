@@ -40,11 +40,13 @@ const CONNECT_ROUTES: Record<
 export const connectUrl = (
     platform: string,
     reconnectId?: string,
+    extra: Record<string, string> = {},
 ): string | undefined =>
     CONNECT_ROUTES[platform]?.url({
         query: {
             return_to: window.location.pathname,
             ...(reconnectId ? { reconnect: reconnectId } : {}),
+            ...extra,
         },
     });
 
@@ -94,9 +96,10 @@ export const useNetworkConnect = (
     const startConnect = (platform: string, reconnectId?: string) => {
         const entry = connectEntry(platform);
 
-        // tantra: no developer app keys yet: the pre-connect step says so.
+        // tantra: a network that cannot connect yet opens the logo grid,
+        // where it shows as "Coming soon" (Adi 2026-11-14).
         if (!isReady(entry)) {
-            router.visit(prepareUrl(entry, reconnectId));
+            dialog.open();
             return;
         }
 
@@ -105,8 +108,9 @@ export const useNetworkConnect = (
             return;
         }
 
-        if (entry === Platform.Instagram && !reconnectId) {
-            dialog.openAt('instagram');
+        // A new connection starts on the network's panel in the dialog.
+        if (!reconnectId) {
+            dialog.showNetwork(platform, false);
             return;
         }
 

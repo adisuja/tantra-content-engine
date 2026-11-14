@@ -55,8 +55,9 @@ it('lists every network, ready or not, with what is missing', function () {
         // .env.testing carries X keys: a key set on the server counts.
         ->and(connectOption('x')['ready'])->toBeTrue()
         ->and(connectOption('pinterest')['ready'])->toBeFalse()
-        ->and(connectOption('pinterest')['setup']['missing'])->toBe(['App ID', 'App secret key'])
-        ->and(connectOption('tiktok')['setup']['app_label'])->toBe('TikTok');
+        // What is missing is developer detail: only the owner's admin page has it.
+        ->and(connectOption('pinterest'))->not->toHaveKey('setup')
+        ->and(ChannelApps::missing('pinterest'))->toBe(['App ID', 'App secret key']);
 });
 
 it('blocks the connect redirect of a network without keys', function () {
@@ -84,7 +85,7 @@ it('never sends a saved secret to the page, only its last four', function () {
     ChannelApp::query()->create(['app' => 'meta_facebook', 'credentials' => ['client_id' => '12345', 'client_secret' => 'meta-secret-abcd']]);
     ChannelApps::forget();
 
-    $response = $this->actingAs($this->owner)->get(route('tantra.connectors.index'));
+    $response = $this->actingAs($this->owner)->get(route('tantra.developer-apps.index'));
     $response->assertInertia(fn (Assert $page) => $page
         ->where('channelApps', fn ($apps) => collect($apps)->firstWhere('key', 'meta_facebook')['fields'][1]['last_four'] === 'abcd')
     );
@@ -111,10 +112,8 @@ it('lets only the account owner change channel keys', function () {
         ->deleteJson(route('tantra.connectors.channels.destroy', 'x'))
         ->assertForbidden();
 
-    $this->actingAs($this->member)->get(route('tantra.connectors.index'))
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('channelApps', fn ($apps) => collect($apps)->flatMap(fn ($a) => $a['fields'])->every(fn ($f) => $f['last_four'] === null && $f['value'] === null))
-        );
+    // The keys page itself is closed to them.
+    $this->actingAs($this->member)->get(route('tantra.developer-apps.index'))->assertForbidden();
 });
 
 it('removing the keys turns the network off again', function () {

@@ -4,9 +4,8 @@ import { IconPlus } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
 import ChannelListItem from '@/components/channels/ChannelListItem.vue';
-import ChannelsEmptyIllustration from '@/components/channels/ChannelsEmptyIllustration.vue';
 import DisconnectChannelDialog from '@/components/channels/DisconnectChannelDialog.vue';
-import EmptyState from '@/components/EmptyState.vue';
+import ConnectGrid from '@/components/tantra/connect/ConnectGrid.vue';
 import { Button } from '@/components/ui/button';
 import { orderChannels } from '@/composables/useChannelOrder';
 import { useConnectChannelDialog } from '@/composables/useConnectChannelDialog';
@@ -30,7 +29,11 @@ const page = usePage();
 const platforms = computed<AvailablePlatform[]>(
     () => (page.props.connectablePlatforms as AvailablePlatform[]) ?? [],
 );
-const { open: openConnectDialog, openAt } = useConnectChannelDialog();
+const {
+    open: openConnectDialog,
+    openAt,
+    showNetwork,
+} = useConnectChannelDialog();
 const { startConnect, instagramMethods } = useNetworkConnect(platforms);
 
 const canLinkFacebook = (channel: ConnectedAccount): boolean =>
@@ -57,50 +60,45 @@ const disconnectChannel = (channel: ConnectedAccount): void =>
     <SettingsLayout
         :title="$t('channels.title')"
         :description="$t('channels.description')"
-        :centered="channels.length === 0"
     >
         <template #actions>
-            <Button data-testid="channels-connect" @click="openConnectDialog()">
+            <Button
+                v-if="channels.length > 0"
+                data-testid="channels-connect"
+                @click="openConnectDialog()"
+            >
                 <IconPlus class="size-4" />
                 {{ $t('channels.connect') }}
             </Button>
         </template>
 
-            <ul v-if="channels.length > 0" class="flex flex-col gap-3">
-                <li
-                    v-for="channel in channels"
-                    :key="channel.id"
-                    :data-testid="`channel-list-row-${channel.id}`"
-                >
-                    <ChannelListItem
-                        :channel="channel"
-                        :can-link-facebook="canLinkFacebook(channel)"
-                        @reconnect="reconnectChannel"
-                        @link-facebook="linkFacebook"
-                        @disconnect="disconnectChannel"
-                    />
-                </li>
-            </ul>
-
-            <EmptyState
-                v-else
-                :title="$t('channels.empty')"
-                :description="$t('channels.empty_description')"
-                data-testid="channels-empty"
+        <ul v-if="channels.length > 0" class="flex flex-col gap-3">
+            <li
+                v-for="channel in channels"
+                :key="channel.id"
+                :data-testid="`channel-list-row-${channel.id}`"
             >
-                <template #illustration>
-                    <ChannelsEmptyIllustration />
-                </template>
-                <template #action>
-                    <Button
-                        data-testid="channels-empty-connect"
-                        @click="openConnectDialog()"
-                    >
-                        <IconPlus class="size-4" />
-                        {{ $t('channels.connect') }}
-                    </Button>
-                </template>
-            </EmptyState>
+                <ChannelListItem
+                    :channel="channel"
+                    :can-link-facebook="canLinkFacebook(channel)"
+                    @reconnect="reconnectChannel"
+                    @link-facebook="linkFacebook"
+                    @disconnect="disconnectChannel"
+                />
+            </li>
+        </ul>
+
+        <!-- tantra: no channels yet, so the logo grid is the page (Adi 2026-11-14). -->
+        <section
+            v-else
+            class="flex w-full flex-col gap-4"
+            data-testid="channels-empty"
+        >
+            <p class="text-sm text-muted-foreground">
+                Click a logo and sign in.
+            </p>
+            <ConnectGrid @select="(n) => showNetwork(n.value, false)" />
+        </section>
 
         <DisconnectChannelDialog
             ref="disconnectDialog"

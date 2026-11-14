@@ -1,22 +1,26 @@
 <script setup lang="ts">
-import { router } from '@inertiajs/vue3';
+import { usePage } from '@inertiajs/vue3';
 import { IconArrowLeft } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
-import ChannelPlatformGrid from '@/components/channels/ChannelPlatformGrid.vue';
-import ConnectChannelDetails from '@/components/channels/ConnectChannelDetails.vue';
 import InstagramConnectStep from '@/components/channels/InstagramConnectStep.vue';
 import InstagramFacebookRequirementsStep from '@/components/channels/InstagramFacebookRequirementsStep.vue';
 import TelegramConnectStep from '@/components/channels/TelegramConnectStep.vue';
+import ConnectGrid from '@/components/tantra/connect/ConnectGrid.vue';
+import ConnectNetworkPanel from '@/components/tantra/connect/ConnectNetworkPanel.vue';
 import { Button } from '@/components/ui/button';
-import { DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import {
     useConnectChannelDialog,
     type ConnectChannelState,
 } from '@/composables/useConnectChannelDialog';
-import { prepareUrl, useNetworkConnect } from '@/composables/useNetworkConnect';
+import { useNetworkConnect } from '@/composables/useNetworkConnect';
 import { Platform } from '@/types/platform';
-import type { AvailablePlatform } from '@/types/social-account';
+import type { AvailablePlatform, ConnectNetwork } from '@/types/social-account';
 
 const props = defineProps<{
     state: ConnectChannelState;
@@ -28,41 +32,27 @@ const emit = defineEmits<{
     connected: [{ accountId: string | null; created: boolean }];
 }>();
 
-const { goTo, back, showDetails } = useConnectChannelDialog();
-const { openConnect, instagramMethods, isReady } = useNetworkConnect(
+const { back, showNetwork } = useConnectChannelDialog();
+const { openConnect, instagramMethods } = useNetworkConnect(
     computed(() => props.platforms),
 );
 
-const detailsPlatform = computed(() =>
-    props.state.step === 'details'
-        ? props.platforms.find(
-              (platform) => platform.value === props.state.detailsPlatform,
-          )
-        : undefined,
+// tantra: the logo grid and its per-network panel (Adi 2026-11-14).
+const page = usePage();
+const networks = computed<ConnectNetwork[]>(
+    () =>
+        (
+            page.props.tantraChannels as
+                | { networks?: ConnectNetwork[] }
+                | undefined
+        )?.networks ?? [],
 );
 
-const selectPlatform = (platform: string): void => {
-    // tantra: a network without its developer app keys opens the
-    // pre-connect step, the same one the connect route shows.
-    if (!isReady(platform)) {
-        emit('close');
-        router.visit(prepareUrl(platform, props.state.reconnectId));
-        return;
-    }
-
-    if (platform === Platform.Instagram) {
-        goTo('instagram');
-        return;
-    }
-
-    if (platform === Platform.Telegram) {
-        goTo('telegram');
-        return;
-    }
-
-    emit('close');
-    openConnect(platform);
-};
+const network = computed(() =>
+    props.state.step === 'network'
+        ? networks.value.find((n) => n.value === props.state.network)
+        : undefined,
+);
 
 const connectInstagramFacebook = (): void => {
     emit('close');
@@ -77,37 +67,27 @@ const selectInstagramMethod = (method: string): void => {
 
 <template>
     <div
-        :key="state.step"
+        :key="`${state.step}-${state.network ?? ''}`"
         class="motion-view-swap relative flex min-h-0 min-w-0 flex-1 flex-col"
     >
-        <ConnectChannelDetails
-            v-if="detailsPlatform"
-            :platform="detailsPlatform"
-            :platforms="platforms"
-            @back="back"
-            @connect="selectPlatform"
-        />
-
         <div
-            v-else-if="state.step === 'grid'"
-            class="flex min-h-0 flex-1 flex-col bg-muted pt-4 sm:rounded-lg"
+            v-if="state.step === 'grid'"
+            class="flex min-h-0 flex-1 flex-col pt-8"
         >
             <DialogHeader
-                class="min-h-8 shrink-0 justify-center px-14 pb-6 sm:text-center"
+                class="shrink-0 items-center gap-1.5 px-14 pb-6 text-center sm:text-center"
             >
                 <DialogTitle
                     class="font-sans text-xl leading-tight font-medium"
                 >
-                    {{ $t('channels.dialog.title') }}
+                    Connect a channel
                 </DialogTitle>
+                <DialogDescription class="text-sm text-muted-foreground">
+                    Pick a network and sign in.
+                </DialogDescription>
             </DialogHeader>
-            <div class="min-h-0 flex-1 overflow-y-auto">
-                <ChannelPlatformGrid
-                    :platforms="platforms"
-                    with-details
-                    @select="selectPlatform"
-                    @details="showDetails"
-                />
+            <div class="min-h-0 flex-1 overflow-y-auto px-4 pb-6 sm:px-8">
+                <ConnectGrid @select="(n) => showNetwork(n.value)" />
             </div>
         </div>
 
@@ -115,13 +95,16 @@ const selectInstagramMethod = (method: string): void => {
             <Button
                 v-if="state.canGoBack"
                 variant="ghost"
-                size="icon"
-                class="absolute start-4 top-4 z-10"
-                :aria-label="$t('channels.dialog.back')"
+                size="sm"
+                class="absolute start-3 top-3 z-10 gap-1.5 text-muted-foreground"
                 data-testid="connect-channel-back"
                 @click="back"
             >
-                <IconArrowLeft class="size-4 rtl:rotate-180" />
+                <IconArrowLeft
+                    class="size-4 rtl:rotate-180"
+                    aria-hidden="true"
+                />
+                All channels
             </Button>
             <InstagramConnectStep
                 v-if="state.step === 'instagram'"
@@ -132,11 +115,19 @@ const selectInstagramMethod = (method: string): void => {
                 v-else-if="state.step === 'instagram-facebook'"
                 @connect="connectInstagramFacebook"
             />
-            <TelegramConnectStep
-                v-else-if="state.step === 'telegram'"
-                :reconnect-id="state.reconnectId"
-                @connected="(result) => emit('connected', result)"
-            />
+            <div
+                v-else-if="
+                    state.step === 'telegram' ||
+                    (network && network.kind === 'bot')
+                "
+                class="flex min-h-0 flex-1 flex-col pt-12"
+            >
+                <TelegramConnectStep
+                    :reconnect-id="state.reconnectId"
+                    @connected="(result) => emit('connected', result)"
+                />
+            </div>
+            <ConnectNetworkPanel v-else-if="network" :network="network" />
         </template>
     </div>
 </template>

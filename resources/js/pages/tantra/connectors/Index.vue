@@ -13,9 +13,7 @@ import {
 import { computed, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
-import ChannelAppsSection, {
-    type ChannelAppEntry,
-} from '@/components/tantra/ChannelAppsSection.vue';
+import ConnectGrid from '@/components/tantra/connect/ConnectGrid.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -30,6 +28,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { useConnectChannelDialog } from '@/composables/useConnectChannelDialog';
 import SettingsLayout from '@/layouts/SettingsLayout.vue';
 
 type Status = 'connected' | 'failing' | 'untested' | 'paused';
@@ -65,16 +64,16 @@ interface Provider {
     supports_images: boolean;
     setup: string[];
     connector: Connector | null;
-    linked_accounts?: { total: number; connected: number } | null;
 }
 
 const props = defineProps<{
     providers: Provider[];
     canManage: boolean;
     serverFallback: boolean;
-    channelApps: ChannelAppEntry[];
-    canManageChannels: boolean;
 }>();
+
+// tantra: social channels connect from the logo grid (Adi 2026-11-14).
+const { showNetwork } = useConnectChannelDialog();
 
 const GROUPS: { key: Provider['group']; title: string; description: string }[] =
     [
@@ -304,14 +303,23 @@ const when = (iso: string | null): string =>
     <Head title="Connectors" />
     <SettingsLayout
         title="Connectors"
-        description="Set up the channels your team posts to, the AI that writes ideas, captions, alt text and team threads, and your Tantra account. Keys are encrypted and shared by every workspace in this account."
+        description="Connect your social channels and the AI that writes for you."
     >
         <div class="flex flex-col gap-8" data-testid="connectors-page">
-            <!-- tantra: developer app keys per network (PRD prd-engine-all-channels.md) -->
-            <ChannelAppsSection
-                :apps="channelApps"
-                :can-manage="canManageChannels"
-            />
+            <section
+                class="flex flex-col gap-3"
+                data-testid="connectors-group-channels"
+            >
+                <div>
+                    <h2 class="text-base font-emphasis text-foreground">
+                        Social channels
+                    </h2>
+                    <p class="text-sm text-muted-foreground">
+                        Click a logo and sign in.
+                    </p>
+                </div>
+                <ConnectGrid @select="(n) => showNetwork(n.value, false)" />
+            </section>
 
             <!-- Summary of what runs the AI right now -->
             <div
@@ -350,11 +358,6 @@ const when = (iso: string | null): string =>
                     <p v-else class="font-emphasis text-foreground">
                         No AI provider is connected, so Generate ideas and the
                         AI Assistant will not work.
-                    </p>
-                    <p class="text-muted-foreground">
-                        If the default fails, the engine tries your other
-                        connected AI providers in turn and tells you which one
-                        failed and why.
                     </p>
                 </div>
             </div>
@@ -472,18 +475,6 @@ const when = (iso: string | null): string =>
                                 {{ when(p.connector.last_verified_at) }}</span
                             >
                         </div>
-                        <p
-                            v-if="
-                                p.linked_accounts && p.linked_accounts.total > 0
-                            "
-                            class="text-xs text-muted-foreground"
-                            :data-testid="`connector-linked-${p.key}`"
-                        >
-                            {{ p.linked_accounts.total }} accounts from Tantra
-                            are channels,
-                            {{ p.linked_accounts.connected }} connected
-                        </p>
-
                         <div
                             class="mt-auto flex flex-wrap items-center justify-between gap-2"
                         >

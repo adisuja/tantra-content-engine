@@ -27,7 +27,7 @@ interface PreConnectStep {
     owner_steps: string;
     your_steps: string;
     accept_url: string | null;
-    console_url: string;
+    console_url: string | null;
     catch: string | null;
     continue_url: string | null;
     back_url: string;
@@ -180,7 +180,12 @@ const requestAccess = async (): Promise<void> => {
                 }}
             </p>
             <div class="flex flex-wrap gap-2">
-                <Button as-child variant="outline" size="sm">
+                <Button
+                    v-if="step.console_url"
+                    as-child
+                    variant="outline"
+                    size="sm"
+                >
                     <a
                         :href="step.console_url"
                         target="_blank"

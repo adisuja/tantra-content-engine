@@ -5,6 +5,7 @@ import {
     IconBuilding,
     IconCode,
     IconCoin,
+    IconKey,
     IconLayoutGrid,
     IconLayoutKanban,
     IconMcp,
@@ -160,7 +161,7 @@ export const useSettingsNavigation = () => {
                 key: 'integrations',
                 label: trans('settings.sidebar.groups.integrations'),
                 items: [
-                    // tantra: the Connectors tab (AI providers, Claude and Codex, Tantra API).
+                    // tantra: the Connectors tab (social channels grid, AI providers).
                     ...item(
                         'connectors',
                         '/settings/workspace/connectors',
@@ -190,6 +191,26 @@ export const useSettingsNavigation = () => {
                 ],
             },
         ];
+
+        // tantra: the instance owner's Developer apps page (network keys),
+        // never listed for anyone else (Adi 2026-11-14).
+        const isOwner =
+            (page.props.tantraChannels as { canSetUp?: boolean } | undefined)
+                ?.canSetUp === true;
+        if (isOwner) {
+            groups.push({
+                key: 'admin',
+                label: 'Admin',
+                items: [
+                    {
+                        name: 'developer_apps',
+                        title: 'Developer apps',
+                        href: '/settings/developer-apps',
+                        icon: IconKey,
+                    },
+                ],
+            });
+        }
 
         return groups.filter((group) => group.items.length > 0);
     });

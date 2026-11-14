@@ -99,7 +99,7 @@ return [
             ],
             'permissions' => [
                 'lead' => 'All permissions selected for all Pages and Instagram accounts',
-                'rest' => 'when connecting, even ones you won\'t connect to TryPost.',
+                'rest' => 'when connecting, even ones you won\'t connect to Tantra.',
             ],
         ],
         'learn_how' => 'Learn how.',
@@ -121,8 +121,8 @@ return [
         'close' => 'Close',
         'title_single' => 'Connect your account',
         'title_select' => 'Select accounts',
-        'subtitle_single' => 'Choose the account TryPost will publish to on :network.',
-        'subtitle_select' => 'Choose the accounts TryPost will publish to on :network.',
+        'subtitle_single' => 'Choose the account Tantra will publish to on :network.',
+        'subtitle_select' => 'Choose the accounts Tantra will publish to on :network.',
         'selected' => ':count selected',
         'select_all' => 'Select all',
         'connected' => 'Connected',
@@ -153,7 +153,7 @@ return [
             ],
             'missing_permission' => [
                 'title' => 'Permission needed',
-                'description' => 'TryPost needs permission to publish your posts. Connect again and keep that permission checked.',
+                'description' => 'Tantra needs permission to publish your posts. Connect again and keep that permission checked.',
             ],
             'expired' => [
                 'title' => 'This connection expired',
@@ -170,7 +170,7 @@ return [
             'start_again' => 'Start again',
         ],
         'errors' => [
-            'bluesky_email_unconfirmed' => 'Confirm your email in Bluesky settings, then connect your account again. TryPost requires a confirmed email to publish videos.',
+            'bluesky_email_unconfirmed' => 'Confirm your email in Bluesky settings, then connect your account again. Tantra requires a confirmed email to publish videos.',
             'error_connecting' => 'Error connecting account. Please try again.',
             'network_taken' => 'This workspace already has an account for this network. Disconnect it first.',
             'wrong_account' => 'That is a different account. Authorize the one you are reconnecting.',
@@ -185,7 +185,7 @@ return [
             'page_not_found' => 'Page not found.',
             'channel_not_found' => 'Channel not found.',
             'pages_read_incomplete' => 'We could not finish reading your Pages. Please try again in a moment.',
-            'publish_permission_missing' => 'TryPost needs permission to publish your posts. Connect again and keep that permission checked.',
+            'publish_permission_missing' => 'Tantra needs permission to publish your posts. Connect again and keep that permission checked.',
             'cancelled' => 'Connection cancelled.',
             'pages_missing_permission' => 'We found Pages, but none you can post to. You need a role on the Page itself, and every permission accepted.',
             'no_facebook_pages' => 'No Facebook Pages found. You need to be an admin of at least one page.',

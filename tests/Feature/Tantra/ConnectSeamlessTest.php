@@ -478,12 +478,27 @@ it('shows the pre-connect step before the Threads sign in while the app is in te
             ->where('step.network', 'Threads')
             ->where('step.accept_url', 'https://www.threads.net/settings/account')
             ->where('step.can_manage', false)
+            // tantra: no developer console or catch for anyone but the owner.
+            ->where('step.console_url', null)
+            ->where('step.catch', null)
             ->where('step.back_url', url('/settings/workspace/channels'))
             ->where('step.your_steps', fn (string $text) => str_contains($text, 'Website permissions, then Invites'))
             ->where('step.continue_url', fn (string $url) => str_contains($url, '/connect/threads?') && str_contains($url, 'prepared=1') && str_contains($url, 'return_to='))
         );
 
     expect(PendingConnection::current())->toBeNull();
+});
+
+it('gives the owner the developer console and the Developer apps link on the step', function () {
+    seamlessEnforce();
+
+    $this->actingAs($this->owner)->get(route('tantra.connect.prepare', 'threads'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('step.can_manage', true)
+            ->where('step.console_url', fn (?string $url) => filled($url))
+            ->where('step.settings_url', url('/settings/developer-apps?channel=meta_threads#channels'))
+        );
 });
 
 it('goes on to the sign in once the person presses Continue', function () {
@@ -623,7 +638,8 @@ it('keeps the chosen mode when the keys are removed, and shows tester steps in s
 
     expect(ChannelApps::mode('pinterest'))->toBe('live');
 
-    $this->actingAs($this->owner)->get(route('tantra.connectors.index'))
+    // tantra: the developer apps (and their mode) live on the owner's Developer apps page.
+    $this->actingAs($this->owner)->get(route('tantra.developer-apps.index'))
         ->assertInertia(fn (Assert $page) => $page->where('channelApps', function ($apps) {
             $threads = collect($apps)->firstWhere('key', 'meta_threads');
             $pinterest = collect($apps)->firstWhere('key', 'pinterest');

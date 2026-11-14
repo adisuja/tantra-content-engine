@@ -62,7 +62,8 @@ final class PreConnect
 
     public static function settingsUrl(string $app): string
     {
-        return url('/settings/workspace/connectors?channel='.$app.'#channels');
+        // tantra: developer keys live on the owner's Developer apps page.
+        return url('/settings/developer-apps?channel='.$app.'#channels');
     }
 
     /** Whether the network's card connects now (its keys are in). */
@@ -113,8 +114,9 @@ final class PreConnect
             'owner_steps' => __("tantra.connect.testing.apps.{$app}.owner"),
             'your_steps' => __("tantra.connect.testing.apps.{$app}.you"),
             'accept_url' => $entry['testing']['accept'] ?? null,
-            'console_url' => $entry['testing']['console'] ?? $entry['portal'],
-            'catch' => $entry['catch'],
+            // Developer detail (the network's console and catch) only for the owner.
+            'console_url' => $canManage ? ($entry['testing']['console'] ?? $entry['portal']) : null,
+            'catch' => $canManage ? $entry['catch'] : null,
             'continue_url' => $state === 'testing'
                 ? route('app.social.'.self::slug($platform).'.connect', [...$continue, self::CONTINUE_FLAG => '1'])
                 : null,

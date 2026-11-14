@@ -193,7 +193,7 @@ test('in dark mode each insights section is one card outlined against the page p
     $page->assertNoJavaScriptErrors();
 });
 
-test('in dark mode the connect channel dialog keeps its 8px frame around the inner panel, like light', function () {
+test('in dark mode the connect channel tiles stand out from the dialog', function () {
     $user = User::factory()->create(['theme' => Theme::Dark]);
     $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
     $workspace->members()->attach($user->id, membershipPivot('admin'));
@@ -208,27 +208,21 @@ test('in dark mode the connect channel dialog keeps its 8px frame around the inn
 
     $layers = $page->script(<<<'JS'
         (() => {
-            const luminance = (element) => {
-                const [r, g, b] = getComputedStyle(element).backgroundColor.match(/\d+/g).map(Number);
+            const luminance = (color) => {
+                const [r, g, b] = color.match(/\d+/g).map(Number);
                 return 0.2126 * r + 0.7152 * g + 0.0722 * b;
             };
-            const card = document.querySelector('[data-testid="connect-channel-telegram"]');
-            let panel = card.parentElement;
-            while (getComputedStyle(panel).backgroundColor === 'rgba(0, 0, 0, 0)') {
-                panel = panel.parentElement;
-            }
-            const frame = document.querySelector('[data-testid="connect-channel-dialog"]');
-            const style = getComputedStyle(frame);
-            const [r, g, b] = style.borderTopColor.match(/\d+/g).map(Number);
+            const tile = getComputedStyle(document.querySelector('[data-testid="connect-channel-linkedin"]'));
+            const dialog = getComputedStyle(document.querySelector('[data-testid="connect-channel-dialog"]'));
+
             return {
-                width: style.borderTopWidth,
-                frame: 0.2126 * r + 0.7152 * g + 0.0722 * b,
-                panel: luminance(panel),
+                border: Math.abs(luminance(tile.borderTopColor) - luminance(dialog.backgroundColor)),
+                dark: luminance(dialog.backgroundColor) < 80,
             };
         })()
     JS);
 
-    expect($layers['width'])->toBe('8px')
-        ->and($layers['frame'] - $layers['panel'])->toBeGreaterThanOrEqual(10);
+    expect($layers['dark'])->toBeTrue()
+        ->and($layers['border'])->toBeGreaterThanOrEqual(10);
     $page->assertNoJavaScriptErrors();
 });

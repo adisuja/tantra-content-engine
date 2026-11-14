@@ -107,11 +107,10 @@ test('on a phone an alert dialog fills the screen with its footer in view', func
     $this->actingAs(dialogFullScreenAdmin());
 
     $page = visit(route('app.workspace.channels'))->resize(390, 844);
-    waitForDialogFullScreenTestId($page, 'channels-empty-connect');
-    $page->click('@channels-empty-connect');
-    waitForDialogFullScreenTestId($page, 'connect-channel-instagram');
-    $page->click('@connect-channel-instagram');
-    waitForDialogFullScreenTestId($page, 'instagram-connect-professional');
+    // tantra: Telegram's bot step asks before closing (the empty Channels page shows the logo grid).
+    waitForDialogFullScreenTestId($page, 'connect-channel-telegram');
+    $page->click('@connect-channel-telegram');
+    waitForDialogFullScreenTestId($page, 'telegram-connect-command');
     $page->click('@dialog-close');
     waitForDialogFullScreenTestId($page, 'connect-channel-exit-confirm');
 

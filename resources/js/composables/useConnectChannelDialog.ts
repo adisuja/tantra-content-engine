@@ -5,7 +5,8 @@ export type ConnectChannelStep =
     | 'details'
     | 'instagram'
     | 'instagram-facebook'
-    | 'telegram';
+    | 'telegram'
+    | 'network';
 
 export interface ConnectChannelState {
     id: number;
@@ -14,6 +15,8 @@ export interface ConnectChannelState {
     reconnectId?: string;
     goalAccountId?: string;
     detailsPlatform?: string;
+    // tantra: the network whose connect panel is open (logo grid, Adi 2026-11-14).
+    network?: string;
     canGoBack: boolean;
 }
 
@@ -72,6 +75,26 @@ const showDetails = (platform: string): void => {
     };
 };
 
+// tantra: a logo in the grid opens that network's connect panel; from
+// anywhere else (sidebar, inline grid) the dialog opens straight at it.
+const showNetwork = (platform: string, fromGrid = true): void => {
+    state.value =
+        state.value && fromGrid
+            ? {
+                  ...state.value,
+                  step: 'network',
+                  network: platform,
+                  canGoBack: true,
+              }
+            : {
+                  id: ++nextId,
+                  flow: 'connect',
+                  step: 'network',
+                  network: platform,
+                  canGoBack: true,
+              };
+};
+
 const back = (): void => {
     if (!state.value) return;
 
@@ -79,6 +102,7 @@ const back = (): void => {
         ...state.value,
         step: 'grid',
         detailsPlatform: undefined,
+        network: undefined,
         canGoBack: false,
     };
 };
@@ -94,6 +118,7 @@ export const useConnectChannelDialog = () => ({
     openGoal,
     goTo,
     showDetails,
+    showNetwork,
     back,
     close,
 });

@@ -50,305 +50,125 @@ function connectDialogAdmin(): User
     return $user->fresh();
 }
 
-test('the connect button opens the network grid', function () {
-    $this->actingAs(connectDialogAdmin());
-
-    $page = visit(route('app.workspace.channels'));
-    waitFor($page, '@channels-empty-connect');
-    $page->click('@channels-empty-connect');
-    waitFor($page, '@connect-channel-dialog');
-
-    $page->assertVisible('@connect-channel-linkedin')
-        ->assertVisible('@connect-channel-instagram')
-        ->assertNoJavaScriptErrors();
-});
-
-test('instagram shows its method step inside the same dialog and can go back', function () {
-    $this->actingAs(connectDialogAdmin());
-
-    $page = visit(route('app.workspace.channels'));
-    waitFor($page, '@channels-empty-connect');
-    $page->click('@channels-empty-connect');
-    waitFor($page, '@connect-channel-instagram');
-    $page->click('@connect-channel-instagram');
-    waitFor($page, '@instagram-connect-standalone');
-
-    $page->assertVisible('@instagram-connect-standalone')
-        ->assertMissing('@connect-channel-linkedin');
-
-    $page->click('@connect-channel-back');
-    waitFor($page, '@connect-channel-linkedin');
-
-    $page->assertVisible('@connect-channel-linkedin')->assertNoJavaScriptErrors();
-});
-
-test('an oauth network leaves for its consent screen in the same tab', function () {
-    $this->actingAs(connectDialogAdmin());
-    stubConnectDialogProviders();
-
-    $page = visit(route('app.workspace.channels'));
-    waitFor($page, '@channels-empty-connect');
-    $page->click('@channels-empty-connect');
-    waitFor($page, '@connect-channel-linkedin');
-    $page->click('@connect-channel-linkedin');
-
-    expect(connectDialogReachedProvider($page))->toBe('linkedin-openid');
-    $page->assertMissing('@connect-channel-dialog')->assertNoJavaScriptErrors();
-});
-
-test('the connect dialog is a fixed 840 by 700 frame with the grid scrolling inside', function () {
-    $this->actingAs(connectDialogAdmin());
-
-    $page = visit(route('app.workspace.channels'));
-    waitFor($page, '@channels-empty-connect');
-    $page->click('@channels-empty-connect');
-    waitFor($page, '@channel-platform-grid');
-
-    $frame = $page->script(<<<'JS'
-        (() => {
-            const dialog = document.querySelector('[data-testid="connect-channel-dialog"]');
-            const style = getComputedStyle(dialog);
-            const scroller = document.querySelector('[data-testid="channel-platform-grid"]').parentElement;
-
-            return {
-                width: style.width,
-                height: style.height,
-                overflowY: getComputedStyle(scroller).overflowY,
-                scrolls: scroller.scrollHeight > scroller.clientHeight,
-            };
-        })();
-    JS);
-
-    expect($frame)->toBe([
-        'width' => '840px',
-        'height' => '700px',
-        'overflowY' => 'auto',
-        'scrolls' => true,
-    ]);
-    $page->assertNoJavaScriptErrors();
-});
-
-test('the info button opens the network details and back returns to the grid', function () {
-    $this->actingAs(connectDialogAdmin());
-
-    $page = visit(route('app.workspace.channels'));
-    waitFor($page, '@channels-empty-connect');
-    $page->click('@channels-empty-connect');
-    waitFor($page, '@connect-channel-bluesky');
-    $page->hover('@connect-channel-bluesky');
-    $page->click('@connect-info-bluesky');
-    waitFor($page, '@connect-details');
-
-    $page->assertVisible('@connect-details')
-        ->assertVisible('@connect-details-help')
-        ->assertSeeIn('@connect-details-connect', 'Connect Bluesky')
-        ->assertMissing('@channel-platform-grid');
-
-    $page->click('@connect-details-back');
-    waitFor($page, '@connect-channel-bluesky');
-
-    $page->assertVisible('@channel-platform-grid')
-        ->assertMissing('@connect-details')
-        ->assertNoJavaScriptErrors();
-});
-
-test('connecting from the details view starts the same flow as the card', function () {
-    $this->actingAs(connectDialogAdmin());
-    stubConnectDialogProviders();
-
-    $page = visit(route('app.workspace.channels'));
-    waitFor($page, '@channels-empty-connect');
-    $page->click('@channels-empty-connect');
-    waitFor($page, '@connect-channel-linkedin');
-    $page->hover('@connect-channel-linkedin');
-    $page->click('@connect-info-linkedin');
-    waitFor($page, '@connect-details-connect');
-    $page->click('@connect-details-connect');
-
-    expect(connectDialogReachedProvider($page))->toBe('linkedin-openid');
-    $page->assertMissing('@connect-channel-dialog')->assertNoJavaScriptErrors();
-});
-
-test('instagram details connect opens the method step in the dialog', function () {
-    $this->actingAs(connectDialogAdmin());
-
-    $page = visit(route('app.workspace.channels'));
-    waitFor($page, '@channels-empty-connect');
-    $page->click('@channels-empty-connect');
-    waitFor($page, '@connect-channel-instagram');
-    $page->hover('@connect-channel-instagram');
-    $page->click('@connect-info-instagram');
-    waitFor($page, '@connect-details-connect');
-    $page->click('@connect-details-connect');
-    waitFor($page, '@instagram-connect-standalone');
-
-    $page->assertVisible('@instagram-connect-standalone')
-        ->assertMissing('@connect-details')
-        ->assertNoJavaScriptErrors();
-});
-
-function openInstagramConnectStep(): mixed
+/**
+ * tantra: the "Connect a channel" logo grid, opened from the sidebar's add
+ * button on a page without an inline grid (Adi 2026-11-14).
+ */
+function openConnectDialogGrid(): mixed
 {
-    $page = visit(route('app.workspace.channels'));
-    waitFor($page, '@channels-empty-connect');
-    $page->click('@channels-empty-connect');
-    waitFor($page, '@connect-channel-instagram');
-    $page->click('@connect-channel-instagram');
-    waitFor($page, '@instagram-connect-professional');
+    $page = visit(route('app.posts.index'));
+    waitFor($page, '@sidebar-channels-connect');
+    $page->click('@sidebar-channels-connect');
+    waitFor($page, '@connect-grid');
 
     return $page;
 }
 
-test('the instagram step offers the instagram login and facebook cards side by side, links its help and asks before closing', function () {
+test('the add button opens the logo grid', function () {
     $this->actingAs(connectDialogAdmin());
 
-    $page = openInstagramConnectStep();
+    $page = openConnectDialogGrid();
 
-    $page->assertMissing('@connect-channel-logos')
-        ->assertSee(trans('accounts.instagram_connect.title'))
-        ->assertSeeIn('@instagram-connect-professional', trans('accounts.instagram_connect.professional_types'))
-        ->assertSeeIn('@instagram-connect-professional', trans('accounts.instagram_connect.features.automatic.description'))
-        ->assertSeeIn('@instagram-connect-professional', trans('accounts.instagram_connect.features.metrics.description'))
-        ->assertSeeIn('@instagram-connect-standalone', trans('accounts.instagram_connect.connect'))
-        ->assertSeeIn('@instagram-connect-facebook-card', trans('accounts.instagram_connect.facebook_types'))
-        ->assertSeeIn('@instagram-connect-facebook-feature-music', trans('accounts.instagram_connect.features.music.title'))
-        ->assertSeeIn('@instagram-connect-facebook-card', trans('accounts.instagram_facebook_requirements.heading'))
-        ->assertSeeIn('@instagram-connect-facebook', trans('accounts.instagram_facebook_requirements.connect'))
+    $page->assertSeeIn('@connect-channel-dialog', 'Connect a channel')
+        ->assertVisible('@connect-channel-linkedin')
+        ->assertVisible('@connect-channel-instagram')
+        ->assertVisible('@connect-channel-bluesky')
         ->assertNoJavaScriptErrors();
 
-    $layout = $page->script(<<<'JS'
-        (() => {
-            const instagram = document.querySelector('[data-testid="instagram-connect-professional"]').getBoundingClientRect();
-            const facebook = document.querySelector('[data-testid="instagram-connect-facebook-card"]').getBoundingClientRect();
-
-            const instagramButton = document.querySelector('[data-testid="instagram-connect-standalone"]').getBoundingClientRect();
-            const facebookButton = document.querySelector('[data-testid="instagram-connect-facebook"]').getBoundingClientRect();
-
-            return {
-                sideBySide: facebook.left >= instagram.right && Math.abs(facebook.top - instagram.top) < 1,
-                sameHeight: Math.abs(facebook.height - instagram.height) < 1,
-                buttonsAligned: Math.abs(facebookButton.top - instagramButton.top) < 1,
-            };
-        })();
-    JS);
-
-    expect($layout)->toBe(['sideBySide' => true, 'sameHeight' => true, 'buttonsAligned' => true]);
-
-    $page->assertSeeIn('@instagram-connect-standalone-requirements', trans('accounts.instagram_connect.convert_hint'))
-        ->assertVisible('@instagram-connect-facebook-requirements')
-        ->click('@instagram-connect-facebook-requirements-toggle');
-    waitForGone($page, '@instagram-connect-facebook-requirements');
-    $page->assertMissing('@instagram-connect-facebook-requirements')
-        ->assertVisible('@instagram-connect-standalone-requirements');
-
-    $dialogText = $page->script('document.querySelector(\'[data-testid="connect-channel-dialog"]\').textContent');
-    $instagramCardText = $page->script('document.querySelector(\'[data-testid="instagram-connect-professional"]\').textContent');
-
-    expect($dialogText)->not->toContain('Notification')
-        ->and($instagramCardText)->not->toContain('Personal');
-
-    $page->click('@instagram-connect-help');
-    waitFor($page, '@instagram-connect-help-convert');
-
-    $links = $page->script(<<<'JS'
-        (() => ['account-type', 'convert'].map((key) => {
-            const link = document.querySelector(`[data-testid="instagram-connect-help-${key}"]`);
-
-            return { host: new URL(link.href).host, target: link.target, text: link.textContent.trim() };
-        }))();
-    JS);
-
-    expect($links)->toBe([
-        ['host' => 'help.instagram.com', 'target' => '_blank', 'text' => trans('accounts.instagram_connect.help.account_type')],
-        ['host' => 'help.instagram.com', 'target' => '_blank', 'text' => trans('accounts.instagram_connect.help.convert')],
-    ]);
-    $page->keys('@instagram-connect-help', 'Escape');
-    waitForGone($page, '@instagram-connect-help-convert');
-
-    $page->click('@dialog-close');
-    waitFor($page, '@connect-channel-exit-confirm');
-
-    $page->assertSeeIn('@connect-channel-exit-confirm', trans('channels.dialog.exit_confirm.title', ['network' => 'Instagram']));
-
-    $page->click('@connect-channel-exit-continue');
-    waitFor($page, '@instagram-connect-professional');
-
-    $page->assertMissing('@connect-channel-exit-confirm')
-        ->assertVisible('@instagram-connect-professional')
-        ->assertNoJavaScriptErrors();
-
-    $page->click('@dialog-close');
-    waitFor($page, '@connect-channel-exit-leave');
-    $page->click('@connect-channel-exit-leave');
-
-    $page->assertMissing('@connect-channel-exit-confirm')
-        ->assertMissing('@connect-channel-dialog')
-        ->assertNoJavaScriptErrors();
+    // A tile is only a logo and a name: no developer words anywhere.
+    $text = $page->script('document.querySelector(\'[data-testid="connect-channel-dialog"]\').innerText');
+    expect($text)->not->toContain('developer')->not->toContain('Developer')->not->toContain('keys')->not->toContain('TryPost');
 });
 
-test('on a phone the instagram step stacks the facebook card under the instagram login card', function () {
+test('an oauth tile opens its pop-up, goes back to the grid, and continues to the consent screen', function () {
     $this->actingAs(connectDialogAdmin());
+    stubConnectDialogProviders();
 
-    $page = visit(route('app.workspace.channels'))->resize(390, 844);
-    waitFor($page, '@channels-empty-connect');
-    $page->click('@channels-empty-connect');
-    waitFor($page, '@connect-channel-instagram');
+    $page = openConnectDialogGrid();
+    $page->click('@connect-channel-linkedin');
+    waitFor($page, '@connect-panel-continue');
+
+    $page->assertSeeIn('@connect-panel-title', 'Connect LinkedIn')
+        ->assertSeeIn('@connect-panel-continue', 'Continue with LinkedIn')
+        ->assertMissing('@connect-grid');
+
+    $page->click('@connect-channel-back');
+    waitFor($page, '@connect-grid');
+    $page->click('@connect-channel-linkedin');
+    waitFor($page, '@connect-panel-continue');
+    $page->click('@connect-panel-continue');
+
+    expect(connectDialogReachedProvider($page))->toBe('linkedin-openid');
+    $page->assertMissing('@connect-channel-dialog')->assertNoJavaScriptErrors();
+});
+
+test('instagram asks in plain words which way the account signs in', function () {
+    $this->actingAs(connectDialogAdmin());
+    stubConnectDialogProviders();
+
+    $page = openConnectDialogGrid();
     $page->click('@connect-channel-instagram');
-    waitFor($page, '@instagram-connect-facebook-card');
+    waitFor($page, '@connect-panel-choices');
 
-    $stacked = $page->script(<<<'JS'
-        (() => {
-            const instagram = document.querySelector('[data-testid="instagram-connect-professional"]').getBoundingClientRect();
-            const facebook = document.querySelector('[data-testid="instagram-connect-facebook-card"]').getBoundingClientRect();
+    $page->assertVisible('@connect-choice-instagram')
+        ->assertVisible('@connect-choice-instagram-facebook')
+        ->assertSeeIn('@connect-panel-continue', 'Continue with Instagram');
 
-            return facebook.top >= instagram.bottom && document.documentElement.scrollWidth <= window.innerWidth;
-        })();
-    JS);
+    $page->click('@connect-choice-instagram-facebook');
+    waitForState($page, '@connect-panel-continue', "element.textContent.includes('Continue with Facebook')");
+    $page->click('@connect-panel-continue');
 
-    expect($stacked)->toBeTrue();
+    expect(connectDialogReachedProvider($page))->toBe('facebook');
     $page->assertNoJavaScriptErrors();
 });
 
-test('connect to instagram leaves for the instagram login', function () {
+test('bluesky asks only for the handle and an app password, with a link to create one', function () {
     $this->actingAs(connectDialogAdmin());
-    stubConnectDialogProviders();
 
-    $page = openInstagramConnectStep();
-    $page->click('@instagram-connect-standalone');
+    $page = openConnectDialogGrid();
+    $page->click('@connect-channel-bluesky');
+    waitFor($page, '@connect-panel-bluesky');
 
-    expect(connectDialogReachedProvider($page))->toBe('instagram');
-    $page->assertMissing('@connect-channel-dialog')->assertNoJavaScriptErrors();
-});
+    $page->assertVisible('@connect-bluesky-handle')
+        ->assertVisible('@connect-bluesky-password')
+        ->assertMissing('@connect-panel-continue');
 
-test('connect through facebook on the instagram step leaves for the facebook login', function () {
-    $this->actingAs(connectDialogAdmin());
-    stubConnectDialogProviders();
-
-    $page = openInstagramConnectStep();
-
-    $learnHow = $page->script(<<<'JS'
+    $link = $page->script(<<<'JS'
         (() => {
-            const link = document.querySelector('[data-testid="instagram-facebook-requirements-learn-how"]');
+            const link = document.querySelector('[data-testid="connect-bluesky-app-password-link"]');
 
-            return { host: new URL(link.href).host, target: link.target };
+            return { href: link.href, target: link.target, text: link.textContent.trim() };
         })();
     JS);
 
-    expect($learnHow)->toBe(['host' => 'www.facebook.com', 'target' => '_blank']);
+    expect($link)->toBe(['href' => 'https://bsky.app/settings/app-passwords', 'target' => '_blank', 'text' => 'Create an app password']);
+    $page->assertNoJavaScriptErrors();
+});
 
-    $page->click('@instagram-connect-facebook');
+test('a network that cannot connect yet is muted and not a button', function () {
+    config()->set('trypost.platforms.pinterest.enabled', false);
+    $this->actingAs(connectDialogAdmin());
 
-    expect(connectDialogReachedProvider($page))->toBe('facebook');
-    $page->assertMissing('@connect-channel-dialog')->assertNoJavaScriptErrors();
+    $page = openConnectDialogGrid();
+
+    $tile = $page->script(<<<'JS'
+        (() => {
+            const tile = document.querySelector('[data-testid="connect-channel-pinterest"]');
+
+            return { tag: tile.tagName, ready: tile.dataset.ready, text: tile.innerText.replace(/\s+/g, ' ').trim() };
+        })();
+    JS);
+
+    expect($tile['tag'])->toBe('DIV')
+        ->and($tile['ready'])->toBe('false')
+        ->and($tile['text'])->toStartWith('Pinterest');
+    $page->assertNoJavaScriptErrors();
 });
 
 function openTelegramConnectStep(): mixed
 {
-    $page = visit(route('app.workspace.channels'));
-    waitFor($page, '@channels-empty-connect');
+    $page = openConnectDialogGrid();
     $page->script('window.__copied = []; navigator.clipboard.writeText = async (text) => { window.__copied.push(text); }; true;');
-    $page->click('@channels-empty-connect');
-    waitFor($page, '@connect-channel-telegram');
     $page->click('@connect-channel-telegram');
     waitFor($page, '@telegram-connect-command');
 
@@ -448,13 +268,10 @@ test('the telegram step shows its instructions, copies and regenerates the comma
     $page->assertMissing('@connect-channel-dialog')->assertNoJavaScriptErrors();
 });
 
-test('closing the network list does not ask for confirmation', function () {
+test('closing the logo grid does not ask for confirmation', function () {
     $this->actingAs(connectDialogAdmin());
 
-    $page = visit(route('app.workspace.channels'));
-    waitFor($page, '@channels-empty-connect');
-    $page->click('@channels-empty-connect');
-    waitFor($page, '@channel-platform-grid');
+    $page = openConnectDialogGrid();
     $page->click('@dialog-close');
 
     $page->assertMissing('@connect-channel-dialog')

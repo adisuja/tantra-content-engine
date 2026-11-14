@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// tantra: the Channels section of the Connectors tab
-// (app/Tantra/Http/Controllers/Web/ChannelAppController.php). One card per
+// tantra: the developer apps on the owner's Settings > Admin > Developer apps
+// page (app/Tantra/Http/Controllers/Web/ChannelAppController.php). One card per
 // developer app; saving its keys makes the networks it unlocks connectable.
 import { router } from '@inertiajs/vue3';
 import { IconCircleCheck, IconCopy, IconExternalLink } from '@tabler/icons-vue';
@@ -140,8 +140,8 @@ const call = async (
         if (data.apps) apps.value = data.apps;
         toast.success(data.message ?? 'Saved.');
         open.value = false;
-        // The connect dialog reads readiness from the shared page props.
-        router.reload({ only: ['connectablePlatforms'] });
+        // The logo grid reads readiness from the shared page props.
+        router.reload({ only: ['connectablePlatforms', 'tantraChannels'] });
     } catch {
         error.value = 'The engine could not be reached.';
     }
@@ -166,7 +166,7 @@ const copy = async (text: string): Promise<void> => {
     toast.success('Copied');
 };
 
-// The connect dialog links here with ?channel=<app>: open that card.
+// A tile's "Set up" link lands here with ?channel=<app>: open that card.
 onMounted(() => {
     const wanted = new URLSearchParams(window.location.search).get('channel');
     const app = apps.value.find((a) => a.key === wanted);
@@ -184,12 +184,13 @@ onMounted(() => {
         data-testid="connectors-group-channels"
     >
         <div>
-            <h2 class="text-base font-emphasis text-foreground">Channels</h2>
+            <h2 class="text-base font-emphasis text-foreground">
+                Social networks
+            </h2>
             <p class="text-sm text-muted-foreground">
-                The developer app keys behind each network.
-                {{ readyCount }} of {{ totalCount }} networks connect today; add
-                a network's keys and it connects at once in Add channel, for
-                every workspace.
+                {{ readyCount }} of {{ totalCount }} networks connect today. Add
+                a network's keys and its logo turns on for everyone, in every
+                workspace.
             </p>
         </div>
 

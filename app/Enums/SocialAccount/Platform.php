@@ -591,11 +591,9 @@ enum Platform: string
                     $option['connect_methods'] = self::instagramConnectMethods();
                 }
 
-                // tantra: readiness and, when not ready, what is missing.
+                // tantra: readiness only. What a network is missing is
+                // developer detail, kept to the owner's Developer apps page.
                 $option['ready'] = $platform->isReadyToConnect();
-                if (! $option['ready']) {
-                    $option['setup'] = ChannelApps::setupFor($platform->value);
-                }
 
                 return $option;
             })
