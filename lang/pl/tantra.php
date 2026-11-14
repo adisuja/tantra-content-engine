@@ -400,6 +400,7 @@ return [
         'your_rules' => 'Your rules for this network',
         'rules_placeholder' => 'For example: always end with a question; never use more than two emoji.',
         'save_rules' => 'Save my rules',
+    ],
     'ideas' => [
         'send_to_review' => 'Send to review',
         'sending' => 'Sending',
