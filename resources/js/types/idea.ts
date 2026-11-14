@@ -1,8 +1,15 @@
 import type { InjectionKey } from 'vue';
 
+// tantra: a Tantra idea's network, preview and state on its card (PRD 25.8).
+import type { TantraIdeaCard } from '@/components/tantra/ideas/types';
 import type { MediaItem } from '@/types/media';
 
-export type CreateTab = 'ideas' | 'templates' | 'feeds';
+export type CreateTab =
+    | 'ideas'
+    | 'templates'
+    | 'content-templates'
+    | 'repurposing'
+    | 'feeds'; // tantra: content templates, repurposing
 
 export interface IdeaStage {
     id: string;
@@ -26,6 +33,7 @@ export interface IdeaCard {
     excerpt: string;
     cover: MediaItem | null;
     label_ids: string[];
+    tantra?: TantraIdeaCard; // tantra:
 }
 
 export type IdeasView = 'board' | 'gallery';

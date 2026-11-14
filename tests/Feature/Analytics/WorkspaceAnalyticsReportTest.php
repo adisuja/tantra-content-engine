@@ -82,7 +82,7 @@ test('workspace report keeps accounts separate and aggregates only latest normal
     $instagramA = analyticsReportAccount($workspace, Platform::Instagram);
     $instagramB = analyticsReportAccount($workspace, Platform::Instagram);
     $x = analyticsReportAccount($workspace, Platform::X);
-    $linkedIn = analyticsReportAccount($workspace, Platform::LinkedIn);
+    $linkedIn = analyticsReportAccount($workspace, Platform::LinkedInPage); // tantra: LinkedIn is measured (PRD 25.7)
     $foreign = analyticsReportAccount(Workspace::factory()->create(), Platform::Instagram);
 
     foreach ([[$instagramA, 95], [$instagramB, 19], [$x, 45]] as [$account, $followers]) {
@@ -399,7 +399,7 @@ test('publication detail remains scoped to the post workspace and excludes unsup
 
     expect(app(ReadPublicationAnalytics::class)->latestFor($post)['available'])->toBeFalse();
 
-    $post->update(['platform' => Platform::LinkedIn]);
+    $post->update(['platform' => Platform::LinkedInPage]); // tantra:
     expect(app(ReadPublicationAnalytics::class)->latestFor($post)['reason'])->toBe(MetricsUnavailableReason::PlatformNotSupported->value);
 });
 

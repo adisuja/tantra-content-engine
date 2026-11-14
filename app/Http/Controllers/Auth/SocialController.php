@@ -172,6 +172,9 @@ class SocialController extends Controller
             'created' => $created !== null,
         ]);
 
+        // tantra: every channel this connection created, so each gets its posting times step (PRD 25.6).
+        Inertia::flash('connectedChannels', $reconnect === null ? $accounts->filter(fn (SocialAccount $account): bool => $account->wasRecentlyCreated)->pluck('id')->values()->all() : []);
+
         return redirect()->route('app.channels.publish', $channel);
     }
 

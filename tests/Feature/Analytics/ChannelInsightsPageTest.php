@@ -306,7 +306,7 @@ test('an unknown or injected sort is a validation error', function (string $sort
 })->with(['bogus', 'views;drop']);
 
 test('an unsupported channel renders without a report or publications', function () {
-    $linkedin = SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id]);
+    $linkedin = SocialAccount::factory()->linkedinPage()->create(['workspace_id' => $this->workspace->id]); // tantra: LinkedIn is measured (PRD 25.7)
 
     $this->actingAs($this->user)
         ->get(route('app.channels.insights', $linkedin))

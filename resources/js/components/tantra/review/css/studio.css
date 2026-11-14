@@ -1,9 +1,11 @@
 /* tantra: the studio phone styles in cascade order. Browser defaults first,
    then the studio's own order from its index.html: core, x, linkedin, studio,
-   and last the device size (iPhone 16 Pro Max). */
+   our Facebook, Instagram, YouTube, Threads and TikTok screens, and last the
+   device size (iPhone 16 Pro Max). */
 @import './studio-reset.css';
 @import './studio-core.css';
 @import './studio-x.css';
 @import './studio-linkedin.css';
 @import './studio-review.css';
+@import './studio-networks.css';
 @import './studio-device.css';

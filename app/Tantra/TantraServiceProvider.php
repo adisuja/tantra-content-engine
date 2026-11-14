@@ -8,16 +8,21 @@ use App\Enums\Post\Status as PostStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Events\PostStatusChanged;
 use App\Http\Resources\App\HandleInertiaRequests\SidebarChannelResource;
+use App\Models\Idea;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Tantra\Agent\Admin;
+use App\Tantra\Agent\Appliers;
 use App\Tantra\Ai\AiAlerts;
 use App\Tantra\Ai\CliTextGateway;
 use App\Tantra\Boost\Boost;
+use App\Tantra\Boost\MemberProfile;
 use App\Tantra\Boost\StartBoostRun;
 use App\Tantra\Channels\ChannelApps;
 use App\Tantra\Composer\MakeComposerThread;
+use App\Tantra\Console\AgentJobsCommand;
 use App\Tantra\Console\AiConnectorCommand;
 use App\Tantra\Console\CheckConnectorsCommand;
 use App\Tantra\Console\ClerkUnlinkCommand;
@@ -31,6 +36,7 @@ use App\Tantra\Console\LinkedInSyncCommand;
 use App\Tantra\Console\ManualTasksCommand;
 use App\Tantra\Console\MapProfileCommand;
 use App\Tantra\Console\ReconnectRemindersCommand;
+use App\Tantra\Console\RepurposeCadenceCommand;
 use App\Tantra\Console\RoadmapKeyCommand;
 use App\Tantra\Console\SyncChannelsCommand;
 use App\Tantra\Console\TeamAccountCommand;
@@ -38,20 +44,31 @@ use App\Tantra\Console\TeamAccountsCommand;
 use App\Tantra\Console\ZernioConnectCommand;
 use App\Tantra\Http\Controllers\Web\ReviewPageController;
 use App\Tantra\Http\Middleware\EnsureOwnerToken;
+use App\Tantra\Http\Middleware\EnsureRunnerToken;
+use App\Tantra\Http\Middleware\EnsureTantraAdmin;
 use App\Tantra\Http\Middleware\LandOnReview;
+use App\Tantra\Ideas\IdeaMeta;
 use App\Tantra\Manual\ManualTask;
 use App\Tantra\Ops\LeanHorizon;
+use App\Tantra\Rebrand\Rebrand;
+use App\Tantra\Rebrand\RebrandApplier;
+use App\Tantra\Repurpose\RepostApplier;
 use App\Tantra\Review\Actions\DraftMaker;
 use App\Tantra\Review\Listeners\RecordComposerEdit;
 use App\Tantra\Review\Models\Batch;
+use App\Tantra\Review\Models\ReviewItem;
 use App\Tantra\Review\Models\WorkspaceSettings;
 use App\Tantra\Review\OwnerApproval;
 use App\Tantra\Review\ReviewChips;
 use App\Tantra\Review\ReviewGate;
 use App\Tantra\Roadmap\Roadmap;
+use App\Tantra\Templates\ContentTemplate;
+use App\Tantra\Templates\TemplateFromPostApplier;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Http\Kernel as HttpKernel;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Foundation\Http\Kernel as FoundationHttpKernel;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Auth;
@@ -95,6 +112,8 @@ class TantraServiceProvider extends ServiceProvider
         $this->loadViewsFrom(__DIR__.'/views', 'tantra');
 
         $this->app->make(Router::class)->aliasMiddleware('tantra.owner-token', EnsureOwnerToken::class);
+        $this->app->make(Router::class)->aliasMiddleware('tantra.admin', EnsureTantraAdmin::class);
+        $this->app->make(Router::class)->aliasMiddleware('tantra.runner', EnsureRunnerToken::class);
         // People land on Review, not the calendar, in Tantra workspaces (PRD 10.2).
         $kernel = $this->app->make(HttpKernel::class);
         if ($kernel instanceof FoundationHttpKernel) {
@@ -127,6 +146,9 @@ class TantraServiceProvider extends ServiceProvider
         // A teammate connecting LinkedIn turns their waiting posts into drafts.
         SocialAccount::created(fn (SocialAccount $channel) => DraftMaker::forWorkspace($channel));
 
+        // Tantra ideas (PRD 25.8): an upstream idea's network, preview and review link.
+        Idea::resolveRelationUsing('tantraMeta', fn (Idea $idea): HasOne => $idea->hasOne(IdeaMeta::class, 'idea_id'));
+
         // An edit in the composer is a new version of the post under review.
         Post::updated(fn (Post $post) => RecordComposerEdit::handle($post));
 
@@ -157,6 +179,23 @@ class TantraServiceProvider extends ServiceProvider
             ->values()->all());
 
         // The sidebar's Review badge: posts waiting for this user's approval.
+        // Things an agent job can be about (the app enforces a morph map).
+        Relation::morphMap([
+            'tantraContentTemplate' => ContentTemplate::class,
+            'tantraReviewItem' => ReviewItem::class,
+            'tantraMemberProfile' => MemberProfile::class,
+            'tantraRebrand' => Rebrand::class,
+        ]);
+
+        // What the Engine does with each kind of agent job result (PRD 25.5).
+        Appliers::register('template_from_post', TemplateFromPostApplier::class);
+        Appliers::register('repost', RepostApplier::class);
+        Appliers::register('repurpose', RepostApplier::class);
+        Appliers::register('rebrand', RebrandApplier::class);
+
+        // Studio ops in the sidebar for admins only (PRD 25.4).
+        Inertia::share('tantraAdmin', fn (): bool => Admin::is(Auth::user()));
+
         Inertia::share('tantraReview', fn (): ?array => Auth::user() === null ? null : [
             'waiting' => ReviewGate::waitingCount(Auth::user()),
             'tasks_open' => ManualTask::query()->where('owner_user_id', Auth::id())->whereIn('status', ['waiting', 'due'])->count(),
@@ -173,6 +212,10 @@ class TantraServiceProvider extends ServiceProvider
             $schedule->command('tantra:heartbeat')->everyMinute();
             $schedule->command('tantra:heartbeat --media')->everyFifteenMinutes()->withoutOverlapping();
             // Names, headlines and photos from LinkedIn: new accounts every 15 minutes, a refresh daily.
+            // Agent jobs: re-fire unclaimed ones, requeue quiet ones, purge old inputs (PRD 25.5).
+            $schedule->command('tantra:agent-jobs')->everyMinute()->withoutOverlapping();
+            // Mondays 04:21 UTC: each published post moves to its next network (PRD 25.10).
+            $schedule->command('tantra:repurpose-cadence')->weeklyOn(1, '04:21')->withoutOverlapping();
             $schedule->command('tantra:linkedin-sync')->everyFifteenMinutes()->withoutOverlapping();
             // Every account connected in Tantra becomes a channel (PRD engine channels, 2026-11-13).
             $schedule->command('tantra:sync-channels')->everyFifteenMinutes()->withoutOverlapping();
@@ -182,7 +225,7 @@ class TantraServiceProvider extends ServiceProvider
         });
 
         if ($this->app->runningInConsole()) {
-            $this->commands([AiConnectorCommand::class, CheckConnectorsCommand::class, CollectMetricsCommand::class, CreateOwnerCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class, TeamAccountsCommand::class, TeamAccountCommand::class, ClerkUnlinkCommand::class, LinkedInSyncCommand::class, GiveawayRepliesCommand::class, HealthCommand::class, HeartbeatCommand::class, ReconnectRemindersCommand::class, SyncChannelsCommand::class, RoadmapKeyCommand::class]);
+            $this->commands([AiConnectorCommand::class, CheckConnectorsCommand::class, CollectMetricsCommand::class, CreateOwnerCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class, TeamAccountsCommand::class, TeamAccountCommand::class, ClerkUnlinkCommand::class, LinkedInSyncCommand::class, AgentJobsCommand::class, RepurposeCadenceCommand::class, GiveawayRepliesCommand::class, HealthCommand::class, HeartbeatCommand::class, ReconnectRemindersCommand::class, SyncChannelsCommand::class, RoadmapKeyCommand::class]);
         }
 
         if ($this->app->environment('production') && config('tantra.lean_workers.enabled')) {

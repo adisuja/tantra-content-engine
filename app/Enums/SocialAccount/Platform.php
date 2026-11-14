@@ -53,8 +53,10 @@ enum Platform: string
     public function isIncludedInAnalytics(): bool
     {
         return match ($this) {
-            self::LinkedIn, self::LinkedInPage, self::Telegram,
-            self::Discord, self::GoogleBusiness, self::ZernioLinkedInPage, self::UnipileLinkedIn => false,
+            // tantra: LinkedIn, the Zernio page and Unipile LinkedIn are read by the
+            // collectors in app/Tantra/Analytics/Collectors (PRD 25.7).
+            self::LinkedInPage, self::Telegram,
+            self::Discord, self::GoogleBusiness => false,
             default => true,
         };
     }

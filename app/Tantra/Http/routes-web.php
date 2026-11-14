@@ -4,10 +4,16 @@ declare(strict_types=1);
 
 use App\Http\Middleware\App\EnsureAccountReady;
 use App\Http\Middleware\App\EnsureHasWorkspace;
+use App\Tantra\Http\Controllers\OpsController;
+use App\Tantra\Http\Controllers\RebrandController;
+use App\Tantra\Http\Controllers\RepostController;
+use App\Tantra\Http\Controllers\RepurposingController;
+use App\Tantra\Http\Controllers\TemplatesController;
 use App\Tantra\Http\Controllers\Web\ChannelAppController;
 use App\Tantra\Http\Controllers\Web\ClerkSessionController;
 use App\Tantra\Http\Controllers\Web\ConnectorController;
 use App\Tantra\Http\Controllers\Web\FormatsController;
+use App\Tantra\Http\Controllers\Web\IdeaReviewController;
 use App\Tantra\Http\Controllers\Web\InsightsController;
 use App\Tantra\Http\Controllers\Web\JoinController;
 use App\Tantra\Http\Controllers\Web\ManualTaskController;
@@ -52,7 +58,7 @@ Route::middleware(['web', 'auth'])
         Route::post('/{task}/skip', [ManualTaskController::class, 'skip'])->whereUuid('task')->name('skip');
     });
 
-// tantra: the Team page: consent, expertise, Unipile matches (PRD 10.5, 10.9).
+// tantra: the Team page: consent, expertise, Unipile matches, posting times (PRD 10.5, 10.9, 25.6).
 Route::middleware(['web', 'auth'])
     ->prefix('tantra/team')
     ->name('tantra.team.')
@@ -64,6 +70,7 @@ Route::middleware(['web', 'auth'])
         Route::post('/expertise', [TeamController::class, 'expertise'])->name('expertise');
         Route::post('/match', [TeamController::class, 'match'])->name('match');
         Route::post('/{member}/clerk-unlink', [TeamController::class, 'clerkUnlink'])->whereUuid('member')->name('clerk-unlink');
+        Route::put('/channels/{channel}/schedule', [TeamController::class, 'schedule'])->whereUuid('channel')->name('channels.schedule');
     });
 
 // tantra: the team dashboard (PRD 10.6).
@@ -129,3 +136,62 @@ Route::middleware(['web', 'auth', EnsureAccountReady::class, EnsureHasWorkspace:
         Route::get('youtube/{account}/playlists', [FormatsController::class, 'youtubePlaylists'])->whereUuid('account')->name('youtube.playlists');
         Route::get('pinterest/{account}/boards/{board}/sections', [FormatsController::class, 'pinterestSections'])->whereUuid('account')->name('pinterest.sections');
     });
+
+// tantra: Studio ops (PRD 25.4): agent jobs, Claude accounts, runners. TANTRA_ADMIN_EMAILS only; 404 for anyone else.
+Route::middleware(['web', 'auth', 'tantra.admin'])
+    ->prefix('tantra/ops')
+    ->name('tantra.ops.')
+    ->group(function (): void {
+        Route::get('/', [OpsController::class, 'page'])->middleware([EnsureAccountReady::class, EnsureHasWorkspace::class])->name('index');
+        Route::get('/jobs', [OpsController::class, 'jobs'])->name('jobs.index');
+        Route::post('/jobs', [OpsController::class, 'enqueue'])->name('jobs.store');
+        Route::get('/jobs/{job}', [OpsController::class, 'job'])->whereUuid('job')->name('jobs.show');
+        Route::post('/jobs/{job}/run', [OpsController::class, 'run'])->whereUuid('job')->name('jobs.run');
+        Route::post('/jobs/{job}/retry', [OpsController::class, 'retry'])->whereUuid('job')->name('jobs.retry');
+        Route::post('/jobs/{job}/cancel', [OpsController::class, 'cancel'])->whereUuid('job')->name('jobs.cancel');
+        Route::post('/accounts', [OpsController::class, 'storeAccount'])->name('accounts.store');
+        Route::patch('/accounts/{account}', [OpsController::class, 'updateAccount'])->whereUuid('account')->name('accounts.update');
+        Route::delete('/accounts/{account}', [OpsController::class, 'destroyAccount'])->whereUuid('account')->name('accounts.destroy');
+        Route::post('/accounts/{account}/test', [OpsController::class, 'testAccount'])->whereUuid('account')->name('accounts.test');
+        Route::post('/runners', [OpsController::class, 'storeRunner'])->name('runners.store');
+        Route::delete('/runners/{runner}', [OpsController::class, 'revokeRunner'])->whereUuid('runner')->name('runners.revoke');
+    });
+
+// tantra: content templates under Create (PRD 25.9).
+Route::middleware(['web', 'auth'])
+    ->prefix('tantra/templates')
+    ->name('tantra.templates.')
+    ->group(function (): void {
+        Route::get('/', [TemplatesController::class, 'page'])->middleware([EnsureAccountReady::class, EnsureHasWorkspace::class])->name('index');
+        Route::post('/intake', [TemplatesController::class, 'intake'])->name('intake');
+        Route::get('/{template}', [TemplatesController::class, 'show'])->whereUuid('template')->name('show');
+    });
+
+// tantra: the Repurposing tab under Create (PRD 25.10).
+Route::middleware(['web', 'auth'])
+    ->prefix('tantra/repurposing')
+    ->name('tantra.repurposing.')
+    ->group(function (): void {
+        Route::get('/', [RepurposingController::class, 'page'])->middleware([EnsureAccountReady::class, EnsureHasWorkspace::class])->name('index');
+        Route::put('/cadence', [RepurposingController::class, 'cadence'])->name('cadence');
+        Route::put('/rules/{network}', [RepurposingController::class, 'rules'])->where('network', '[a-z]{1,16}')->name('rules');
+    });
+
+// tantra: Repost a scheduled or published post to more channels (PRD 25.10).
+Route::middleware(['web', 'auth', 'throttle:30,1'])->group(function (): void {
+    Route::get('tantra/repost/targets', [RepostController::class, 'targets'])->name('tantra.repost.targets');
+    Route::post('tantra/repost', [RepostController::class, 'store'])->name('tantra.repost.store');
+});
+// tantra: Send to review from a Tantra idea card on the Ideas board (PRD 25.8).
+Route::middleware(['web', 'auth', EnsureAccountReady::class, EnsureHasWorkspace::class, 'throttle:30,1'])
+    ->post('tantra/ideas/{idea}/to-review', IdeaReviewController::class)
+    ->whereUuid('idea')
+    ->name('tantra.ideas.to-review');
+
+// tantra: profile rebrands on the Team page (PRD 25.11). Only the person applies their own.
+Route::middleware(['web', 'auth', 'throttle:30,1'])->group(function (): void {
+    Route::get('tantra/rebrands', [RebrandController::class, 'index'])->name('tantra.rebrands.index');
+    Route::post('tantra/team/{member}/rebrand', [RebrandController::class, 'start'])->whereUuid('member')->name('tantra.rebrands.start');
+    Route::post('tantra/rebrands/{rebrand}/headline', [RebrandController::class, 'headline'])->whereUuid('rebrand')->name('tantra.rebrands.headline');
+    Route::post('tantra/rebrands/{rebrand}/dismiss', [RebrandController::class, 'dismiss'])->whereUuid('rebrand')->name('tantra.rebrands.dismiss');
+});

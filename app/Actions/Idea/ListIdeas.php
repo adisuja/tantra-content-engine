@@ -95,7 +95,8 @@ class ListIdeas
     private static function filtered(Workspace $workspace, array $filters): Builder
     {
         return self::applyLabelFilter(
-            Idea::query()->where('workspace_id', $workspace->id)->with('labels:id'),
+            // tantra: Tantra ideas carry their meta to the card (PRD 25.8).
+            Idea::query()->where('workspace_id', $workspace->id)->with(['labels:id', 'tantraMeta']),
             $filters,
         );
     }
