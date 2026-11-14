@@ -36,6 +36,7 @@ use App\Tantra\Console\LinkedInSyncCommand;
 use App\Tantra\Console\ManualTasksCommand;
 use App\Tantra\Console\MapProfileCommand;
 use App\Tantra\Console\ReconnectRemindersCommand;
+use App\Tantra\Console\RepurposeCadenceCommand;
 use App\Tantra\Console\SyncChannelsCommand;
 use App\Tantra\Console\TeamAccountCommand;
 use App\Tantra\Console\TeamAccountsCommand;
@@ -48,6 +49,9 @@ use App\Tantra\Http\Middleware\LandOnReview;
 use App\Tantra\Ideas\IdeaMeta;
 use App\Tantra\Manual\ManualTask;
 use App\Tantra\Ops\LeanHorizon;
+use App\Tantra\Rebrand\Rebrand;
+use App\Tantra\Rebrand\RebrandApplier;
+use App\Tantra\Repurpose\RepostApplier;
 use App\Tantra\Review\Actions\DraftMaker;
 use App\Tantra\Review\Listeners\RecordComposerEdit;
 use App\Tantra\Review\Models\Batch;
@@ -173,10 +177,14 @@ class TantraServiceProvider extends ServiceProvider
             'tantraContentTemplate' => ContentTemplate::class,
             'tantraReviewItem' => ReviewItem::class,
             'tantraMemberProfile' => MemberProfile::class,
+            'tantraRebrand' => Rebrand::class,
         ]);
 
         // What the Engine does with each kind of agent job result (PRD 25.5).
         Appliers::register('template_from_post', TemplateFromPostApplier::class);
+        Appliers::register('repost', RepostApplier::class);
+        Appliers::register('repurpose', RepostApplier::class);
+        Appliers::register('rebrand', RebrandApplier::class);
 
         // Studio ops in the sidebar for admins only (PRD 25.4).
         Inertia::share('tantraAdmin', fn (): bool => Admin::is(Auth::user()));
@@ -199,6 +207,8 @@ class TantraServiceProvider extends ServiceProvider
             // Names, headlines and photos from LinkedIn: new accounts every 15 minutes, a refresh daily.
             // Agent jobs: re-fire unclaimed ones, requeue quiet ones, purge old inputs (PRD 25.5).
             $schedule->command('tantra:agent-jobs')->everyMinute()->withoutOverlapping();
+            // Mondays 04:21 UTC: each published post moves to its next network (PRD 25.10).
+            $schedule->command('tantra:repurpose-cadence')->weeklyOn(1, '04:21')->withoutOverlapping();
             $schedule->command('tantra:linkedin-sync')->everyFifteenMinutes()->withoutOverlapping();
             // Every account connected in Tantra becomes a channel (PRD engine channels, 2026-11-13).
             $schedule->command('tantra:sync-channels')->everyFifteenMinutes()->withoutOverlapping();
@@ -208,7 +218,7 @@ class TantraServiceProvider extends ServiceProvider
         });
 
         if ($this->app->runningInConsole()) {
-            $this->commands([AiConnectorCommand::class, CheckConnectorsCommand::class, CollectMetricsCommand::class, CreateOwnerCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class, TeamAccountsCommand::class, TeamAccountCommand::class, ClerkUnlinkCommand::class, LinkedInSyncCommand::class, AgentJobsCommand::class, GiveawayRepliesCommand::class, HealthCommand::class, HeartbeatCommand::class, ReconnectRemindersCommand::class, SyncChannelsCommand::class]);
+            $this->commands([AiConnectorCommand::class, CheckConnectorsCommand::class, CollectMetricsCommand::class, CreateOwnerCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class, TeamAccountsCommand::class, TeamAccountCommand::class, ClerkUnlinkCommand::class, LinkedInSyncCommand::class, AgentJobsCommand::class, RepurposeCadenceCommand::class, GiveawayRepliesCommand::class, HealthCommand::class, HeartbeatCommand::class, ReconnectRemindersCommand::class, SyncChannelsCommand::class]);
         }
 
         if ($this->app->environment('production') && config('tantra.lean_workers.enabled')) {

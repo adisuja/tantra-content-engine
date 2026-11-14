@@ -30,6 +30,7 @@ Env: `TANTRA_CLERK_LOGIN`, `CLERK_SECRET_KEY`, and only to override the defaults
 | `tantra:reconnect-reminders` | 03:41 UTC | LinkedIn connections about to run out or dropped |
 | `tantra:check-connectors` | hourly | tests every Connectors tab entry and records which ones fail and why |
 | `tantra:agent-jobs` | every minute | agent jobs: re-fire ones no run picked up, requeue a run that went quiet, purge inputs 30 days after a job ends |
+| `tantra:repurpose-cadence` | Mondays 04:21 UTC | each published post moves to its next network (repurpose jobs, results in Ideas) |
 | `tantra:linkedin-sync` | every 15 minutes | matches new Unipile LinkedIn accounts to teammates by name, reads each person's LinkedIn identity once a day, and the page's from Zernio |
 
 One-off commands: `tantra:ai-connector` (add a connector, key on STDIN), `tantra:create-owner`, `tantra:team-account`, `tantra:clerk-unlink`, `tantra:map-profile`, `tantra:invite`, `tantra:zernio-connect`, `tantra:team-accounts`, `tantra:health`.
@@ -85,6 +86,22 @@ The upstream Insights tab and each channel's Insights page show every LinkedIn c
 ## Content templates
 
 `/tantra/templates` (`TemplatesController`, `pages/tantra/templates/Index.vue`), the fourth Create tab. `tantra_content_templates` holds one row per sample (seeded from tantra-content with `POST api/tantra/templates`, owner token, upsert by key, plus `POST api/tantra/templates/{key}/preview`) and one per post someone added (`POST /tantra/templates/intake` or `api/tantra/templates/intake`): `TemplateIntake` makes it `building`, reads a LinkedIn post itself through Unipile, and queues a `template_from_post` agent job; `TemplateFromPostApplier` makes it live and keeps its preview under `tantra/templates/<key>/`. `GET api/tantra/templates?origin=intake&since=&full=1` is how the content repo pulls new samples. PRD 25.9.
+
+## Repost and the repurposing cadence
+
+PRD 25.10. `Repurposing` is the fifth Create tab (`RepurposingController`, `pages/tantra/repurposing/Index.vue`): the cadence (`tantra_repurpose_cadences`, default LinkedIn week 0, Facebook 1, Instagram 2, YouTube 3, X 4, Threads 5, TikTok 6), each network's preset (`tantra_repurpose_presets`, pushed from tantra-content `knowledge/content/repurpose/` with `POST api/tantra/repurposing/presets`) and the Account's own rules on top (`tantra_repurpose_rules`).
+
+- **Repost** (Review's Scheduled and Published cards, `RepostDialog.vue`; `POST /tantra/repost` and `api/tantra/repost`): pick channels across the workspaces you use, the same channel again (a rework), or networks not connected yet. `Reposts::start` builds the job input in the Engine and queues one `repost` agent job.
+- `RepostApplier` (also for `repurpose`) makes one idea per version (external key `job-<id>-<n>`, so applying twice changes nothing); a Repost to a connected channel goes straight to Review through `IdeaToReview`.
+- `tantra:repurpose-cadence` (Mondays 04:21 UTC, `WeeklyCadence`) queues the next network for every original published post whose week has come; `tantra_repurpose_progress` (unique per post and network) keeps a post from reaching a network twice. The first job of a run fires a cloud run, which claims the rest.
+
+## Profile rebrands
+
+PRD 25.11. On the Team page (`RebrandPanel.vue`, `RebrandController`): the person, the Account owner or an admin asks for one; `Rebrands::start` reads the profile through the person's own Unipile account and queues a `rebrand` agent job; `RebrandApplier` stores the proposal (headline options, About, banner, featured). Only the person applies the headline (`PATCH users/me` through `UnipileClient::updateProfile`, then read back to check it took); the rest is copied by hand.
+
+## API for everything
+
+PRD 25.12. Every screen has an API under `api/tantra/*` (reference: tantra-content `knowledge/content/engine-api.md`, made by `kits/engine/routes_doc.py`; one CLI over it: `kits/engine/engine.py`). The read side of the screens (`TantraReadController`: review items, posts by hand, team, Insights) and the screens' own action controllers answer as the token's own user, with the same rights. Owner-only stays for cross-workspace writes (batches, bulk ideas, the template seed); ops needs an admin; runners use their own token.
 
 ## Connectors tab
 

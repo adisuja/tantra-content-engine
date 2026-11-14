@@ -4,7 +4,12 @@ import type { InjectionKey } from 'vue';
 import type { TantraIdeaCard } from '@/components/tantra/ideas/types';
 import type { MediaItem } from '@/types/media';
 
-export type CreateTab = 'ideas' | 'templates' | 'content-templates' | 'feeds'; // tantra: content templates
+export type CreateTab =
+    | 'ideas'
+    | 'templates'
+    | 'content-templates'
+    | 'repurposing'
+    | 'feeds'; // tantra: content templates, repurposing
 
 export interface IdeaStage {
     id: string;

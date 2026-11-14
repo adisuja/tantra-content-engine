@@ -8,10 +8,17 @@ use App\Tantra\Http\Controllers\Api\ChannelScheduleController;
 use App\Tantra\Http\Controllers\Api\IdeaController;
 use App\Tantra\Http\Controllers\Api\ProfileController;
 use App\Tantra\Http\Controllers\Api\ResultsController;
+use App\Tantra\Http\Controllers\Api\TantraReadController;
 use App\Tantra\Http\Controllers\Api\UploadController;
 use App\Tantra\Http\Controllers\HealthController;
 use App\Tantra\Http\Controllers\OpsController;
+use App\Tantra\Http\Controllers\RebrandController;
+use App\Tantra\Http\Controllers\RepostController;
+use App\Tantra\Http\Controllers\RepurposingController;
 use App\Tantra\Http\Controllers\TemplatesController;
+use App\Tantra\Http\Controllers\Web\ManualTaskController;
+use App\Tantra\Http\Controllers\Web\ReviewItemActionController;
+use App\Tantra\Http\Controllers\Web\TeamController;
 use App\Tantra\Http\Controllers\ZernioWebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -39,13 +46,42 @@ Route::middleware(['api', 'auth:api', 'tantra.owner-token', 'throttle:api'])
         Route::put('/channels/{channel}/schedule', [ChannelScheduleController::class, 'update'])->whereUuid('channel')->name('channels.schedule.update');
     });
 
-// tantra: content templates anyone in the Account reads or adds from a post (PRD 25.9).
+// tantra: content templates and repurposing, as the token's own user (PRD 25.9, 25.10).
 Route::middleware(['api', 'auth:api', 'throttle:api'])
     ->prefix('api/tantra')
     ->name('tantra.api.')
     ->group(function (): void {
         Route::get('/templates', [TemplatesController::class, 'index'])->name('templates.index');
         Route::post('/templates/intake', [TemplatesController::class, 'intake'])->name('templates.intake');
+        Route::get('/repurposing', [RepurposingController::class, 'show'])->name('repurposing.show');
+        Route::get('/repost/targets', [RepostController::class, 'targets'])->name('repost.targets');
+        Route::post('/repost', [RepostController::class, 'store'])->name('repost.store');
+        Route::get('/rebrands', [RebrandController::class, 'index'])->name('rebrands.index');
+
+        // The screens over the API, as the token's own user (PRD 25.12): review, posts by hand, team, Insights.
+        Route::get('/review/items', [TantraReadController::class, 'reviewItems'])->name('review.items.index');
+        Route::prefix('review/items/{item}')->whereUuid('item')->name('review.items.')->group(function (): void {
+            Route::post('/approve', [ReviewItemActionController::class, 'approve'])->name('approve');
+            Route::post('/unapprove', [ReviewItemActionController::class, 'unapprove'])->name('unapprove');
+            Route::post('/request-changes', [ReviewItemActionController::class, 'requestChanges'])->name('request-changes');
+            Route::post('/reject', [ReviewItemActionController::class, 'reject'])->name('reject');
+            Route::post('/comments', [ReviewItemActionController::class, 'comment'])->name('comment');
+            Route::post('/sign-off', [ReviewItemActionController::class, 'signOff'])->name('sign-off');
+            Route::post('/thread/{index}', [ReviewItemActionController::class, 'thread'])->whereNumber('index')->name('thread');
+        });
+        Route::get('/tasks', [TantraReadController::class, 'tasks'])->name('tasks.index');
+        Route::post('/tasks/{task}/posted', [ManualTaskController::class, 'posted'])->whereUuid('task')->name('tasks.posted');
+        Route::post('/tasks/{task}/skip', [ManualTaskController::class, 'skip'])->whereUuid('task')->name('tasks.skip');
+        Route::get('/team', [TantraReadController::class, 'team'])->name('team.index');
+        Route::post('/team/consent', [TeamController::class, 'consent'])->name('team.consent');
+        Route::post('/team/expertise', [TeamController::class, 'expertise'])->name('team.expertise');
+        Route::post('/team/match', [TeamController::class, 'match'])->name('team.match');
+        Route::get('/insights', [TantraReadController::class, 'insights'])->name('insights.index');
+        Route::post('/team/{member}/rebrand', [RebrandController::class, 'start'])->whereUuid('member')->name('rebrands.start');
+        Route::post('/rebrands/{rebrand}/headline', [RebrandController::class, 'headline'])->whereUuid('rebrand')->name('rebrands.headline');
+        Route::put('/repurposing/cadence', [RepurposingController::class, 'cadence'])->name('repurposing.cadence');
+        Route::put('/repurposing/rules/{network}', [RepurposingController::class, 'rules'])->where('network', '[a-z]{1,16}')->name('repurposing.rules');
+        Route::post('/repurposing/presets', [RepurposingController::class, 'presets'])->name('repurposing.presets');
     });
 
 // tantra: Studio ops over the API (PRD 25.4): any admin's own token (review M2).
@@ -65,6 +101,7 @@ Route::middleware(['api', 'auth:api', 'tantra.admin', 'throttle:api'])
         Route::post('/accounts/{account}/test', [OpsController::class, 'testAccount'])->whereUuid('account')->name('accounts.test');
         Route::post('/runners', [OpsController::class, 'storeRunner'])->name('runners.store');
         Route::delete('/runners/{runner}', [OpsController::class, 'revokeRunner'])->whereUuid('runner')->name('runners.revoke');
+        Route::post('/channels/sync', [TantraReadController::class, 'syncChannels'])->name('channels.sync');
     });
 
 // tantra: agent runners (the cloud task, a laptop) with their own token (PRD 25.5).

@@ -72,7 +72,9 @@ class UnipileLinkedInReader
         $ownerId = WorkspaceSettings::query()->find($channel->workspace_id)?->review_owner_user_id;
         $profile = $ownerId ? MemberProfile::query()->find($ownerId) : null;
 
-        if (blank($profile?->unipile_account_id) || $profile->unipile_confirmed_at === null) {
+        // Reading their own posts' numbers posts nothing, so a match by name is enough here; posting in their
+        // name still needs the confirmed match and their consent (Team page).
+        if (blank($profile?->unipile_account_id)) {
             throw new AnalyticsCollectionException('permission', 'no Unipile account matched for this LinkedIn profile');
         }
 

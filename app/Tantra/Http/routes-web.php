@@ -5,6 +5,9 @@ declare(strict_types=1);
 use App\Http\Middleware\App\EnsureAccountReady;
 use App\Http\Middleware\App\EnsureHasWorkspace;
 use App\Tantra\Http\Controllers\OpsController;
+use App\Tantra\Http\Controllers\RebrandController;
+use App\Tantra\Http\Controllers\RepostController;
+use App\Tantra\Http\Controllers\RepurposingController;
 use App\Tantra\Http\Controllers\TemplatesController;
 use App\Tantra\Http\Controllers\Web\ChannelAppController;
 use App\Tantra\Http\Controllers\Web\ClerkSessionController;
@@ -163,8 +166,32 @@ Route::middleware(['web', 'auth'])
         Route::post('/intake', [TemplatesController::class, 'intake'])->name('intake');
         Route::get('/{template}', [TemplatesController::class, 'show'])->whereUuid('template')->name('show');
     });
+
+// tantra: the Repurposing tab under Create (PRD 25.10).
+Route::middleware(['web', 'auth'])
+    ->prefix('tantra/repurposing')
+    ->name('tantra.repurposing.')
+    ->group(function (): void {
+        Route::get('/', [RepurposingController::class, 'page'])->middleware([EnsureAccountReady::class, EnsureHasWorkspace::class])->name('index');
+        Route::put('/cadence', [RepurposingController::class, 'cadence'])->name('cadence');
+        Route::put('/rules/{network}', [RepurposingController::class, 'rules'])->where('network', '[a-z]{1,16}')->name('rules');
+    });
+
+// tantra: Repost a scheduled or published post to more channels (PRD 25.10).
+Route::middleware(['web', 'auth', 'throttle:30,1'])->group(function (): void {
+    Route::get('tantra/repost/targets', [RepostController::class, 'targets'])->name('tantra.repost.targets');
+    Route::post('tantra/repost', [RepostController::class, 'store'])->name('tantra.repost.store');
+});
 // tantra: Send to review from a Tantra idea card on the Ideas board (PRD 25.8).
 Route::middleware(['web', 'auth', EnsureAccountReady::class, EnsureHasWorkspace::class, 'throttle:30,1'])
     ->post('tantra/ideas/{idea}/to-review', IdeaReviewController::class)
     ->whereUuid('idea')
     ->name('tantra.ideas.to-review');
+
+// tantra: profile rebrands on the Team page (PRD 25.11). Only the person applies their own.
+Route::middleware(['web', 'auth', 'throttle:30,1'])->group(function (): void {
+    Route::get('tantra/rebrands', [RebrandController::class, 'index'])->name('tantra.rebrands.index');
+    Route::post('tantra/team/{member}/rebrand', [RebrandController::class, 'start'])->whereUuid('member')->name('tantra.rebrands.start');
+    Route::post('tantra/rebrands/{rebrand}/headline', [RebrandController::class, 'headline'])->whereUuid('rebrand')->name('tantra.rebrands.headline');
+    Route::post('tantra/rebrands/{rebrand}/dismiss', [RebrandController::class, 'dismiss'])->whereUuid('rebrand')->name('tantra.rebrands.dismiss');
+});
