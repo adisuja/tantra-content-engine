@@ -9,6 +9,7 @@ use App\Exceptions\SocialAccount\ConnectFlowException;
 use App\Services\Http\SafeHttpFetcher;
 use App\Services\Social\Mastodon\MastodonApi;
 use App\Support\Social\PendingConnection;
+use App\Tantra\Channels\ConnectFailures;
 use Exception;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -164,7 +165,7 @@ class MastodonController extends SocialController
                     'body' => $tokenResponse->body(),
                 ]);
 
-                return $this->failConnection('failed_to_authenticate');
+                return $this->failConnection(ConnectFailures::fromResponse($tokenResponse, $this->platform, 'failed_to_authenticate')); // tantra: say which failure
             }
 
             $tokenData = $tokenResponse->json();
@@ -174,7 +175,7 @@ class MastodonController extends SocialController
                 ->get(MastodonApi::url($instance, 'accounts/verify_credentials'));
 
             if ($profileResponse->failed()) {
-                return $this->failConnection('failed_to_get_profile');
+                return $this->failConnection(ConnectFailures::fromResponse($profileResponse, $this->platform, 'failed_to_get_profile')); // tantra: say which failure
             }
 
             $profile = $profileResponse->json();
@@ -210,7 +211,7 @@ class MastodonController extends SocialController
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return $this->failConnection('error_connecting');
+            return $this->failConnection(ConnectFailures::fromException($e, $this->platform)); // tantra: say which failure
         }
     }
 

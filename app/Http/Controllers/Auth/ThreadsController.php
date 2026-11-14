@@ -8,6 +8,7 @@ use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Exceptions\SocialAccount\ConnectFlowException;
 use App\Services\Social\TokenRedactor;
 use App\Support\Social\PendingConnection;
+use App\Tantra\Channels\ConnectFailures;
 use App\Tantra\Social\EngagementScopes;
 use Exception;
 use Illuminate\Http\RedirectResponse;
@@ -77,7 +78,8 @@ class ThreadsController extends SocialController
                     'status' => $tokenResponse->status(),
                     'body' => TokenRedactor::redact($tokenResponse->body()),
                 ]);
-                throw new Exception('Failed to exchange token');
+
+                return $this->failConnection(ConnectFailures::fromResponse($tokenResponse, $this->platform)); // tantra: say which failure
             }
 
             $tokenData = $tokenResponse->json();
@@ -96,7 +98,8 @@ class ThreadsController extends SocialController
                     'status' => $longLivedResponse->status(),
                     'body' => TokenRedactor::redact($longLivedResponse->body()),
                 ]);
-                throw new Exception('Failed to exchange long-lived token');
+
+                return $this->failConnection(ConnectFailures::fromResponse($longLivedResponse, $this->platform)); // tantra: say which failure
             }
 
             $longLivedData = $longLivedResponse->json();
@@ -118,7 +121,8 @@ class ThreadsController extends SocialController
                 Log::error('Threads profile fetch failed', [
                     'body' => $profileResponse->body(),
                 ]);
-                throw new Exception('Failed to fetch profile');
+
+                return $this->failConnection(ConnectFailures::fromResponse($profileResponse, $this->platform)); // tantra: say which failure
             }
 
             $profile = $profileResponse->json();
@@ -147,7 +151,7 @@ class ThreadsController extends SocialController
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return $this->failConnection('error_connecting');
+            return $this->failConnection(ConnectFailures::fromException($e, $this->platform)); // tantra: say which failure
         }
     }
 

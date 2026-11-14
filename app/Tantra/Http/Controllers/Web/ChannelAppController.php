@@ -14,6 +14,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\Response as HttpResponse;
 use Throwable;
 
@@ -75,7 +76,17 @@ class ChannelAppController extends Controller
                 'callbacks' => array_map(fn (string $path): string => "{$base}/{$path}", $entry['callbacks']),
                 'networks' => $networks,
                 'fields' => $fields,
-                'saved_in_app' => array_key_exists($app, $saved),
+                'saved_in_app' => ($saved[$app] ?? []) !== [],
+                // Testing or live, and what that means for the people connecting.
+                'mode' => ChannelApps::mode($app),
+                'default_mode' => $entry['mode'],
+                'testing' => [
+                    'owner' => __("tantra.connect.testing.apps.{$app}.owner"),
+                    'you' => __("tantra.connect.testing.apps.{$app}.you"),
+                    'live' => __("tantra.connect.testing.apps.{$app}.live"),
+                    'console' => $entry['testing']['console'],
+                    'accept' => $entry['testing']['accept'],
+                ],
             ];
         })->values()->all();
     }
@@ -94,6 +105,7 @@ class ChannelAppController extends Controller
                 ? ['sometimes', 'boolean']
                 : ['nullable', 'string', 'max:4000', 'regex:/^\S+$/'];
         }
+        $rules['mode'] = ['sometimes', 'nullable', Rule::in(ChannelApps::MODES)];
         $data = $request->validate($rules, ['regex' => 'Paste the value without spaces.']);
 
         $row = ChannelApp::query()->firstOrNew(['app' => $app]);
@@ -115,7 +127,11 @@ class ChannelAppController extends Controller
             $credentials['webhook_secret'] = Str::random(48);
         }
 
-        $row->fill(['credentials' => $credentials, 'updated_by' => $request->user()->id])->save();
+        $row->fill(['credentials' => $credentials, 'updated_by' => $request->user()->id]);
+        if (array_key_exists('mode', $data)) {
+            $row->mode = $data['mode'];
+        }
+        $row->save();
         ChannelApps::forget();
         ChannelApps::apply();
 
@@ -138,7 +154,13 @@ class ChannelAppController extends Controller
         $this->authorizeManage($request->user());
         abort_unless(array_key_exists($app, ChannelApps::catalog()), HttpResponse::HTTP_NOT_FOUND);
 
-        ChannelApp::query()->where('app', $app)->delete();
+        // The keys go; a mode the owner chose stays.
+        $row = ChannelApp::query()->where('app', $app)->first();
+        if ($row?->mode !== null) {
+            $row->fill(['credentials' => [], 'updated_by' => $request->user()->id])->save();
+        } else {
+            $row?->delete();
+        }
         ChannelApps::forget();
         ChannelApps::apply();
 

@@ -131,6 +131,20 @@ it('sends a joining teammate to the set-password page', function () {
     $this->get(route('tantra.join', ['user' => $teammate->id]))->assertForbidden();
 });
 
+it('prints a set-password link that works for 30 days', function () {
+    $this->artisan('tantra:invite', ['workspace' => 'Nelbin', 'email' => 'nelbin@example.com', 'name' => 'Nelbin Joseph'])
+        ->expectsOutputToContain('Link (30 days)')
+        ->assertSuccessful();
+    $teammate = User::query()->where('email', 'nelbin@example.com')->sole();
+    $link = URL::temporarySignedRoute('tantra.join', now()->addDays(App\Tantra\Console\InviteTeammateCommand::LINK_DAYS), ['user' => $teammate->id]);
+
+    $this->travel(29)->days();
+    $this->get($link)->assertRedirectContains('/reset-password/');
+
+    $this->travel(2)->days();
+    $this->get($link)->assertForbidden();
+});
+
 it('makes the drafts at approval when the channel was connected before the import', function () {
     $item = tantraPushNelbinPost($this);
     // A channel that exists without having triggered the listener (e.g. connected in another request).

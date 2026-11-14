@@ -8,6 +8,7 @@ use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Support\Social\PendingConnection;
+use App\Tantra\Channels\ConnectFailures;
 use App\Tantra\Channels\LinkedInPageApp;
 use Exception;
 use Illuminate\Http\RedirectResponse;
@@ -120,7 +121,7 @@ class LinkedInController extends SocialController
                 'error' => $e->getMessage(),
             ]);
 
-            return $this->failConnection('error_connecting');
+            return $this->failConnection(ConnectFailures::fromException($e, $this->platform)); // tantra: say which failure
         }
     }
 
@@ -143,7 +144,7 @@ class LinkedInController extends SocialController
             Log::error('LinkedIn page OAuth Error', ['error' => $e->getMessage()]);
 
             if ($profile === []) {
-                return $this->failConnection('error_connecting');
+                return $this->failConnection(ConnectFailures::fromException($e, $this->platform)); // tantra: say which failure
             }
             $pages = [];
         }

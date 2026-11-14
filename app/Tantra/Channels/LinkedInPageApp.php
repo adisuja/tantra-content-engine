@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
+use Laravel\Socialite\Two\InvalidStateException;
 use RuntimeException;
 
 /**
@@ -177,7 +178,7 @@ final class LinkedInPageApp
     {
         $state = session()->pull(self::STATE_KEY);
         if (! is_string($state) || $state === '' || ! hash_equals($state, (string) $request->query('state'))) {
-            throw new RuntimeException('LinkedIn page connection state did not match.');
+            throw new InvalidStateException('LinkedIn page connection state did not match.');
         }
 
         $code = $request->query('code');

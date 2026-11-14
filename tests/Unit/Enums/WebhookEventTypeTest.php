@@ -17,6 +17,9 @@ test('every webhook event has the expected value', function (EventType $event, s
     [EventType::PostRestored, 'post.restored'],
     [EventType::PostFailed, 'post.failed'],
     [EventType::PostDeleted, 'post.deleted'],
+    // tantra: the public roadmap
+    [EventType::RoadmapRequestCreated, 'roadmap.request_created'],
+    [EventType::RoadmapItemMoved, 'roadmap.item_moved'],
 ]);
 
 test('fromPostStatus maps publishable statuses and ignores the rest', function (PostStatus $status, ?EventType $event, ?PostStatus $previous = null) {

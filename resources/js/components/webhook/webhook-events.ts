@@ -14,6 +14,11 @@ export const webhookEventGroups = [
             'post.deleted',
         ],
     },
+    // tantra: the public roadmap (app/Tantra/Roadmap).
+    {
+        labelKey: 'webhooks.events.group_roadmap',
+        events: ['roadmap.request_created', 'roadmap.item_moved'],
+    },
 ];
 
 export const allWebhookEvents = webhookEventGroups.flatMap(
@@ -26,4 +31,5 @@ export const webhookEventLabelKey = (event: string): string =>
 export const webhookEventDescriptionKey = (event: string): string =>
     `webhooks.event_descriptions.${event.replaceAll('.', '_')}`;
 
-export const webhookEventLabel = (event: string): string => trans(webhookEventLabelKey(event));
+export const webhookEventLabel = (event: string): string =>
+    trans(webhookEventLabelKey(event));

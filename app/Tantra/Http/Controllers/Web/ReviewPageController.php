@@ -17,6 +17,7 @@ use App\Tantra\Channels\ReconnectReminders;
 use App\Tantra\Giveaway\GiveawayReply;
 use App\Tantra\LinkedIn\Identity;
 use App\Tantra\Review\Enums\ReviewStatus;
+use App\Tantra\Review\Messages;
 use App\Tantra\Review\Models\Batch;
 use App\Tantra\Review\Models\ReviewEvent;
 use App\Tantra\Review\Models\ReviewItem;
@@ -47,6 +48,20 @@ class ReviewPageController extends Controller
         $batch = $request->filled('batch') && Str::isUuid((string) $request->query('batch'))
             ? Batch::query()->whereIn('workspace_id', self::visibleWorkspaceIds($user))->find($request->query('batch'))
             : null;
+
+        // A link to one post (?item=, from Slack or an email): open its batch on the tab
+        // that holds it, with that post in front. Posts this person cannot see are ignored.
+        $focus = $request->filled('item') && Str::isUuid((string) $request->query('item'))
+            ? ReviewItem::query()->where('account_id', $user->account_id)->whereIn('workspace_id', self::visibleWorkspaceIds($user))->find($request->query('item'))
+            : null;
+        if ($focus !== null) {
+            $batch = $focus->batch;
+            $tab = match ($focus->review_status) {
+                ReviewStatus::Approved, ReviewStatus::Scheduled => 'scheduled',
+                ReviewStatus::Published => 'published',
+                default => 'review',
+            };
+        }
 
         $statuses = [
             'review' => [ReviewStatus::InReview->value, ReviewStatus::ChangesRequested->value],
@@ -88,6 +103,7 @@ class ReviewPageController extends Controller
             'tab' => $tab,
             'items' => $rows,
             'batch' => $batch ? ['id' => $batch->id, 'title' => $batch->title ?: 'Batch '.$batch->engine_batch_id] : null,
+            'focus' => $focus?->id,
             'counts' => collect($statuses)->map(fn (array $st, string $t): int => $scope($t)->whereIn('review_status', $st)->count())->all(),
             'reconnect' => ReconnectReminders::forUser($user),
             'composer' => ReviewGate::composerWaiting($user),
@@ -233,7 +249,15 @@ class ReviewPageController extends Controller
             ])->values(),
             'author_key' => (string) ($p['profile'] ?? ''),
             'dm_list' => GiveawayReply::query()->where('review_item_id', $i->id)->where('status', 'replied')->orderBy('replied_at')->get()
-                ->map(fn (GiveawayReply $r): array => ['id' => $r->id, 'name' => $r->commenter_name ?: (Str::of((string) $r->commenter_url)->rtrim('/')->afterLast('/')->value() ?: null), 'url' => $r->commenter_url, 'comment' => $r->comment_text, 'sent' => $r->dm_sent_at !== null])->values(),
+                ->map(fn (GiveawayReply $r): array => [
+                    'id' => $r->id,
+                    'name' => $r->commenter_name ?: (Str::of((string) $r->commenter_url)->rtrim('/')->afterLast('/')->value() ?: null),
+                    'url' => $r->commenter_url,
+                    'comment' => $r->comment_text,
+                    'sent' => $r->dm_sent_at !== null,
+                    // The DM as it should go out: the review owner's edited text, their first name filled in.
+                    'message' => Messages::render($i, 'linkedin_dm', Str::of((string) $r->commenter_name)->before(' ')->trim()->value(), $posts->pluck('platform_url')->filter()->first()),
+                ])->values(),
             'mentions' => array_values(array_filter((array) ($p['mentions'] ?? []), 'is_string')),
             'media' => [
                 'type' => $manifest['type'] ?? ($video ? 'video' : ($images->isNotEmpty() ? 'image' : null)),
@@ -247,6 +271,10 @@ class ReviewPageController extends Controller
             ],
             'profile' => self::profile($i, $channel, (array) ($p['profile_card'] ?? [])),
             'can_review' => ReviewGate::isReviewOwner($user, $i),
+            'share_url' => $i->shareUrl(),
+            'preview_url' => $i->previewUrl(),
+            'resource_pages' => collect((array) ($manifest['resource_previews'] ?? []))->filter(fn ($path): bool => is_string($path))->map(fn (string $path): string => Storage::url($path))->values(),
+            'messages' => Messages::for($i),
             'events' => $i->events->map(fn (ReviewEvent $e): array => [
                 'kind' => $e->kind->value,
                 'body' => $e->body,

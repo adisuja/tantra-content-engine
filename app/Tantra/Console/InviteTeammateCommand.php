@@ -9,11 +9,11 @@ use App\Enums\User\TimeFormat;
 use App\Enums\User\WeekStart;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Tantra\Notify\Notify;
 use App\Tantra\Review\Models\WorkspaceSettings;
 use App\Tantra\Team\TeammateWelcome;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 
@@ -24,6 +24,9 @@ use Illuminate\Support\Str;
  */
 class InviteTeammateCommand extends Command
 {
+    /** How long a set-password link stays valid (Adi 2026-11-14: at least 30 days). */
+    public const LINK_DAYS = 30;
+
     protected $signature = 'tantra:invite
         {workspace : Workspace name or id}
         {email : The teammate\'s login email}
@@ -76,13 +79,13 @@ class InviteTeammateCommand extends Command
             return $user;
         });
 
-        $link = URL::temporarySignedRoute('tantra.join', now()->addDays(14), ['user' => $user->id]);
+        $link = URL::temporarySignedRoute('tantra.join', now()->addDays(self::LINK_DAYS), ['user' => $user->id]);
 
         if ($this->option('send')) {
-            Mail::to($user)->send(new TeammateWelcome($user->name, $workspace->name, $link));
+            Notify::send($user, 'teammate_welcome', ['link' => $link], new TeammateWelcome($user->name, $workspace->name, $link), $workspace->name, $link, 'Join', now: true);
             $this->components->info("Welcome email sent to {$email}.");
         } else {
-            $this->components->info("{$email} can join {$workspace->name}. Link (14 days): {$link}");
+            $this->components->info("{$email} can join {$workspace->name}. Link (".self::LINK_DAYS." days): {$link}");
         }
 
         return self::SUCCESS;

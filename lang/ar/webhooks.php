@@ -83,6 +83,7 @@ return [
     ],
     'events' => [
         'group_posts' => 'المنشورات',
+        'group_roadmap' => 'Roadmap', // tantra
         'post_created' => 'تم إنشاء المنشور',
         'post_scheduled' => 'تمت جدولة المنشور',
         'post_unscheduled' => 'ألغيت جدولة المنشور',
@@ -92,6 +93,8 @@ return [
         'post_deleted' => 'تم حذف المنشور',
         'post_deleted_on_network' => 'حُذف المنشور على الشبكة',
         'post_restored' => 'عاد المنشور إلى الشبكة',
+        'roadmap_request_created' => 'Roadmap request', // tantra
+        'roadmap_item_moved' => 'Roadmap card moved', // tantra
     ],
     'event_descriptions' => [
         'post_created' => 'عند إنشاء منشور جديد.',
@@ -102,6 +105,8 @@ return [
         'post_deleted' => 'عند حذف منشور.',
         'post_deleted_on_network' => 'عند حذف منشور على شبكته بعد نشره.',
         'post_restored' => 'عند عودة منشور محذوف إلى شبكته.',
+        'roadmap_request_created' => 'When someone asks for a feature on the public roadmap.', // tantra
+        'roadmap_item_moved' => 'When a roadmap card moves to another column.', // tantra
     ],
     'http_reasons' => [
         'unknown' => 'غير معروف',

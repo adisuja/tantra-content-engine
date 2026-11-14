@@ -19,6 +19,8 @@ use App\Tantra\Http\Controllers\Web\InsightsController;
 use App\Tantra\Http\Controllers\Web\JoinController;
 use App\Tantra\Http\Controllers\Web\ManualTaskController;
 use App\Tantra\Http\Controllers\Web\OpenChannelController;
+use App\Tantra\Http\Controllers\Web\PreConnectController;
+use App\Tantra\Http\Controllers\Web\PreviewLinkController;
 use App\Tantra\Http\Controllers\Web\ReconnectController;
 use App\Tantra\Http\Controllers\Web\ReviewItemActionController;
 use App\Tantra\Http\Controllers\Web\ReviewPageController;
@@ -44,8 +46,15 @@ Route::middleware(['web', 'auth'])
             Route::post('/sign-off', [ReviewItemActionController::class, 'signOff'])->name('sign-off');
             Route::post('/dms/{reply}', [ReviewItemActionController::class, 'dmSent'])->whereUuid('reply')->name('dm-sent');
             Route::post('/thread/{index}', [ReviewItemActionController::class, 'thread'])->whereNumber('index')->name('thread');
+            Route::post('/messages/{channel}', [ReviewItemActionController::class, 'message'])->where('channel', '[a-z_]{2,32}')->name('message');
         });
     });
+
+// tantra: the public preview of one post's asset (no sign in; long random token).
+Route::middleware(['web', 'throttle:60,1'])
+    ->get('previewlink/{token}', PreviewLinkController::class)
+    ->where('token', '[A-Za-z0-9]{32,64}')
+    ->name('tantra.previewlink');
 
 // tantra: posts published by hand (PRD 12).
 Route::middleware(['web', 'auth'])
@@ -89,11 +98,19 @@ Route::middleware(['web', 'auth'])
     ->whereUuid('workspace')
     ->name('tantra.approvals');
 
-// tantra: a teammate's welcome link (signed, 14 days) opens the set-password page.
+// tantra: a teammate's welcome link (signed, 30 days) opens the set-password page.
 Route::middleware(['web', 'signed', 'throttle:6,1'])
     ->get('tantra/join/{user}', JoinController::class)
     ->whereUuid('user')
     ->name('tantra.join');
+
+// tantra: the step before a network's sign in while its app is in testing or has no keys (PreConnectGate).
+Route::middleware(['web', 'auth', EnsureHasWorkspace::class])->group(function (): void {
+    Route::get('connect/{network}/prepare', [PreConnectController::class, 'show'])
+        ->where('network', '[a-z-]+')->name('tantra.connect.prepare');
+    Route::post('connect/{network}/request-access', [PreConnectController::class, 'requestAccess'])
+        ->where('network', '[a-z-]+')->middleware('throttle:10,1')->name('tantra.connect.request-access');
+});
 
 // tantra: the Connectors tab: AI providers, Claude and Codex subscriptions, the Tantra API.
 Route::middleware(['web', 'auth'])

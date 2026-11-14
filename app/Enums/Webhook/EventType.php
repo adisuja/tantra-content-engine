@@ -17,6 +17,9 @@ enum EventType: string
     case PostRestored = 'post.restored';
     case PostFailed = 'post.failed';
     case PostDeleted = 'post.deleted';
+    // tantra: the public roadmap (app/Tantra/Roadmap).
+    case RoadmapRequestCreated = 'roadmap.request_created';
+    case RoadmapItemMoved = 'roadmap.item_moved';
 
     public static function fromPostStatus(PostStatus $status, ?PostStatus $previous = null): ?self
     {

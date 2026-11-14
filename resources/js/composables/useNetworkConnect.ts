@@ -50,6 +50,21 @@ export const connectUrl = (
         },
     });
 
+// tantra: the pre-connect step (app/Tantra/Channels/PreConnect.php). A network
+// with no keys yet goes straight to it; one in testing reaches it through the
+// connect route itself (PreConnectGate), so every entry point shows one step.
+export const prepareUrl = (platform: string, reconnectId?: string): string => {
+    const query = new URLSearchParams({
+        return_to: window.location.pathname,
+        ...(reconnectId ? { reconnect: reconnectId } : {}),
+    });
+    // The Instagram card's keys come from the Meta: Facebook Pages app first.
+    const network =
+        platform === Platform.Instagram ? Platform.InstagramFacebook : platform;
+
+    return `/connect/${network.replace(/_/g, '-')}/prepare?${query.toString()}`;
+};
+
 export const useNetworkConnect = (
     platforms: MaybeRefOrGetter<AvailablePlatform[]>,
 ) => {

@@ -83,6 +83,7 @@ return [
     ],
     'events' => [
         'group_posts' => 'Gönderiler',
+        'group_roadmap' => 'Roadmap', // tantra
         'post_created' => 'Gönderi oluşturuldu',
         'post_scheduled' => 'Gönderi zamanlandı',
         'post_unscheduled' => 'Zamanlama kaldırıldı',
@@ -92,6 +93,8 @@ return [
         'post_deleted' => 'Gönderi silindi',
         'post_deleted_on_network' => 'Gönderi ağda silindi',
         'post_restored' => 'Gönderi ağa geri döndü',
+        'roadmap_request_created' => 'Roadmap request', // tantra
+        'roadmap_item_moved' => 'Roadmap card moved', // tantra
     ],
     'event_descriptions' => [
         'post_created' => 'Yeni bir gönderi oluşturulduğunda.',
@@ -102,6 +105,8 @@ return [
         'post_deleted' => 'Bir gönderi silindiğinde.',
         'post_deleted_on_network' => 'Yayınlanmış bir gönderi ağında silindiğinde.',
         'post_restored' => 'Silinen bir gönderi ağına geri döndüğünde.',
+        'roadmap_request_created' => 'When someone asks for a feature on the public roadmap.', // tantra
+        'roadmap_item_moved' => 'When a roadmap card moves to another column.', // tantra
     ],
     'http_reasons' => [
         'unknown' => 'Bilinmiyor',

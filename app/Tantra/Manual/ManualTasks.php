@@ -6,6 +6,7 @@ namespace App\Tantra\Manual;
 
 use App\Models\SocialAccount;
 use App\Models\User;
+use App\Tantra\Notify\Notify;
 use App\Tantra\Review\Actions\ImportBatch;
 use App\Tantra\Review\Actions\ReviewActions;
 use App\Tantra\Review\Enums\EventKind;
@@ -16,7 +17,6 @@ use App\Tantra\Review\ReviewGate;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -144,7 +144,7 @@ final class ManualTasks
             ->each(function (ManualTask $task) use (&$due): void {
                 $task->forceFill(['status' => 'due', 'notified_at' => now()])->save();
                 if ($task->owner !== null) {
-                    Mail::to($task->owner)->queue(new ManualTaskDue($task->id, $task->kind, (string) $task->item?->engine_post_id, $task->text));
+                    Notify::send($task->owner, 'manual_task_due', ['task_id' => $task->id, 'kind' => $task->kind, 'post' => (string) $task->item?->engine_post_id, 'due_at' => $task->due_at?->toIso8601String()], new ManualTaskDue($task->id, $task->kind, (string) $task->item?->engine_post_id, $task->text), null, url('/tantra/tasks'), 'Open the task');
                 }
                 $due++;
             });

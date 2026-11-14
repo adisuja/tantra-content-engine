@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Tantra\Templates;
 
+use App\Models\User;
 use App\Tantra\Agent\AgentJob;
 use App\Tantra\Agent\InvalidResult;
 use App\Tantra\Agent\JobApplier;
+use App\Tantra\Notify\Notify;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -62,6 +64,10 @@ final class TemplateFromPostApplier implements JobApplier
             $template->preview_path = $path;
         }
         $template->save();
+
+        if (($by = User::query()->find($template->created_by)) !== null) {
+            Notify::send($by, 'template_ready', ['key' => $template->key, 'title' => $template->title, 'subject' => "Your template {$template->key} is ready", 'text' => "The template you asked for from {$template->source_url} is ready: {$template->title}."], null, null, url('/tantra/templates'), 'See the template');
+        }
 
         return "Template {$template->key} is live: {$template->title}.";
     }

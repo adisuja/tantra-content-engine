@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Support\Social\PendingConnection;
+use App\Tantra\Channels\ConnectFailures;
 use Exception;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -71,7 +72,7 @@ class PinterestController extends SocialController
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return $this->failConnection('error_connecting');
+            return $this->failConnection(ConnectFailures::fromException($e, $this->platform)); // tantra: say which failure
         }
     }
 }

@@ -21,6 +21,7 @@ use App\Tantra\Boost\Boost;
 use App\Tantra\Boost\MemberProfile;
 use App\Tantra\Boost\StartBoostRun;
 use App\Tantra\Channels\ChannelApps;
+use App\Tantra\Channels\ConnectSafetyNet;
 use App\Tantra\Composer\MakeComposerThread;
 use App\Tantra\Console\AgentJobsCommand;
 use App\Tantra\Console\AiConnectorCommand;
@@ -37,6 +38,7 @@ use App\Tantra\Console\ManualTasksCommand;
 use App\Tantra\Console\MapProfileCommand;
 use App\Tantra\Console\ReconnectRemindersCommand;
 use App\Tantra\Console\RepurposeCadenceCommand;
+use App\Tantra\Console\RoadmapKeyCommand;
 use App\Tantra\Console\SyncChannelsCommand;
 use App\Tantra\Console\TeamAccountCommand;
 use App\Tantra\Console\TeamAccountsCommand;
@@ -60,14 +62,18 @@ use App\Tantra\Review\Models\WorkspaceSettings;
 use App\Tantra\Review\OwnerApproval;
 use App\Tantra\Review\ReviewChips;
 use App\Tantra\Review\ReviewGate;
+use App\Tantra\Roadmap\Roadmap;
 use App\Tantra\Templates\ContentTemplate;
 use App\Tantra\Templates\TemplateFromPostApplier;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Http\Kernel as HttpKernel;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Foundation\Exceptions\Handler as FoundationExceptionHandler;
 use Illuminate\Foundation\Http\Kernel as FoundationHttpKernel;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Broadcast;
@@ -77,6 +83,8 @@ use Illuminate\Support\ServiceProvider;
 use Inertia\Inertia;
 use Laravel\Ai\Ai;
 use Laravel\Ai\Providers\OpenAiCompatibleProvider;
+use Laravel\Passport\Passport;
+use Throwable;
 
 /**
  * Entry point for everything Tantra adds to the TryPost fork.
@@ -104,6 +112,11 @@ class TantraServiceProvider extends ServiceProvider
         Queue::before(fn () => ChannelApps::apply());
         // The "Connect a channel" grid is shared per request by
         // HandleInertiaRequests (tantraChannels, ConnectNetworks::share).
+        // Whatever escapes a sign in still ends on the confirmation page, never a 500.
+        $handler = $this->app->make(ExceptionHandler::class);
+        if ($handler instanceof FoundationExceptionHandler) {
+            $handler->renderable(fn (Throwable $e, Request $request) => ConnectSafetyNet::render($e, $request));
+        }
         $this->loadViewsFrom(__DIR__.'/views', 'tantra');
 
         $this->app->make(Router::class)->aliasMiddleware('tantra.owner-token', EnsureOwnerToken::class);
@@ -116,6 +129,10 @@ class TantraServiceProvider extends ServiceProvider
         }
         $this->loadRoutesFrom(__DIR__.'/Http/routes-api.php');
         $this->loadRoutesFrom(__DIR__.'/Http/routes-web.php');
+        $this->loadRoutesFrom(__DIR__.'/Http/routes-roadmap.php');
+
+        // The public roadmap: an API key with this scope may edit it (tantra:roadmap-key).
+        Passport::tokensCan(Passport::$scopes + [Roadmap::SCOPE => 'Edit the Tantra product roadmap']);
 
         // Live review screens: anyone who may open the batch hears its changes.
         Broadcast::channel('tantra.review.batch.{batch}', fn (User $user, string $batch): bool => Batch::query()
@@ -216,7 +233,7 @@ class TantraServiceProvider extends ServiceProvider
         });
 
         if ($this->app->runningInConsole()) {
-            $this->commands([AiConnectorCommand::class, CheckConnectorsCommand::class, CollectMetricsCommand::class, CreateOwnerCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class, TeamAccountsCommand::class, TeamAccountCommand::class, ClerkUnlinkCommand::class, LinkedInSyncCommand::class, AgentJobsCommand::class, RepurposeCadenceCommand::class, GiveawayRepliesCommand::class, HealthCommand::class, HeartbeatCommand::class, ReconnectRemindersCommand::class, SyncChannelsCommand::class]);
+            $this->commands([AiConnectorCommand::class, CheckConnectorsCommand::class, CollectMetricsCommand::class, CreateOwnerCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class, TeamAccountsCommand::class, TeamAccountCommand::class, ClerkUnlinkCommand::class, LinkedInSyncCommand::class, AgentJobsCommand::class, RepurposeCadenceCommand::class, GiveawayRepliesCommand::class, HealthCommand::class, HeartbeatCommand::class, ReconnectRemindersCommand::class, SyncChannelsCommand::class, RoadmapKeyCommand::class]);
         }
 
         if ($this->app->environment('production') && config('tantra.lean_workers.enabled')) {

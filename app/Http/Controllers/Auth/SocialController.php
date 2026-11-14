@@ -21,6 +21,7 @@ use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Services\PostHogService;
 use App\Support\Social\PendingConnection;
+use App\Tantra\Channels\ConnectFailures;
 use Exception;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -107,12 +108,14 @@ class SocialController extends Controller
         return Inertia::render('accounts/ConnectFinish', [
             'platform' => $this->platform->value,
             'state' => $state,
-            'reason' => $state === 'error' ? __("accounts.connect.errors.{$pending?->failure()}") : null,
+            'reason' => $state === 'error' ? (ConnectFailures::reason($this->platform, $pending?->failure()) ?? __("accounts.connect.errors.{$pending?->failure()}")) : null, // tantra: clearer reasons
             'reconnecting' => $pending?->reconnectId() !== null,
             'identities' => $state === 'select' ? $this->identityCards($pending) : [],
             'retryUrl' => $this->startUrl($pending),
             'switchUrl' => $state === 'select' ? $this->startUrl($pending, switchingAccount: true) : null,
             'backUrl' => $pending?->returnUrl() ?? PendingConnection::defaultReturnUrl(),
+            // tantra: the next step, the network's own words, and the way to tester access.
+            'tantraHelp' => ConnectFailures::present($this->platform, $pending?->failure(), $state, $request->user()),
         ]);
     }
 
@@ -189,6 +192,12 @@ class SocialController extends Controller
     {
         if ($this->consentCancelled($request)) {
             throw new ConnectFlowException(ConnectFlowException::CANCELLED, $this->platform);
+        }
+
+        // tantra: any other error the network sent back (not a tester, app settings, outage) gets its own reason.
+        $networkError = ConnectFailures::fromCallback($request, $this->platform);
+        if ($networkError !== null) {
+            throw new ConnectFlowException($networkError, $this->platform);
         }
 
         $pending = $this->pendingForThisNetwork();
@@ -455,7 +464,7 @@ class SocialController extends Controller
                 'error' => $e->getMessage(),
             ]);
 
-            return $this->failConnection('error_connecting');
+            return $this->failConnection(ConnectFailures::fromException($e, $this->platform)); // tantra: say which failure
         }
     }
 
