@@ -576,7 +576,6 @@ return [
         'errors' => [
             'unknown' => 'Something went wrong while connecting :network.',
             'invalid_state' => 'This sign in came back to an old or different tab, so we stopped it to keep your account safe.',
-            'error_connecting' => 'We could not finish connecting :network.',
             'code_expired' => 'The sign in on :network took too long and expired.',
             'rate_limited' => ':network is limiting how often we can ask right now.',
             'provider_unavailable' => ':network did not answer. It is probably a short outage on their side.',
