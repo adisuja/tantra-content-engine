@@ -13,13 +13,16 @@ defineProps<{
 const tabs: { key: CreateTab; href: () => string }[] = [
     { key: 'ideas', href: () => ideasIndex.url() },
     { key: 'templates', href: () => templatesIndex.url() },
+    // tantra: content templates, one per sample (PRD 25.9).
+    { key: 'content-templates', href: () => '/tantra/templates' },
+    { key: 'repurposing', href: () => '/tantra/repurposing' },
     { key: 'feeds', href: () => feedsIndex.url() },
 ];
 </script>
 
 <template>
     <div
-        class="flex min-w-0 shrink-0 items-center justify-between gap-x-4 mx-4 md:mx-8 shadow-[inset_0_-1px_0_var(--color-border-strong)]"
+        class="mx-4 flex min-w-0 shrink-0 items-center justify-between gap-x-4 shadow-[inset_0_-1px_0_var(--color-border-strong)] md:mx-8"
     >
         <nav
             class="flex min-w-0 gap-4 overflow-x-auto"
@@ -39,7 +42,13 @@ const tabs: { key: CreateTab; href: () => string }[] = [
                         : 'text-muted-foreground hover:text-foreground'
                 "
             >
-                {{ $t(`create.tabs.${tab.key}`) }}
+                {{
+                    tab.key === 'content-templates'
+                        ? $t('tantra.templates.tab')
+                        : tab.key === 'repurposing'
+                          ? $t('tantra.repurposing.tab')
+                          : $t(`create.tabs.${tab.key}`)
+                }}<!-- tantra: content templates label -->
             </Link>
         </nav>
         <div class="flex shrink-0 items-center gap-2 py-1">

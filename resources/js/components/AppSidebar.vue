@@ -3,13 +3,14 @@ import { Link, router, usePage } from '@inertiajs/vue3';
 import {
     IconBulb,
     IconCalendarEvent,
-    IconEye, // tantra:
-    IconHandClick, // tantra:
-    IconTrendingUp,
-    IconFileText,
+    IconEye,
+    IconFileText, // tantra:
+    IconHandClick,
     IconLayoutGrid,
     IconPlus,
-    IconRepeat,
+    IconRepeat, // tantra:
+    IconRobot, // tantra:
+    IconTrendingUp,
     IconUsers,
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
@@ -41,22 +42,19 @@ import { useConnectChannelDialog } from '@/composables/useConnectChannelDialog';
 import { openPostComposer } from '@/composables/useGlobalPostComposer';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { insights } from '@/routes/app';
-import { index as ideasIndex, create as createIdea } from '@/routes/app/create/ideas';
+import {
+    create as createIdea,
+    index as ideasIndex,
+} from '@/routes/app/create/ideas';
 import { index as repurposes } from '@/routes/app/repurposes';
 import type { NavItem } from '@/types';
 import type { SidebarChannel } from '@/types/channel';
 
 const page = usePage();
-const currentWorkspace = computed(
-    () => page.props.auth.currentWorkspace,
-);
+const currentWorkspace = computed(() => page.props.auth.currentWorkspace);
 
-const {
-    canCreatePost,
-    canManageRepurposes,
-    canManageAccounts,
-    canManageTeam,
-} = useWorkspaceAbilities();
+const { canCreatePost, canManageRepurposes, canManageAccounts, canManageTeam } =
+    useWorkspaceAbilities();
 const { open: openConnectDialog } = useConnectChannelDialog();
 
 const inviteMemberDialogOpen = ref(false);
@@ -107,6 +105,17 @@ const mainNavItems = computed<NavItem[]>(() => [
               },
           ]
         : []),
+    // tantra: Studio ops, for TANTRA_ADMIN_EMAILS only (PRD 25.4).
+    ...(page.props.tantraAdmin === true
+        ? [
+              {
+                  title: trans('tantra.ops.nav'),
+                  href: '/tantra/ops',
+                  icon: IconRobot,
+                  activePattern: '/tantra/ops',
+              },
+          ]
+        : []),
     ...(canCreatePost.value
         ? [
               {
@@ -148,7 +157,7 @@ const mainNavItems = computed<NavItem[]>(() => [
         >
             <Link
                 :href="postsIndex.url()"
-                class="flex h-8 items-center rounded-md px-2 outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring group-data-[collapsible=icon]:px-1"
+                class="flex h-8 items-center rounded-md px-2 outline-hidden group-data-[collapsible=icon]:px-1 focus-visible:ring-2 focus-visible:ring-sidebar-ring"
                 data-testid="sidebar-logo"
             >
                 <span class="inline-flex group-data-[collapsible=icon]:hidden">
@@ -168,16 +177,17 @@ const mainNavItems = computed<NavItem[]>(() => [
                 <DropdownMenu>
                     <DropdownMenuTrigger as-child>
                         <Button
-                            class="h-9 w-full justify-center gap-1.5 rounded-lg bg-primary-strong font-medium text-primary-strong-foreground hover:bg-primary-text-hover data-[state=open]:bg-primary-text-hover dark:hover:bg-primary dark:data-[state=open]:bg-primary group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:px-0"
+                            class="h-9 w-full justify-center gap-1.5 rounded-lg bg-primary-strong font-medium text-primary-strong-foreground group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:px-0 hover:bg-primary-text-hover data-[state=open]:bg-primary-text-hover dark:hover:bg-primary dark:data-[state=open]:bg-primary"
                             :aria-label="$t('sidebar.new')"
                             data-testid="sidebar-new"
                         >
                             <IconPlus
                                 class="hidden size-4 group-data-[collapsible=icon]:block"
                             />
-                            <span class="group-data-[collapsible=icon]:hidden">{{
-                                $t('sidebar.new')
-                            }}</span>
+                            <span
+                                class="group-data-[collapsible=icon]:hidden"
+                                >{{ $t('sidebar.new') }}</span
+                            >
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
@@ -258,7 +268,9 @@ const mainNavItems = computed<NavItem[]>(() => [
                                 data-testid="sidebar-new-member"
                                 @select="openInviteMemberDialog"
                             >
-                                <IconUsers class="size-4 text-muted-foreground" />
+                                <IconUsers
+                                    class="size-4 text-muted-foreground"
+                                />
                                 {{ $t('sidebar.new_menu.member') }}
                             </DropdownMenuItem>
                         </template>

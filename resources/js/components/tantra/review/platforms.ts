@@ -3,10 +3,15 @@
 // an entry: its key, label and screen renderer. Anything not listed yet gets a
 // plain preview, so a new channel can be reviewed before its look is built.
 import {
+    facebookScreen,
+    instagramScreen,
     linkedinScreen,
     phone,
     plainScreen,
+    threadsScreen,
+    tiktokScreen,
     xScreen,
+    youtubeScreen,
 } from '@/components/tantra/review/studioRender';
 import type { ReviewItemRow } from '@/components/tantra/review/types';
 
@@ -38,6 +43,37 @@ const PLATFORMS: Record<string, PreviewPlatform> = {
         render: linkedinScreen,
     },
     x: { key: 'x', label: 'X', screen: 'x', render: (item) => xScreen(item) },
+    // Simple, recognisable screens for ideas on every network (PRD 25.8).
+    facebook: {
+        key: 'facebook',
+        label: 'Facebook',
+        screen: 'fb',
+        render: (item) => facebookScreen(item),
+    },
+    instagram: {
+        key: 'instagram',
+        label: 'Instagram',
+        screen: 'ig',
+        render: (item) => instagramScreen(item),
+    },
+    youtube: {
+        key: 'youtube',
+        label: 'YouTube',
+        screen: 'yt',
+        render: (item) => youtubeScreen(item),
+    },
+    threads: {
+        key: 'threads',
+        label: 'Threads',
+        screen: 'th',
+        render: (item) => threadsScreen(item),
+    },
+    tiktok: {
+        key: 'tiktok',
+        label: 'TikTok',
+        screen: 'tt',
+        render: (item) => tiktokScreen(item),
+    },
 };
 
 /** The preview for one post: by its platform, and for LinkedIn by person or page. */

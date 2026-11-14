@@ -12,6 +12,7 @@ import AssetPanel from '@/components/tantra/review/AssetPanel.vue';
 import MessagesPanel from '@/components/tantra/review/MessagesPanel.vue';
 import PhonePreview from '@/components/tantra/review/PhonePreview.vue';
 import { previewFor } from '@/components/tantra/review/platforms';
+import RepostDialog from '@/components/tantra/review/RepostDialog.vue';
 import type { ReviewAction } from '@/components/tantra/review/reviewApi';
 import { sendReviewAction } from '@/components/tantra/review/reviewApi';
 import type { ReviewItemRow } from '@/components/tantra/review/types';
@@ -65,6 +66,8 @@ const confirmNumbers = async (): Promise<void> => {
         if (!(await run('sign-off', { index: n.index }))) return;
     }
 };
+
+const reposting = ref(false);
 </script>
 
 <template>
@@ -155,6 +158,18 @@ const confirmNumbers = async (): Promise<void> => {
                     })
                 }}</a>
             </Button>
+
+            <Button
+                v-if="mode === 'scheduled' || mode === 'published'"
+                variant="outline"
+                size="lg"
+                class="h-12 w-full text-base"
+                data-testid="review-repost"
+                @click="reposting = true"
+            >
+                {{ $t('tantra.repost.button') }}
+            </Button>
+            <RepostDialog v-model:open="reposting" :review-item-id="item.id" />
 
             <Button
                 variant="ghost"

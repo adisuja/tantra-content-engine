@@ -146,7 +146,7 @@ final class ImportBatch
                 $outcome = 'updated';
             }
 
-            $channel = $item->assisted_manual ? null : self::channelFor($workspace, (string) $post['platform']);
+            $channel = $item->assisted_manual ? null : self::channelForPost($workspace, $post);
 
             if ($channel !== null) {
                 $group = self::createDrafts($owner, $workspace, $channel, $batch, $post);
@@ -258,6 +258,21 @@ final class ImportBatch
             : SocialAccount::query()->where('workspace_id', $workspace->id)->whereIn('platform', $platforms)->orderBy('created_at')->first();
     }
 
+    /**
+     * The channel named by the post (social_account_id, as Send to review sets
+     * it for every network, PRD 25.8), else the network's first channel.
+     *
+     * @param  array<string, mixed>  $post
+     */
+    public static function channelForPost(Workspace $workspace, array $post): ?SocialAccount
+    {
+        if (filled($post['social_account_id'] ?? null)) {
+            return SocialAccount::query()->where('workspace_id', $workspace->id)->find((string) $post['social_account_id']);
+        }
+
+        return self::channelFor($workspace, (string) ($post['platform'] ?? ''));
+    }
+
     /** @param array<string, mixed> $post */
     public static function createDrafts(User $owner, Workspace $workspace, SocialAccount $channel, Batch $batch, array $post): string
     {
@@ -284,7 +299,8 @@ final class ImportBatch
             'created_via' => CreatedVia::Api,
             'destinations' => [[
                 'social_account_id' => $channel->id,
-                'content_type' => ContentType::defaultFor($channel->platform)->value,
+                // An idea sent to review names its post type (PRD 25.8); a batch post takes the channel's default.
+                'content_type' => ContentType::tryFrom((string) ($post['content_type'] ?? ''))?->value ?? ContentType::defaultFor($channel->platform)->value,
                 'meta' => $meta,
             ]],
         ]));

@@ -50,7 +50,7 @@ final class DraftMaker
         }
 
         $workspace = $item->workspace;
-        $channel = $workspace ? ImportBatch::channelFor($workspace, (string) $item->platform) : null;
+        $channel = $workspace ? ImportBatch::channelForPost($workspace, [...($item->payload ?? []), 'platform' => $item->platform]) : null;
         if ($channel === null) {
             return false;
         }

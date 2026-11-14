@@ -112,6 +112,12 @@ final class ManualTasks
                 $zone = $item->timezone ?? WorkspaceSettings::query()->find($item->workspace_id)?->timezone ?? 'UTC';
                 $due = CarbonImmutable::parse($item->planned_date->toDateString().' '.$item->planned_time, $zone)->utc();
             }
+        } elseif ($item->parent_review_item_id === null && blank(data_get($item->payload, 'parent_engine_post_id'))) {
+            // An X idea sent to review (PRD 25.8) has no LinkedIn parent: it is due at its own planned time.
+            if ($item->planned_date !== null && filled($item->planned_time)) {
+                $zone = $item->timezone ?? WorkspaceSettings::query()->find($item->workspace_id)?->timezone ?? 'UTC';
+                $due = CarbonImmutable::parse($item->planned_date->toDateString().' '.$item->planned_time, $zone)->utc();
+            }
         } else {
             $parent = $item->parent_review_item_id ? ReviewItem::query()->find($item->parent_review_item_id) : null;
             $parentAt = $parent?->posts()->pluck('scheduled_at')->filter()->sort()->first();

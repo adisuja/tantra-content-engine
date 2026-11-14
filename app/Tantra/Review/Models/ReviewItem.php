@@ -28,6 +28,7 @@ use Illuminate\Support\Str;
  * @property string $engine_batch_id
  * @property string $engine_post_id
  * @property string|null $parent_review_item_id
+ * @property string|null $idea_id the Tantra idea it was sent from (PRD 25.8)
  * @property string $platform
  * @property string|null $post_group_id
  * @property bool $assisted_manual
