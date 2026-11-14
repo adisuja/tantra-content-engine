@@ -11,6 +11,7 @@ use App\Tantra\Http\Controllers\Web\ChannelAppController;
 use App\Tantra\Http\Controllers\Web\ClerkSessionController;
 use App\Tantra\Http\Controllers\Web\ConnectorController;
 use App\Tantra\Http\Controllers\Web\FormatsController;
+use App\Tantra\Http\Controllers\Web\IdeaReviewController;
 use App\Tantra\Http\Controllers\Web\InsightsController;
 use App\Tantra\Http\Controllers\Web\JoinController;
 use App\Tantra\Http\Controllers\Web\ManualTaskController;
@@ -173,3 +174,8 @@ Route::middleware(['web', 'auth'])
         Route::put('/cadence', [RepurposingController::class, 'cadence'])->name('cadence');
         Route::put('/rules/{network}', [RepurposingController::class, 'rules'])->where('network', '[a-z]{1,16}')->name('rules');
     });
+// tantra: Send to review from a Tantra idea card on the Ideas board (PRD 25.8).
+Route::middleware(['web', 'auth', EnsureAccountReady::class, EnsureHasWorkspace::class, 'throttle:30,1'])
+    ->post('tantra/ideas/{idea}/to-review', IdeaReviewController::class)
+    ->whereUuid('idea')
+    ->name('tantra.ideas.to-review');

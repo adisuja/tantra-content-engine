@@ -8,6 +8,7 @@ use App\Enums\Post\Status as PostStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Events\PostStatusChanged;
 use App\Http\Resources\App\HandleInertiaRequests\SidebarChannelResource;
+use App\Models\Idea;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -44,6 +45,7 @@ use App\Tantra\Http\Middleware\EnsureOwnerToken;
 use App\Tantra\Http\Middleware\EnsureRunnerToken;
 use App\Tantra\Http\Middleware\EnsureTantraAdmin;
 use App\Tantra\Http\Middleware\LandOnReview;
+use App\Tantra\Ideas\IdeaMeta;
 use App\Tantra\Manual\ManualTask;
 use App\Tantra\Ops\LeanHorizon;
 use App\Tantra\Review\Actions\DraftMaker;
@@ -59,6 +61,7 @@ use App\Tantra\Templates\TemplateFromPostApplier;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Http\Kernel as HttpKernel;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Foundation\Http\Kernel as FoundationHttpKernel;
 use Illuminate\Routing\Router;
@@ -131,6 +134,9 @@ class TantraServiceProvider extends ServiceProvider
 
         // A teammate connecting LinkedIn turns their waiting posts into drafts.
         SocialAccount::created(fn (SocialAccount $channel) => DraftMaker::forWorkspace($channel));
+
+        // Tantra ideas (PRD 25.8): an upstream idea's network, preview and review link.
+        Idea::resolveRelationUsing('tantraMeta', fn (Idea $idea): HasOne => $idea->hasOne(IdeaMeta::class, 'idea_id'));
 
         // An edit in the composer is a new version of the post under review.
         Post::updated(fn (Post $post) => RecordComposerEdit::handle($post));
