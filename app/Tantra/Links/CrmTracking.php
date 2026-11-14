@@ -88,7 +88,8 @@ class CrmTracking
             ], fn (mixed $v): bool => $v !== null));
 
         if ($response->status() === 409 && $response->json('code') === 'code_taken') {
-            return null;
+            // Ours already (a race, or a save that failed after the CRM made it): adopt it. Someone else's: try the next code.
+            return $this->ownLink($code, $destination, $channelId);
         }
         $this->ok($response, 'create the link '.$code);
 
@@ -98,6 +99,26 @@ class CrmTracking
             'long_url' => (string) $response->json('long_url'),
             'code' => (string) $response->json('code'),
         ];
+    }
+
+    /**
+     * The campaign's link with this code, when it goes to the same place on the same channel.
+     *
+     * @return array{id: string, short_url: string, long_url: string, code: string}|null
+     */
+    private function ownLink(string $code, string $destination, string $channelId): ?array
+    {
+        $response = $this->http()->get('/api/trk/links', ['campaign_id' => $this->campaignId(), 'limit' => 200]);
+        if (! $response->successful()) {
+            return null;
+        }
+        foreach ((array) ($response->json('links') ?? []) as $link) {
+            if (($link['code'] ?? null) === $code && ($link['destination'] ?? null) === $destination && ($link['channel_id'] ?? null) === $channelId) {
+                return ['id' => (string) $link['id'], 'short_url' => (string) ($link['short_url'] ?? ''), 'long_url' => (string) ($link['long_url'] ?? ''), 'code' => $code];
+            }
+        }
+
+        return null;
     }
 
     /**

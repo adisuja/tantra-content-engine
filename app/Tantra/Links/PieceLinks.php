@@ -8,6 +8,7 @@ use App\Models\Post;
 use App\Tantra\Ideas\IdeaMeta;
 use App\Tantra\Review\Models\ReviewItem;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
@@ -59,12 +60,56 @@ class PieceLinks
         return filled($utmContent) && TrackedLink::query()->where('code', $utmContent)->where('shortened', false)->exists();
     }
 
-    /** The body (content) and the comments (meta.thread_replies) of one channel post. */
+    /** True on the first pass: make the CRM links, change nothing. */
+    private bool $dry = false;
+
+    /**
+     * Two passes, so a slow CRM call never overwrites an edit saved meanwhile:
+     * the first makes the links on the copy we have, the second re-reads the
+     * row under a lock and puts the (now local) links in.
+     */
+    private function twoPass(callable $apply, callable $fresh): int
+    {
+        $this->dry = true;
+        try {
+            $apply($fresh(false));
+        } finally {
+            $this->dry = false;
+        }
+
+        $n = (int) DB::transaction(fn (): int => ($m = $fresh(true)) !== null ? $apply($m) : 0);
+        $this->errors = array_values(array_unique($this->errors));
+
+        return $n;
+    }
+
     public function post(Post $post): int
+    {
+        return $this->twoPass(fn (Post $p): int => $this->applyPost($p), fn (bool $lock): ?Post => $lock ? self::stillOpen(Post::query()->lockForUpdate()->find($post->id)) : $post);
+    }
+
+    /** A post published while the CRM answered keeps the link it went out with. */
+    private static function stillOpen(?Post $post): ?Post
+    {
+        return $post !== null && TrackPieceLinks::open($post) ? $post : null;
+    }
+
+    public function reviewItem(ReviewItem $item): int
+    {
+        return $this->twoPass(fn (ReviewItem $i): int => $this->applyReviewItem($i), fn (bool $lock): ?ReviewItem => $lock ? ReviewItem::query()->lockForUpdate()->find($item->id) : $item);
+    }
+
+    public function idea(IdeaMeta $meta): int
+    {
+        return $this->twoPass(fn (IdeaMeta $m): int => $this->applyIdea($m), fn (bool $lock): ?IdeaMeta => $lock ? IdeaMeta::query()->lockForUpdate()->find($meta->idea_id) : $meta);
+    }
+
+    /** The body (content) and the comments (meta.thread_replies) of one channel post. */
+    private function applyPost(Post $post): int
     {
         $piece = Piece::ofPost($post);
         $before = count($this->changes);
-        $content = $this->rewrite((string) $post->content, $piece, 'post', $piece->bodyMedium, 'post', $post->id, 'content', $post->attachesLinkPreview());
+        $content = $this->rewrite((string) $post->content, $piece, 'post', $piece->bodyMedium, 'post', $post->id, 'content', $post->attachesLinkPreview() && blank($post->media) && blank(data_get($post->meta, 'document_title')));
 
         $meta = (array) ($post->meta ?? []);
         foreach (array_values((array) ($meta['thread_replies'] ?? [])) as $i => $reply) {
@@ -73,7 +118,7 @@ class PieceLinks
             }
         }
 
-        if (count($this->changes) > $before) {
+        if (! $this->dry && count($this->changes) > $before) {
             $post->forceFill(['content' => $content, 'meta' => $meta])->saveQuietly();
         }
 
@@ -81,7 +126,7 @@ class PieceLinks
     }
 
     /** The engine payload (text, first comment, thread, follow-up messages) and the owner's edited messages. */
-    public function reviewItem(ReviewItem $item): int
+    private function applyReviewItem(ReviewItem $item): int
     {
         $piece = Piece::ofReviewItem($item);
         $before = count($this->changes);
@@ -89,7 +134,7 @@ class PieceLinks
 
         if (is_string($payload['text'] ?? null)) {
             // The engine text becomes the post body; a LinkedIn post keeps its preview card unless the composer drops it.
-            $payload['text'] = $this->rewrite($payload['text'], $piece, 'post', $piece->bodyMedium, 'review_item', $item->id, 'payload.text', true);
+            $payload['text'] = $this->rewrite($payload['text'], $piece, 'post', $piece->bodyMedium, 'review_item', $item->id, 'payload.text', blank($payload['media'] ?? null) && ! $item->posts()->contains(fn (Post $p): bool => filled($p->media) || filled(data_get($p->meta, 'document_title'))));
         }
         if (is_string($payload['first_comment'] ?? null)) {
             $payload['first_comment'] = $this->rewrite($payload['first_comment'], $piece, 'comment', 'comment', 'review_item', $item->id, 'payload.first_comment');
@@ -113,7 +158,7 @@ class PieceLinks
             }
         }
 
-        if (count($this->changes) > $before) {
+        if (! $this->dry && count($this->changes) > $before) {
             $item->forceFill(['payload' => $payload, 'message_overrides' => $overrides === [] ? $item->message_overrides : $overrides])->saveQuietly();
         }
 
@@ -121,14 +166,14 @@ class PieceLinks
     }
 
     /** An idea's preview: text, first comment, thread. */
-    public function idea(IdeaMeta $meta): int
+    private function applyIdea(IdeaMeta $meta): int
     {
         $piece = Piece::ofIdea($meta);
         $before = count($this->changes);
         $preview = (array) ($meta->preview ?? []);
 
         if (is_string($preview['text'] ?? null)) {
-            $preview['text'] = $this->rewrite($preview['text'], $piece, 'post', $piece->bodyMedium, 'idea', $meta->idea_id, 'preview.text', true);
+            $preview['text'] = $this->rewrite($preview['text'], $piece, 'post', $piece->bodyMedium, 'idea', $meta->idea_id, 'preview.text', blank($preview['media'] ?? null) && blank($meta->upload_tokens));
         }
         if (is_string($preview['first_comment'] ?? null)) {
             $preview['first_comment'] = $this->rewrite($preview['first_comment'], $piece, 'comment', 'comment', 'idea', $meta->idea_id, 'preview.first_comment');
@@ -139,7 +184,7 @@ class PieceLinks
             }
         }
 
-        if (count($this->changes) > $before) {
+        if (! $this->dry && count($this->changes) > $before) {
             $meta->forceFill(['preview' => $preview])->saveQuietly();
         }
 
@@ -148,20 +193,20 @@ class PieceLinks
 
     /**
      * Replaces each untracked link in one text. Several different links in one
-     * placement get one link each (the second is <placement>-2).
+     * placement get one link each (the second is <placement>-2). Only whole
+     * links change; a change is recorded only when the text really changed.
      */
     public function rewrite(string $text, Piece $piece, string $placement, string $medium, string $subjectType, string $subjectId, string $field, bool $previewCard = false): string
     {
         $urls = LinkRules::urls($text);
         $firstUrl = $urls[0] ?? null;
-        $seen = [];
+        $claimed = [];
         foreach (array_unique($urls) as $url) {
             if (! LinkRules::needsTracking($url, self::ourFullLink(...))) {
                 continue;
             }
             $destination = LinkRules::destination($url);
-            $seen[$destination] ??= count($seen) + 1;
-            $where = $seen[$destination] === 1 ? $placement : $placement.'-'.$seen[$destination];
+            $where = $claimed[$destination] ??= $this->placementFor($piece, $placement, $destination, $claimed);
             $keepFull = LinkRules::keepsFullLink($piece->platform, $placement, $previewCard, $url === $firstUrl, $destination);
 
             try {
@@ -177,9 +222,14 @@ class PieceLinks
             if ($new === '' || $new === $url) {
                 continue;
             }
-            // Only whole links: a longer link that starts with this one is left alone.
-            $text = (string) preg_replace('~'.preg_quote($url, '~').'(?![^\s<>"\'\]\)])~', addcslashes($new, '\\$'), $text);
-            $this->record($subjectType, $subjectId, $field, $piece, $link, $url, $new);
+            $replaced = LinkRules::replace($text, $url, $new);
+            if ($replaced === $text) {
+                continue;
+            }
+            $text = $replaced;
+            if (! $this->dry) {
+                $this->record($subjectType, $subjectId, $field, $piece, $link, $url, $new);
+            }
         }
 
         return $text;
@@ -239,6 +289,30 @@ class PieceLinks
             return TrackedLink::query()->where([
                 'member_key' => $piece->memberKey, 'piece_ref' => $piece->ref, 'platform' => $piece->platform, 'placement' => $placement,
             ])->firstOrFail();
+        }
+    }
+
+    /**
+     * The placement for a destination in one field: the one it already has for
+     * this piece, else the first free one (<placement>, <placement>-2, ...), so
+     * adding a link never takes over another link's row.
+     *
+     * @param  array<string, string>  $claimed
+     */
+    private function placementFor(Piece $piece, string $placement, string $destination, array $claimed): string
+    {
+        $rows = TrackedLink::query()->where(['member_key' => $piece->memberKey, 'piece_ref' => $piece->ref, 'platform' => $piece->platform])
+            ->where(fn ($q) => $q->where('placement', $placement)->orWhere('placement', 'like', $placement.'-%'))
+            ->pluck('destination', 'placement');
+        $mine = $rows->search($destination, true);
+        if (is_string($mine) && ($mine === $placement || preg_match('/^'.preg_quote($placement, '/').'-\d+$/', $mine))) {
+            return $mine;
+        }
+        for ($k = 1; ; $k++) {
+            $candidate = $k === 1 ? $placement : $placement.'-'.$k;
+            if (! $rows->has($candidate) && ! in_array($candidate, $claimed, true)) {
+                return $candidate;
+            }
         }
     }
 

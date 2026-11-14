@@ -19,7 +19,7 @@ use Illuminate\Support\Str;
 final class LinkRules
 {
     /** Finds http(s) links and bare links to the domains we always track. */
-    public const URL_PATTERN = '~(?:https?://|\b(?=(?:www\.)?(?:jointantra\.com|webinar\.sellwithtantra\.com|growthclub\.org)\b))[^\s<>"\'\]\)]+~i';
+    public const URL_PATTERN = '~(?:https?://|(?<![\w@./-])(?=(?:www\.)?(?:jointantra\.com|webinar\.sellwithtantra\.com|growthclub\.org)\b))[^\s<>"\'\]\)]+~i';
 
     public const MEDIUMS = ['post', 'comment', 'carousel', 'giveaway'];
 
@@ -69,6 +69,17 @@ final class LinkRules
         preg_match_all(self::URL_PATTERN, $text, $m);
 
         return array_values(array_map(fn (string $u): string => self::trimUrl($u), $m[0]));
+    }
+
+    /**
+     * Puts $new where the whole link $old stands: not inside a longer link, an
+     * email address or a subdomain, and with sentence punctuation after it kept.
+     */
+    public static function replace(string $text, string $old, string $new): string
+    {
+        $pattern = '~(?<![\w@./-])'.preg_quote($old, '~').'(?=$|[\s<>"\'\]\)]|[.,;:!?…]+(?:$|[\s<>"\'\]\)]))~u';
+
+        return preg_replace($pattern, addcslashes($new, '\\$'), $text) ?? $text;
     }
 
     /** Drops sentence punctuation stuck to the end of a link. */

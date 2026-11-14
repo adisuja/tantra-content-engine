@@ -4,7 +4,7 @@
 import { Head, router } from '@inertiajs/vue3';
 import { IconChartBar } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import HeaderTitle from '@/components/HeaderTitle.vue';
 import InsightsTabs from '@/components/tantra/insights/InsightsTabs.vue';
@@ -127,6 +127,12 @@ const trendMetrics = computed(() =>
           ],
 );
 const trendMetric = ref<string>(current.value ? 'posts' : 'clicks');
+// A person has no traffic over time, so switching view picks a metric that view has.
+watch(current, () => {
+    if (!trendMetrics.value.includes(trendMetric.value)) {
+        trendMetric.value = trendMetrics.value[0];
+    }
+});
 const buckets = computed<string[]>(() => {
     const out: string[] = [];
     const d = new Date(`${r.value.from}T00:00:00Z`);

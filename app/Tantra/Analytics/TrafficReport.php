@@ -221,20 +221,27 @@ final class TrafficReport
             }
         }
 
-        $totals = (array) ($data['day']['totals'] ?? []);
         $series = [];
         foreach ((array) ($data['day']['rows'] ?? []) as $row) {
             $b = self::bucketOf(CarbonImmutable::parse((string) $row['day']), $bucket);
             $series[$b.'|_team'] = self::add($series[$b.'|_team'] ?? ['bucket' => $b, 'member' => '_team'], self::traffic($row));
         }
 
+        // Per platform: each piece's asset is one platform, so asset rows (campaign scoped) add up per platform.
+        // The CRM's channel rows filter sessions by campaign but not event counts, so only visits come from them.
+        $assetPlatform = $links->whereNotNull('crm_asset_id')->groupBy('crm_asset_id')->map(fn (Collection $g): string => (string) $g->first()->platform);
         $platforms = [];
-        foreach ((array) ($data['channel']['rows'] ?? []) as $row) {
-            $channel = (string) ($row['channel'] ?? 'none');
-            if (in_array($channel, ['none', 'direct', 'calendar', 'email'], true) && ! $links->contains('platform', $channel)) {
-                continue;
+        foreach ($byAsset as $assetId => $row) {
+            $platform = $assetPlatform[$assetId] ?? null;
+            if ($platform !== null) {
+                $platforms['_team|'.$platform] = self::add($platforms['_team|'.$platform] ?? ['member' => '_team', 'platform' => $platform, ...self::emptyTraffic(true)], self::traffic($row), keepNull: ['visits', 'leads']);
             }
-            $platforms['_team|'.$channel] = ['member' => '_team', 'platform' => $channel, ...self::traffic($row)];
+        }
+        foreach ((array) ($data['channel']['rows'] ?? []) as $row) {
+            $channel = (string) ($row['channel'] ?? '');
+            if (isset($platforms['_team|'.$channel]) && isset($row['visitors'])) {
+                $platforms['_team|'.$channel]['visits'] = (int) $row['visitors'];
+            }
         }
 
         // Profile and Featured links (<key>-fw and the rest) have no piece: their clicks, all time, per person.
@@ -255,7 +262,8 @@ final class TrafficReport
         return [...$base, 'live' => true, 'status' => 'live', 'message' => null,
             'currency' => $data['asset']['currency'] ?? null, 'generated_at' => $data['asset']['generated_at'] ?? null,
             'members' => $membersOut,
-            'team' => ['visits' => self::n($totals['visitors'] ?? null), 'leads' => null],
+            // Visits for the campaign: the day rows are campaign filtered (a visitor seen on two days counts twice).
+            'team' => ['visits' => collect((array) ($data['day']['rows'] ?? []))->sum(fn (array $r): int => (int) ($r['visitors'] ?? 0)), 'leads' => null],
             'series' => $series, 'platforms' => $platforms, 'profile_clicks' => $profileClicks,
             'pieces' => self::pieces($links, $byAsset->all())];
     }

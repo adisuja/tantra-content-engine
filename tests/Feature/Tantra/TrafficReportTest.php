@@ -105,12 +105,15 @@ it('shows each person traffic from the CRM and social from their platforms, with
             ->where('traffic.members.1.traffic.revenue', 499)
             ->where('traffic.members.1.traffic.visits', null)
             ->where('traffic.members.1.traffic.leads', null)
-            ->where('traffic.totals.traffic.visits', 11)
+            ->where('traffic.totals.traffic.visits', 12)
             ->where('traffic.pieces.0.piece', 'Count every sign-up once')
             ->where('traffic.pieces.0.clicks', 9)
             ->where('traffic.pieces.0.visits', null)
             ->where('traffic.pieces.0.links.0.url', 'https://go.usetantra.com/l/ben-count-sign-up-comment')
-            ->has('traffic.platforms', fn (Assert $p) => $p->etc())
+            // Per platform from this campaign's assets only (the other asset is not ours), visits from the channel rows.
+            ->where('traffic.platforms', fn ($rows) => collect($rows)->firstWhere(fn ($r) => $r['member'] === '_team' && $r['platform'] === 'linkedin')['clicks'] === 9
+                && collect($rows)->firstWhere(fn ($r) => $r['member'] === '_team' && $r['platform'] === 'linkedin')['visits'] === 6
+                && ! collect($rows)->contains(fn ($r) => $r['platform'] === 'calendar'))
             ->where('traffic.series', fn ($series) => collect($series)->where('member', '_team')->sum('clicks') === 13
                 && collect($series)->where('member', 'ben')->sum('posts') === 2)
         );
