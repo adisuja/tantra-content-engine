@@ -11,6 +11,7 @@ use App\Tantra\Http\Controllers\Api\ResultsController;
 use App\Tantra\Http\Controllers\Api\UploadController;
 use App\Tantra\Http\Controllers\HealthController;
 use App\Tantra\Http\Controllers\OpsController;
+use App\Tantra\Http\Controllers\RepostController;
 use App\Tantra\Http\Controllers\RepurposingController;
 use App\Tantra\Http\Controllers\TemplatesController;
 use App\Tantra\Http\Controllers\ZernioWebhookController;
@@ -48,6 +49,8 @@ Route::middleware(['api', 'auth:api', 'throttle:api'])
         Route::get('/templates', [TemplatesController::class, 'index'])->name('templates.index');
         Route::post('/templates/intake', [TemplatesController::class, 'intake'])->name('templates.intake');
         Route::get('/repurposing', [RepurposingController::class, 'show'])->name('repurposing.show');
+        Route::get('/repost/targets', [RepostController::class, 'targets'])->name('repost.targets');
+        Route::post('/repost', [RepostController::class, 'store'])->name('repost.store');
         Route::put('/repurposing/cadence', [RepurposingController::class, 'cadence'])->name('repurposing.cadence');
         Route::put('/repurposing/rules/{network}', [RepurposingController::class, 'rules'])->where('network', '[a-z]{1,16}')->name('repurposing.rules');
         Route::post('/repurposing/presets', [RepurposingController::class, 'presets'])->name('repurposing.presets');

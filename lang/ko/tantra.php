@@ -420,4 +420,14 @@ return [
         'preview' => 'Preview',
         'preview_title' => 'How it looks on :network',
     ],
+    'repost' => [
+        'button' => 'Repost',
+        'title' => 'Repost to more channels',
+        'help' => 'Pick where this post should go next. Each channel gets its own version, written for that network, and it waits in Review for its owner. Networks you have not connected yet get theirs in Ideas, ready for the day you connect.',
+        'not_connected' => 'Not connected yet',
+        'reconnect' => 'needs reconnecting',
+        'note' => 'Anything to change? (optional)',
+        'send' => 'Write :count new versions',
+        'failed' => 'That did not go through.',
+    ],
 ];

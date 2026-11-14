@@ -27,8 +27,11 @@ final class AgentJobs
 
     public const PURGE_DAYS = 30;
 
-    /** @param array<string, mixed> $input */
-    public static function enqueue(string $kind, array $input, User $by, ?string $workspaceId = null, ?Model $subject = null): AgentJob
+    /**
+     * @param  bool  $fire  false: queue it for a run that is already going (the weekly repurpose fires one run that
+     *                      claims the rest), so a busy week stays under the cloud task's 30 runs an hour
+     */
+    public static function enqueue(string $kind, array $input, User $by, ?string $workspaceId = null, ?Model $subject = null, bool $fire = true): AgentJob
     {
         // Our Claude subscriptions are their owners' own: jobs anyone else starts wait for an admin's Run (review B1).
         $byAdmin = Admin::is($by);
@@ -42,8 +45,11 @@ final class AgentJobs
             'subject_id' => $subject?->getKey(),
             'input' => $input,
         ]);
-        if ($byAdmin) {
+        if ($byAdmin && $fire) {
             self::dispatch($job);
+        } elseif ($byAdmin) {
+            $job->appendLog('Queued for the run already working this batch.');
+            $job->forceFill(['dispatches' => self::MAX_DISPATCHES])->save();
         } else {
             $job->appendLog('Started by '.$by->name.'; waiting for an admin to run it.');
             $job->save();
