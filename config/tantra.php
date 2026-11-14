@@ -62,6 +62,13 @@ return [
     ],
 
     // Team engagement through Unipile V2 (PRD 10.5). Off until Adi turns it on.
+    // Notifications go out through the Tantra CRM's automation (email, Slack, WhatsApp, SMS, AI calls), 2026-11-14.
+    // Without a key, or if the CRM does not answer, the Engine sends its own email as before.
+    'crm' => [
+        'url' => env('TANTRA_CRM_URL', 'https://crm-api.usetantra.com'),
+        'intake_key' => env('TANTRA_CRM_INTAKE_KEY'),
+    ],
+
     'unipile' => [
         'dsn' => env('UNIPILE_DSN'),
         'key' => env('UNIPILE_API_KEY'),

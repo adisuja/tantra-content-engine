@@ -9,11 +9,11 @@ use App\Enums\User\TimeFormat;
 use App\Enums\User\WeekStart;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Tantra\Notify\Notify;
 use App\Tantra\Review\Models\WorkspaceSettings;
 use App\Tantra\Team\TeammateWelcome;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 
@@ -82,7 +82,7 @@ class InviteTeammateCommand extends Command
         $link = URL::temporarySignedRoute('tantra.join', now()->addDays(self::LINK_DAYS), ['user' => $user->id]);
 
         if ($this->option('send')) {
-            Mail::to($user)->send(new TeammateWelcome($user->name, $workspace->name, $link));
+            Notify::send($user, 'teammate_welcome', ['link' => $link], new TeammateWelcome($user->name, $workspace->name, $link), $workspace->name, $link, 'Join', now: true);
             $this->components->info("Welcome email sent to {$email}.");
         } else {
             $this->components->info("{$email} can join {$workspace->name}. Link (".self::LINK_DAYS." days): {$link}");

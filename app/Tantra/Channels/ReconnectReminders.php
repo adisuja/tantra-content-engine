@@ -8,11 +8,11 @@ use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
 use App\Models\SocialAccount;
 use App\Models\User;
+use App\Tantra\Notify\Notify;
 use App\Tantra\Review\Models\WorkspaceSettings;
 use App\Tantra\Review\ReviewGate;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Mail;
 
 /**
  * tantra: keeps every reviewed workspace's LinkedIn channel connected (PRD M3).
@@ -60,7 +60,7 @@ final class ReconnectReminders
                 continue;
             }
 
-            Mail::to($user)->queue(new ReconnectChannel($account->workspace?->name ?? 'your workspace', self::label($account), $d['state'], $d['days_left']));
+            Notify::send($user, 'reconnect_channel', ['channel' => self::label($account), 'network' => $account->platform->value, 'state' => $d['state'], 'days_left' => $d['days_left']], new ReconnectChannel($account->workspace?->name ?? 'your workspace', self::label($account), $d['state'], $d['days_left']), $account->workspace?->name, url('/tantra/reconnect/'.$account->id), 'Reconnect');
             $sent++;
         }
 
