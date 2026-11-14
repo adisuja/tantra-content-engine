@@ -119,7 +119,7 @@ final class ChannelApps
                 'help' => 'In the same Meta app add the "Threads API" use case and copy the Threads app ID and secret.',
                 'catch' => 'Free. Same tester rule as Facebook while in development mode.',
                 'mode' => 'development',
-                'testing' => ['console' => 'https://developers.facebook.com/apps', 'accept' => 'https://www.threads.net/settings/account'],
+                'testing' => ['console' => 'https://developers.facebook.com/apps', 'accept' => 'https://www.threads.com/settings/website_permissions'],
                 'fields' => [
                     'client_id' => ['label' => 'Threads app ID', 'config' => ['services.threads.client_id']],
                     'client_secret' => ['label' => 'Threads app secret', 'secret' => true, 'config' => ['services.threads.client_secret']],

@@ -637,8 +637,8 @@ return [
                 ],
                 'meta_threads' => [
                     'owner' => 'In the Meta developer dashboard, open the app, go to App roles, then Roles, choose Add People, pick Threads Tester and enter your Threads username.',
-                    'you' => 'On threads.net open Settings, then Account, then Website permissions, then Invites, and accept the invite. It can take a few minutes to show up. If Threads later shows a line of code saying you have not accepted the invite, accept it first, then come back and press Continue.',
-                    'live' => 'Request Advanced Access in App Review for threads_basic, threads_content_publish and threads_manage_insights, then switch the app to Live.',
+                    'you' => 'On threads.com open Settings, then Website permissions, then the Invitations tab, and accept the invite. It can take a few minutes to show up. If Threads later shows a line of code saying you have not accepted the invite, accept it first, then come back and press Continue.',
+                    'live' => 'Request Advanced Access in App Review for threads_basic, threads_content_publish, threads_manage_insights, threads_read_replies and threads_manage_replies, then switch the app to Live.',
                 ],
                 'x' => [
                     'owner' => 'X has no tester list, so there is nothing to add.',

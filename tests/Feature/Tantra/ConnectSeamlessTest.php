@@ -457,7 +457,7 @@ it('starts these apps in testing unless the owner says otherwise', function () {
     foreach (['linkedin', 'linkedin_page', 'x', 'google_business', 'discord', 'telegram'] as $app) {
         expect($catalog[$app]['mode'])->toBe('live');
     }
-    expect($catalog['meta_threads']['testing']['accept'])->toBe('https://www.threads.net/settings/account')
+    expect($catalog['meta_threads']['testing']['accept'])->toBe('https://www.threads.com/settings/website_permissions')
         ->and($catalog['meta_facebook']['testing']['accept'])->toBe('https://developers.facebook.com/requests')
         ->and(ChannelApps::isLive(Platform::Bluesky->value))->toBeTrue();
 });
@@ -476,13 +476,13 @@ it('shows the pre-connect step before the Threads sign in while the app is in te
             ->component('tantra/connect/Prepare')
             ->where('step.state', 'testing')
             ->where('step.network', 'Threads')
-            ->where('step.accept_url', 'https://www.threads.net/settings/account')
+            ->where('step.accept_url', 'https://www.threads.com/settings/website_permissions')
             ->where('step.can_manage', false)
             // tantra: no developer console or catch for anyone but the owner.
             ->where('step.console_url', null)
             ->where('step.catch', null)
             ->where('step.back_url', url('/settings/workspace/channels'))
-            ->where('step.your_steps', fn (string $text) => str_contains($text, 'Website permissions, then Invites'))
+            ->where('step.your_steps', fn (string $text) => str_contains($text, 'Website permissions, then the Invitations tab'))
             ->where('step.continue_url', fn (string $url) => str_contains($url, '/connect/threads?') && str_contains($url, 'prepared=1') && str_contains($url, 'return_to='))
         );
 

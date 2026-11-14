@@ -14,6 +14,7 @@ import SummaryCards from '@/components/analytics/workspace/SummaryCards.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import LabelFilter from '@/components/labels/LabelFilter.vue';
 import PublishHeader from '@/components/publish/PublishHeader.vue';
+import ThreadsReplies from '@/components/tantra/insights/ThreadsReplies.vue';
 import { useAnalyticsCoveragePoll } from '@/composables/useAnalyticsCoveragePoll';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -224,6 +225,11 @@ watch(selectedTypes, applyFilters, { deep: true });
                     </div>
                 </div>
             </header>
+
+            <ThreadsReplies
+                v-if="channel.platform === 'threads'"
+                :channel-id="channel.id"
+            />
 
             <EmptyState
                 v-if="!supported"
