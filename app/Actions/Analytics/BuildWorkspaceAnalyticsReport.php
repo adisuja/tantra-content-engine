@@ -11,6 +11,7 @@ use App\Models\AnalyticsSyncState;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Support\Analytics\MetricComparison;
+use App\Tantra\Analytics\InsightsScope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 
@@ -151,7 +152,7 @@ class BuildWorkspaceAnalyticsReport
         $ids = array_values(array_unique(array_filter($keys, fn (string $key): bool => Str::isUuid($key))));
 
         return SocialAccount::query()
-            ->whereBelongsTo($workspace)
+            ->whereIn('workspace_id', InsightsScope::ids($workspace->id)) // tantra: Account-wide Insights (PRD 26)
             ->whereIn('id', $ids)
             ->get(['id', 'platform', 'status', 'avatar_url', 'meta'])
             ->mapWithKeys(fn (SocialAccount $account): array => [$account->id => [
@@ -199,7 +200,7 @@ class BuildWorkspaceAnalyticsReport
         return AnalyticsSyncState::query()
             ->when($accountIds !== null, fn (Builder $states): Builder => $states->whereIn('social_account_id', $accountIds))
             ->whereHas('socialAccount', fn (Builder $accounts): Builder => $accounts
-                ->whereBelongsTo($workspace)
+                ->whereIn('workspace_id', InsightsScope::ids($workspace->id)) // tantra: Account-wide Insights (PRD 26)
                 ->connected()
                 ->includedInAnalytics())
             ->select([

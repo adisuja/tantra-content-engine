@@ -8,6 +8,7 @@ use App\Dto\Analytics\DateRange;
 use App\Enums\SocialAccount\Platform;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
+use App\Tantra\Analytics\InsightsScope;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Query\Builder;
@@ -33,7 +34,7 @@ class BuildFollowerAnalyticsReport
         $rows = $this->rows($workspace, $current, $accountKeys);
         $latestCurrent = $this->latest($workspace, $current, $accountKeys);
         $connectedAccounts = SocialAccount::query()
-            ->where('workspace_id', $workspace->id)
+            ->whereIn('workspace_id', InsightsScope::ids($workspace->id)) // tantra: Account-wide Insights (PRD 26)
             ->when($channelKeys !== null, fn (EloquentBuilder $accounts): EloquentBuilder => $accounts->whereKey(array_keys($channelKeys)))
             ->connected()
             ->includedInAnalytics()
@@ -134,7 +135,7 @@ class BuildFollowerAnalyticsReport
     private function scoped(Workspace $workspace, ?array $accountKeys): Builder
     {
         return DB::table('analytics_account_daily_snapshots')
-            ->where('analytics_account_daily_snapshots.workspace_id', $workspace->id)
+            ->whereIn('analytics_account_daily_snapshots.workspace_id', InsightsScope::ids($workspace->id)) // tantra: Account-wide Insights (PRD 26)
             ->whereIn('analytics_account_daily_snapshots.platform', Platform::analyticsValues())
             ->when($accountKeys !== null, fn (Builder $query): Builder => $query->whereIn('analytics_account_daily_snapshots.social_account_key', $accountKeys));
     }

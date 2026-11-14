@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, inject } from 'vue';
 
 import ChannelAvatar from '@/components/ChannelAvatar.vue';
 import {
@@ -8,6 +8,7 @@ import {
 } from '@/composables/usePlatformLogo';
 import { accountLabel } from '@/lib/analyticsAccounts';
 import type { AccountIdentityData } from '@/types/analytics';
+import { insightsPeopleKey } from '@/types/tantra-insights';
 
 const props = defineProps<{
     account: AccountIdentityData;
@@ -18,10 +19,21 @@ const props = defineProps<{
     withName?: boolean;
 }>();
 const label = computed(() => accountLabel(props.account));
-const handle = computed(() =>
-    props.account.name && props.account.username
-        ? `@${props.account.username}`
-        : null,
+// tantra: whose channel it is, on the Insights tab across workspaces (PRD 26)
+const people = inject(insightsPeopleKey, null);
+const person = computed(
+    () => people?.[props.account.social_account_key] ?? null,
+);
+const handle = computed(
+    () =>
+        [
+            props.account.name && props.account.username
+                ? `@${props.account.username}`
+                : null,
+            person.value,
+        ]
+            .filter(Boolean)
+            .join(' · ') || null,
 );
 </script>
 
@@ -67,7 +79,14 @@ const handle = computed(() =>
             v-else
             class="truncate text-sm text-foreground"
             :title="`${label} · ${getPlatformLabel(account.platform)}`"
-            >{{ label }}</span
+            >{{ label
+            }}<span
+                v-if="person"
+                class="text-muted-foreground"
+                data-testid="tantra-insights-person"
+            >
+                · {{ person }}</span
+            ></span
         >
         <span class="sr-only">{{ getPlatformLabel(account.platform) }}</span>
     </span>

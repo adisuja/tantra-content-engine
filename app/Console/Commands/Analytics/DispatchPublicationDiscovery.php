@@ -48,7 +48,9 @@ class DispatchPublicationDiscovery extends Command
                 }
 
                 if ($backfill->status === SyncStatus::Failed) {
-                    if ($backfill->last_error_category === 'queue_failed') {
+                    // tantra: any other failure is tried again once a day, so a cause fixed since recovers (PRD 26)
+                    if ($backfill->last_error_category === 'queue_failed'
+                        || $backfill->updated_at?->lessThan(CarbonImmutable::now('UTC')->subDay())) {
                         BootstrapAccountAnalytics::dispatch($channel->id);
                     }
 

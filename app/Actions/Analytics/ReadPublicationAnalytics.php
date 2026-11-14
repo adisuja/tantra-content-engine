@@ -19,6 +19,7 @@ use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Post;
 use App\Models\Workspace;
 use App\Support\Analytics\EngagementRate;
+use App\Tantra\Analytics\InsightsScope;
 use Illuminate\Support\Collection;
 
 class ReadPublicationAnalytics
@@ -29,7 +30,7 @@ class ReadPublicationAnalytics
         $publication = AnalyticsPublication::query()
             ->with('socialAccount')
             ->whereIn('availability', [PublicationAvailability::Available, PublicationAvailability::Deleted])
-            ->whereBelongsTo($workspace)
+            ->whereIn('workspace_id', InsightsScope::ids($workspace->id)) // tantra: Account-wide Insights (PRD 26)
             ->whereIn('platform', Platform::analyticsValues())
             ->findOrFail($publicationId);
 

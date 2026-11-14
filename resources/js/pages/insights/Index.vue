@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
 import { IconTrendingUp } from '@tabler/icons-vue';
-import { computed, ref, watch } from 'vue';
+import { computed, provide, reactive, ref, watch, watchEffect } from 'vue';
 
 import AnalyticsRangePresets from '@/components/analytics/AnalyticsRangePresets.vue';
 import InsightsExportMenu from '@/components/analytics/InsightsExportMenu.vue';
@@ -16,6 +16,9 @@ import TopPosts from '@/components/analytics/workspace/TopPosts.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import HeaderTitle from '@/components/HeaderTitle.vue';
 import PostChannelFilter from '@/components/posts/PostChannelFilter.vue';
+import InsightsChannelsTable from '@/components/tantra/insights/InsightsChannelsTable.vue'; // tantra
+import InsightsPostsTable from '@/components/tantra/insights/InsightsPostsTable.vue'; // tantra
+import InsightsScopeFilters from '@/components/tantra/insights/InsightsScopeFilters.vue'; // tantra
 import { useAnalyticsCoveragePoll } from '@/composables/useAnalyticsCoveragePoll';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { accountColor } from '@/lib/analyticsColors';
@@ -26,35 +29,117 @@ import type {
     SummaryMetric,
     WorkspaceAnalyticsReport,
 } from '@/types/analytics';
+import {
+    insightsPeopleKey,
+    type TantraInsights,
+} from '@/types/tantra-insights'; // tantra
 
 const props = defineProps<{
     report: WorkspaceAnalyticsReport;
     channelOptions: AnalyticsChannelOption[];
     availableMetrics: SummaryMetric[] | null;
     sync: InsightsSyncCadence;
+    /** tantra: every workspace the viewer can see (PRD 26). */
+    tantraInsights?: TantraInsights;
 }>();
 
 const selectedChannelIds = ref<string[]>([...props.report.filters.channels]);
 
-const filterQuery = computed((): Record<string, string | string[]> => ({
-    ...(selectedChannelIds.value.length
-        ? { channels: selectedChannelIds.value }
-        : {}),
-}));
+// tantra: the people and network filters, and whose each channel is (PRD 26)
+const selectedPeople = ref<string[]>([
+    ...(props.tantraInsights?.filters.workspaces ?? []),
+]);
+const selectedNetworks = ref<string[]>([
+    ...(props.tantraInsights?.filters.networks ?? []),
+]);
+const people = reactive<Record<string, string>>({});
+watchEffect(() => {
+    const channels = props.tantraInsights?.channels ?? [];
+    const several = (props.tantraInsights?.workspaces.length ?? 0) > 1;
 
-const filtered = computed(() => props.report.filters.channels.length > 0);
+    Object.keys(people).forEach((key) => delete people[key]);
+    channels.forEach((channel) => {
+        if (several && channel.analytics_key && channel.person) {
+            people[channel.analytics_key] = channel.person;
+        }
+    });
+});
+provide(insightsPeopleKey, people);
+const shownChannelOptions = computed(() => {
+    const scope = new Map(
+        (props.tantraInsights?.channels ?? []).map((channel) => [
+            channel.id,
+            channel,
+        ]),
+    );
+
+    return props.channelOptions.filter((option) => {
+        const channel = scope.get(option.id);
+
+        return (
+            !channel ||
+            ((selectedPeople.value.length === 0 ||
+                selectedPeople.value.includes(channel.workspace_id)) &&
+                (selectedNetworks.value.length === 0 ||
+                    selectedNetworks.value.includes(channel.network)))
+        );
+    });
+});
+
+const filterQuery = computed(
+    (): Record<string, string | string[]> => ({
+        ...(selectedChannelIds.value.length
+            ? { channels: selectedChannelIds.value }
+            : {}),
+        ...(selectedPeople.value.length
+            ? { workspaces: selectedPeople.value }
+            : {}), // tantra
+        ...(selectedNetworks.value.length
+            ? { networks: selectedNetworks.value }
+            : {}), // tantra
+    }),
+);
+
+const filtered = computed(
+    () =>
+        props.report.filters.channels.length > 0 ||
+        Boolean(props.tantraInsights?.filtered), // tantra
+);
 
 const sameIds = (left: string[], right: string[]): boolean =>
     left.length === right.length && left.every((id) => right.includes(id));
 
 const selectionMatchesServer = (): boolean =>
-    sameIds(selectedChannelIds.value, props.report.filters.channels);
+    sameIds(selectedChannelIds.value, props.report.filters.channels) &&
+    // tantra: the people and network filters too
+    sameIds(
+        selectedPeople.value,
+        props.tantraInsights?.filters.workspaces ?? [],
+    ) &&
+    sameIds(
+        selectedNetworks.value,
+        props.tantraInsights?.filters.networks ?? [],
+    );
 
 watch(
     () => props.report.filters,
     (filters) => {
         if (!sameIds(selectedChannelIds.value, filters.channels)) {
             selectedChannelIds.value = [...filters.channels];
+        }
+    },
+);
+
+// tantra: history navigation re-syncs the people and network filters
+watch(
+    () => props.tantraInsights?.filters,
+    (filters) => {
+        if (filters && !sameIds(selectedPeople.value, filters.workspaces)) {
+            selectedPeople.value = [...filters.workspaces];
+        }
+
+        if (filters && !sameIds(selectedNetworks.value, filters.networks)) {
+            selectedNetworks.value = [...filters.networks];
         }
     },
 );
@@ -69,7 +154,7 @@ const rangeQuery = (): Record<string, string> =>
         : { range: props.report.filters.range };
 
 watch(
-    [selectedChannelIds],
+    [selectedChannelIds, selectedPeople, selectedNetworks], // tantra: people and networks
     () => {
         if (selectionMatchesServer()) {
             return;
@@ -143,9 +228,17 @@ const accountColors = computed<Record<string, string>>(() => {
                         class="flex min-w-0 flex-wrap items-center gap-2"
                         data-testid="analytics-filters"
                     >
+                        <!-- tantra: people and networks (PRD 26) -->
+                        <InsightsScopeFilters
+                            v-if="tantraInsights"
+                            v-model:people="selectedPeople"
+                            v-model:networks="selectedNetworks"
+                            :workspace-list="tantraInsights.workspaces"
+                            :network-list="tantraInsights.networks"
+                        />
                         <PostChannelFilter
                             v-model="selectedChannelIds"
-                            :channels="channelOptions"
+                            :channels="shownChannelOptions"
                             test-id="analytics-channel"
                             sheet-below-sm
                         />
@@ -156,7 +249,7 @@ const accountColors = computed<Record<string, string>>(() => {
             <ImportCoverage :coverage="report.coverage" />
 
             <EmptyState
-                v-if="!report.bounds.min && report.filters.channels.length"
+                v-if="!report.bounds.min && filtered"
                 data-testid="analytics-filtered-empty-state"
                 :icon="IconTrendingUp"
                 :title="$t('analytics.dashboard.filtered_no_data_title')"
@@ -174,7 +267,7 @@ const accountColors = computed<Record<string, string>>(() => {
                     subtitle-testid="insights-range-caption"
                 />
                 <TopPosts
-                    :top-posts="report.top_posts"
+                    :top-posts="tantraInsights?.top_posts ?? report.top_posts"
                     :range="report.range"
                     :filtered="filtered"
                 />
@@ -192,6 +285,11 @@ const accountColors = computed<Record<string, string>>(() => {
                     :channel-filtered="report.filters.channels.length > 0"
                     :total-channels="channelOptions.length"
                 />
+                <!-- tantra: every channel, its followers and why numbers are missing (PRD 26) -->
+                <InsightsChannelsTable
+                    v-if="tantraInsights"
+                    :channels="tantraInsights.channels"
+                />
                 <PostsChart
                     :posts="report.posts"
                     :range="report.range"
@@ -200,7 +298,19 @@ const accountColors = computed<Record<string, string>>(() => {
                     :channel-filtered="report.filters.channels.length > 0"
                     :total-channels="channelOptions.length"
                 />
+                <!-- tantra: every post of the period, external ones included (PRD 26) -->
+                <InsightsPostsTable
+                    v-if="tantraInsights"
+                    :posts="tantraInsights.posts"
+                    :url="insightsRoute.url()"
+                    :query="{ ...rangeQuery(), ...filterQuery }"
+                />
             </template>
+            <!-- tantra: with no numbers yet, each channel still says why (PRD 26) -->
+            <InsightsChannelsTable
+                v-if="tantraInsights && !report.bounds.min"
+                :channels="tantraInsights.channels"
+            />
         </div>
     </AppLayout>
 </template>
