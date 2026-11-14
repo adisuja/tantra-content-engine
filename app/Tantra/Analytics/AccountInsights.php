@@ -286,11 +286,14 @@ final class AccountInsights
         $today = CarbonImmutable::now($range->timezone)->toDateString();
         $until = $range->end->toDateString() >= $today ? null : $range->end->toDateString();
         $scoped = fn (): Builder => DB::table('analytics_account_daily_snapshots')
-            ->whereIn('workspace_id', $this->workspaceIds)
-            ->whereIn('social_account_key', $keys)
-            ->whereNotNull('followers_count')
-            ->when($until !== null, fn (Builder $query): Builder => $query->where('date', '<=', $until));
-        $latest = $scoped()->select('social_account_key')->selectRaw('MAX(date) as latest_date')->groupBy('social_account_key');
+            ->whereIn('analytics_account_daily_snapshots.workspace_id', $this->workspaceIds)
+            ->whereIn('analytics_account_daily_snapshots.social_account_key', $keys)
+            ->whereNotNull('analytics_account_daily_snapshots.followers_count')
+            ->when($until !== null, fn (Builder $query): Builder => $query->where('analytics_account_daily_snapshots.date', '<=', $until));
+        $latest = $scoped()
+            ->select('analytics_account_daily_snapshots.social_account_key')
+            ->selectRaw('MAX(analytics_account_daily_snapshots.date) as latest_date')
+            ->groupBy('analytics_account_daily_snapshots.social_account_key');
 
         return $scoped()
             ->joinSub($latest, 'latest', fn (JoinClause $join): JoinClause => $join
