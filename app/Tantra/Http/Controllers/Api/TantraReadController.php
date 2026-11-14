@@ -37,7 +37,7 @@ class TantraReadController extends Controller
             ->when($data['status'] ?? null, fn ($q, $s) => $q->whereIn('review_status', explode(',', $s)))
             ->when($data['workspace_id'] ?? null, fn ($q, $w) => $q->where('workspace_id', $w))
             ->when($data['batch'] ?? null, fn ($q, $b) => $q->where('engine_batch_id', $b))
-            ->with('workspace:id,name')->latest('updated_at')->paginate((int) ($data['per_page'] ?? 50));
+            ->with('workspace')->latest('updated_at')->paginate((int) ($data['per_page'] ?? 50));
 
         return response()->json([
             'data' => collect($rows->items())->map(fn (ReviewItem $i): array => [
@@ -57,7 +57,7 @@ class TantraReadController extends Controller
         $user = $request->user();
         $tasks = ManualTask::query()->whereIn('workspace_id', ReviewPageController::visibleWorkspaceIds($user))
             ->whereIn('status', array_filter(explode(',', (string) $request->query('status', 'waiting,due'))))
-            ->with('workspace:id,name')->orderBy('due_at')->limit(200)->get();
+            ->with('workspace')->orderBy('due_at')->limit(200)->get();
 
         return response()->json(['data' => $tasks->map(fn (ManualTask $t): array => [
             'id' => $t->id, 'kind' => $t->kind, 'status' => $t->status, 'due_at' => $t->due_at?->toIso8601String(),

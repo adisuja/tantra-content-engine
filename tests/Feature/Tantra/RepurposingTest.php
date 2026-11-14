@@ -46,5 +46,5 @@ it('keeps an Account\'s own rules on top of the preset', function () {
 
     $this->actingAs($this->adi)->putJson('/tantra/repurposing/rules/facebook', ['rules' => ''])->assertOk();
     expect(RepurposeRule::query()->count())->toBe(0);
-    $this->actingAs($this->ben)->postJson('/api/tantra/repurposing/presets', ['presets' => []])->assertStatus(401);
+    $this->actingAs($this->ben)->postJson('/api/tantra/repurposing/presets', ['presets' => []])->assertForbidden();
 });
