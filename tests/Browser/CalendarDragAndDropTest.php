@@ -2172,6 +2172,8 @@ test('the card sits in its new cell while the move is on its way and stays there
     calendarDragHoldRequests($page);
     calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-12");
     waitForCondition($page, 'window.__heldRequests.length === 1');
+    // The request is held as soon as it is sent; Vue paints the optimistic move on its next tick.
+    waitFor($page, "@calendar-slot-{$key}-12 @calendar-post-{$post->id}");
 
     expect(calendarDragCellOf($page, $post))->toBe("calendar-slot-{$key}-12")
         ->and($page->script('document.querySelector(\'[data-testid="calendar-grid"]\').getAttribute(\'aria-busy\')'))->toBe('true')
@@ -2243,6 +2245,8 @@ test('a post that becomes due before the move reaches the server goes back with 
     waitForGone($page, '@calendar-grid[aria-busy]');
 
     $page->assertSeeIn('@calendar-reschedule-error-toast', __('calendar.reschedule.errors.publishing_soon'));
+    // The toast is raised in the same handler that rolls the move back; the card is repainted on the next tick.
+    waitFor($page, "@calendar-slot-{$at->format('Y-m-d')}-{$at->format('H')} @calendar-post-{$post->id}");
     expect(calendarDragCellOf($page, $post))->toBe("calendar-slot-{$at->format('Y-m-d')}-{$at->format('H')}")
         ->and($post->refresh()->scheduled_at->equalTo($at))->toBeTrue();
     $page->assertNoJavaScriptErrors();
@@ -2698,10 +2702,25 @@ test('an older move answered after a newer one keeps both cards where they were 
             };
         })()
     JS);
+    // Record every cell the first card is painted in from here on: it must never go back to 10.
+    $page->script(<<<JS
+        (() => {
+            window.__firstCells = [];
+            const record = () => {
+                const cell = document.querySelector('[data-testid="calendar-post-{$first->id}"]')
+                    ?.closest('[data-testid^="calendar-slot-"]')?.dataset.testid ?? null;
+                if (window.__firstCells.at(-1) !== cell) window.__firstCells.push(cell);
+            };
+            new MutationObserver(record).observe(document.body, { subtree: true, childList: true });
+            record();
+        })()
+    JS);
     $page->script('window.__heldRequests[0]()');
     waitForCondition($page, 'window.__heldReloads.length === 1');
+    waitFor($page, "@calendar-slot-{$key}-13 @calendar-post-{$first->id}");
 
-    expect(calendarDragCellOf($page, $first))->toBe("calendar-slot-{$key}-13");
+    expect(calendarDragCellOf($page, $first))->toBe("calendar-slot-{$key}-13")
+        ->and($page->script('window.__firstCells'))->not->toContain("calendar-slot-{$key}-10");
 
     $page->script('window.__heldReloads.splice(0).forEach((release) => release())');
     waitForGone($page, '@calendar-grid[aria-busy]');
