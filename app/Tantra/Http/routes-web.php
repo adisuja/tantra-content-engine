@@ -88,7 +88,7 @@ Route::middleware(['web', 'auth'])
     ->whereUuid('workspace')
     ->name('tantra.approvals');
 
-// tantra: a teammate's welcome link (signed, 14 days) opens the set-password page.
+// tantra: a teammate's welcome link (signed, 30 days) opens the set-password page.
 Route::middleware(['web', 'signed', 'throttle:6,1'])
     ->get('tantra/join/{user}', JoinController::class)
     ->whereUuid('user')
