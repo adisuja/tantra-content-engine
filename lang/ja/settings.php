@@ -46,6 +46,8 @@ return [
         'post_note_added_description' => 'チームメンバーが投稿にメモを追加したときにメールを受け取ります',
         'collaboration' => 'コラボレーション',
         'collaboration_description' => '承認リクエストや、承認・却下された投稿についてメールを受け取る',
+        'daily_digest' => 'デイリーダイジェスト',
+        'daily_digest_description' => 'レビュー待ちの投稿、公開された投稿、表示回数を1日1通のメールでお知らせします',
         'save_failed' => '通知設定を保存できませんでした。もう一度お試しください。',
     ],
 

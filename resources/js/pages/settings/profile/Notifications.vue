@@ -15,7 +15,8 @@ type PreferenceField =
     | 'post_failed'
     | 'account_disconnected'
     | 'post_note_added'
-    | 'collaboration';
+    | 'collaboration'
+    | 'daily_digest';
 
 type Preferences = Record<PreferenceField, boolean>;
 
@@ -29,6 +30,7 @@ const fields: PreferenceField[] = [
     'account_disconnected',
     'post_note_added',
     'collaboration',
+    'daily_digest',
 ];
 
 const values = ref<Preferences>(
@@ -85,7 +87,11 @@ const toggle = (field: PreferenceField, value: boolean): void => {
                             {{ $t(`settings.notifications.${field}`) }}
                         </Label>
                         <p class="text-sm text-muted-foreground">
-                            {{ $t(`settings.notifications.${field}_description`) }}
+                            {{
+                                $t(
+                                    `settings.notifications.${field}_description`,
+                                )
+                            }}
                         </p>
                     </div>
                     <Switch

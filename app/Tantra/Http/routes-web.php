@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Middleware\App\EnsureAccountReady;
 use App\Http\Middleware\App\EnsureHasWorkspace;
+use App\Tantra\Billing\BillingController;
 use App\Tantra\Http\Controllers\OpsController;
 use App\Tantra\Http\Controllers\RebrandController;
 use App\Tantra\Http\Controllers\RepostController;
@@ -13,10 +14,12 @@ use App\Tantra\Http\Controllers\Web\ChannelAppController;
 use App\Tantra\Http\Controllers\Web\ClerkSessionController;
 use App\Tantra\Http\Controllers\Web\ConnectorController;
 use App\Tantra\Http\Controllers\Web\DeveloperAppsController;
+use App\Tantra\Http\Controllers\Web\DigestUnsubscribeController;
 use App\Tantra\Http\Controllers\Web\FormatsController;
 use App\Tantra\Http\Controllers\Web\IdeaReviewController;
 use App\Tantra\Http\Controllers\Web\InsightsController;
 use App\Tantra\Http\Controllers\Web\JoinController;
+use App\Tantra\Http\Controllers\Web\MailImageController;
 use App\Tantra\Http\Controllers\Web\ManualTaskController;
 use App\Tantra\Http\Controllers\Web\OpenChannelController;
 use App\Tantra\Http\Controllers\Web\PreConnectController;
@@ -25,6 +28,7 @@ use App\Tantra\Http\Controllers\Web\ReconnectController;
 use App\Tantra\Http\Controllers\Web\ReviewItemActionController;
 use App\Tantra\Http\Controllers\Web\ReviewPageController;
 use App\Tantra\Http\Controllers\Web\TeamController;
+use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Support\Facades\Route;
 
 // tantra: review studio (PRD 10.2). Pages render with Inertia; actions answer JSON.
@@ -55,6 +59,32 @@ Route::middleware(['web', 'throttle:60,1'])
     ->get('previewlink/{token}', PreviewLinkController::class)
     ->where('token', '[A-Za-z0-9]{32,64}')
     ->name('tantra.previewlink');
+
+// tantra: email-sized post media (App\Tantra\Mail\MailImage). Signed, no sign in: mail clients fetch it.
+Route::middleware(['signed', 'throttle:600,1'])
+    ->get('tantra/mail-image/{kind}/{src}', MailImageController::class)
+    ->where(['kind' => 'cover|thumb|gif', 'src' => '[A-Za-z0-9_-]{4,800}'])
+    ->name('tantra.mail.image');
+
+// tantra: turn the daily digest off from the email (signed link; POST is the one-click unsubscribe).
+Route::middleware(['signed', 'throttle:30,1', SubstituteBindings::class])
+    ->match(['get', 'post'], 'tantra/digest/unsubscribe/{user}', DigestUnsubscribeController::class)
+    ->whereUuid('user')
+    ->name('tantra.digest.unsubscribe');
+
+// tantra: Content OS billing on Dodo (App\Tantra\Billing). The webhook has no session or CSRF: its signature is the check.
+Route::middleware(['throttle:120,1'])
+    ->post('tantra/billing/dodo/webhook', [BillingController::class, 'webhook'])
+    ->name('tantra.billing.webhook');
+Route::middleware(['web', 'auth'])->prefix('tantra/billing')->name('tantra.billing.')->group(function (): void {
+    Route::get('/', [BillingController::class, 'show'])->name('show');
+    Route::post('/checkout', [BillingController::class, 'checkout'])->name('checkout');
+    Route::get('/portal', [BillingController::class, 'portal'])->name('portal');
+});
+Route::middleware(['web', 'signed', 'throttle:30,1'])->prefix('tantra/billing/{workspace}')->whereUuid('workspace')->name('tantra.billing.')->group(function (): void {
+    Route::get('/manage', [BillingController::class, 'manage'])->name('manage');
+    Route::get('/restart', [BillingController::class, 'restart'])->name('restart');
+});
 
 // tantra: posts published by hand (PRD 12).
 Route::middleware(['web', 'auth'])

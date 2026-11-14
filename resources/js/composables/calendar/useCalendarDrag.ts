@@ -41,10 +41,7 @@ export interface CalendarDrag {
 
 type CalendarDragContext = Pick<
     CalendarDrag,
-    | 'overTarget'
-    | 'draggingPostId'
-    | 'vCalendarPost'
-    | 'vCalendarTarget'
+    'overTarget' | 'draggingPostId' | 'vCalendarPost' | 'vCalendarTarget'
 >;
 
 export const calendarDragKey: InjectionKey<CalendarDragContext> =
@@ -199,7 +196,10 @@ export const useCalendarDrag = (
             ? undefined
             : dropInstant(post, target, options.timezone.value, dayjs());
 
-    const placePreview = (input: { clientX: number; clientY: number }): void => {
+    const placePreview = (input: {
+        clientX: number;
+        clientY: number;
+    }): void => {
         if (preview) {
             preview.style.left = `${input.clientX - previewOffset.x}px`;
             preview.style.top = `${input.clientY - previewOffset.y}px`;
@@ -708,6 +708,11 @@ export const useCalendarDrag = (
                 onError: (errors) => {
                     answered = true;
                     fail(Object.values(errors)[0]);
+                    // tantra: Inertia can repaint the optimistic move after
+                    // rolling it back when the refusal lands fast, leaving the
+                    // card where the server never put it. Show the server's
+                    // calendar once more so the card ends where the post is.
+                    reloadInstead(false);
                 },
                 onHttpException: () => {
                     answered = true;
@@ -981,7 +986,9 @@ export const useCalendarDrag = (
             clientX: gesture.startX,
             clientY: gesture.startY,
         });
-        scroller = document.querySelector<HTMLElement>(`[${SCROLLER_ATTRIBUTE}]`);
+        scroller = document.querySelector<HTMLElement>(
+            `[${SCROLLER_ATTRIBUTE}]`,
+        );
         options.onDragStart?.(gesture.post);
         updateOver();
         frame = requestAnimationFrame(tick);

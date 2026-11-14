@@ -46,6 +46,8 @@ return [
         'post_note_added_description' => '当团队成员为帖子添加备注时接收邮件',
         'collaboration' => '协作',
         'collaboration_description' => '接收关于审批请求以及已批准或已拒绝帖子的邮件',
+        'daily_digest' => '每日摘要',
+        'daily_digest_description' => '每天一封邮件，告诉你待审核的帖子、已发布的内容以及帖子的浏览量',
         'save_failed' => '无法保存通知偏好，请重试。',
     ],
 

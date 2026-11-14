@@ -52,6 +52,8 @@ final class NotifyReviewers
                         'short' => $i->short,
                         'revised' => $i->revision > 1,
                     ])->all(),
+                    $sorted->pluck('id')->map(fn ($id): string => (string) $id)->all(),
+                    $reviewer->timezone,
                 ), (string) $workspace?->name, url('/tantra/review'), 'Open Review');
             }
 

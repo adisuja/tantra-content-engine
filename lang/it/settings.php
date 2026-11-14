@@ -46,6 +46,8 @@ return [
         'post_note_added_description' => 'Ricevi un\'email quando un membro del team aggiunge una nota a un post',
         'collaboration' => 'Collaborazione',
         'collaboration_description' => 'Ricevi email sulle richieste di approvazione e sui post approvati o rifiutati',
+        'daily_digest' => 'Riepilogo giornaliero',
+        'daily_digest_description' => 'Una email al giorno con i post che ti aspettano, cosa è stato pubblicato e quante visualizzazioni hanno avuto',
         'save_failed' => 'Impossibile salvare le preferenze di notifica. Riprova.',
     ],
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tantra\Channels;
 
+use App\Tantra\Mail\Letter;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -32,17 +33,17 @@ class ReconnectChannel extends Mailable implements ShouldQueue
 
     public function content(): Content
     {
-        $intro = $this->state === 'dropped'
-            ? "The LinkedIn connection for {$this->channelName} in {$this->workspaceName} has stopped working. Scheduled posts there will not go out until you connect it again. It takes about a minute."
-            : "The LinkedIn connection for {$this->channelName} in {$this->workspaceName} runs out {$this->dueText()}. LinkedIn asks everyone to sign in again every 60 days. Reconnect now and your scheduled posts carry on as planned.";
+        $dropped = $this->state === 'dropped';
 
-        return new Content(view: 'tantra::mail.review-ready', with: [
-            'heading' => $this->state === 'dropped' ? 'Your LinkedIn needs reconnecting' : 'Time to reconnect LinkedIn',
-            'intro' => $intro,
-            'posts' => [],
-            'url' => url('/tantra/review'),
-            'button' => 'Reconnect LinkedIn',
-        ]);
+        return Letter::make($dropped ? 'LinkedIn stopped posting for '.$this->channelName : 'Reconnect LinkedIn '.$this->dueText().' to keep posting')
+            ->eyebrow($dropped ? 'Posting is paused' : 'Action needed soon', $dropped ? 'bad' : 'warn')
+            ->lead($dropped
+                ? "The LinkedIn connection for {$this->channelName} in {$this->workspaceName} stopped working. Scheduled posts there will not go out until you connect it again."
+                : "LinkedIn asks everyone to sign in again every 60 days. The connection for {$this->channelName} in {$this->workspaceName} runs out {$this->dueText()}. Reconnect now and every scheduled post goes out as planned.")
+            ->para('It takes about a minute: sign in to LinkedIn and approve the access again.')
+            ->cta('Reconnect LinkedIn', url('/tantra/review'))
+            ->reason("You get this because you review posts for {$this->workspaceName}.")
+            ->content();
     }
 
     private function dueText(): string

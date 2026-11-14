@@ -9,6 +9,7 @@ use App\Jobs\PublishPost;
 use App\Jobs\PublishToSocialPlatform;
 use App\Models\Post;
 use App\Support\Social\LimitRetryPolicy;
+use App\Tantra\Billing\PublishingGate;
 use Illuminate\Console\Command;
 use Throwable;
 
@@ -23,6 +24,11 @@ class ProcessScheduledPosts extends Command
         Post::query()
             ->due()
             ->each(function (Post $post) {
+                // tantra: a workspace whose Content OS plan lapsed keeps its posts scheduled, unpublished.
+                if (! PublishingGate::allows($post->workspace_id)) {
+                    return;
+                }
+
                 try {
                     $claimed = Post::where('id', $post->id)
                         ->where('status', PostStatus::Scheduled)

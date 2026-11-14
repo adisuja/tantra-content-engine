@@ -46,6 +46,8 @@ return [
         'post_note_added_description' => 'Ontvang een e-mail wanneer een teamlid een notitie aan een bericht toevoegt',
         'collaboration' => 'Samenwerking',
         'collaboration_description' => 'Ontvang e-mails over goedkeuringsverzoeken en goedgekeurde of afgewezen berichten',
+        'daily_digest' => 'Dagelijkse samenvatting',
+        'daily_digest_description' => 'Eén e-mail per dag met berichten die op je wachten, wat live ging en hoeveel weergaven je berichten kregen',
         'save_failed' => 'De meldingsvoorkeuren konden niet worden opgeslagen. Probeer het opnieuw.',
     ],
 

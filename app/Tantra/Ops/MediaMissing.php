@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tantra\Ops;
 
+use App\Tantra\Mail\Letter;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -21,19 +22,25 @@ class MediaMissing extends Mailable implements ShouldQueue
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: 'A scheduled post is missing its file');
+        return new Envelope(subject: 'Fix before '.Carbon::parse($this->scheduledAt)->format('D j M, H:i').' UTC: a post is missing its file');
     }
 
     public function content(): Content
     {
         $at = Carbon::parse($this->scheduledAt)->format('D j M, H:i').' UTC';
 
-        return new Content(view: 'tantra::mail.review-ready', with: [
-            'heading' => 'A scheduled post is missing its file',
-            'intro' => "The post going out {$at} in {$this->workspaceName} points to an image or document that is no longer in storage, so it would fail to publish. Open it, attach the file again and save.",
-            'posts' => $this->short !== '' ? [['id' => 'The post', 'date' => null, 'short' => $this->short, 'revised' => false]] : [],
-            'url' => url('/schedule?tab=queue'),
-            'button' => 'Open the queue',
-        ]);
+        $letter = Letter::make('A scheduled post is missing its file')
+            ->eyebrow('Will fail to publish', 'bad')
+            ->lead("The post going out {$at} in {$this->workspaceName} points to an image or document that is no longer in storage. If it stays that way, the post fails at its slot.")
+            ->facts([['Goes out', $at], ['Workspace', $this->workspaceName]]);
+        if ($this->short !== '') {
+            $letter->quote($this->short, 'The post');
+        }
+
+        return $letter
+            ->para('Open it, attach the file again and save. The slot stays the same.')
+            ->cta('Fix the post', url('/schedule?tab=queue'))
+            ->reason("You get this because you review posts for {$this->workspaceName}.")
+            ->content();
     }
 }
