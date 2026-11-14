@@ -47,7 +47,7 @@ it('falls back to its own email when the CRM keeps refusing', function () {
 
     $job->failed(new RuntimeException('HTTP 500'));
 
-    Mail::assertSent(ManualTaskDue::class, fn ($m) => $m->hasTo('ben@example.test'));
+    Mail::assertQueued(ManualTaskDue::class, fn ($m) => $m->hasTo('ben@example.test'));
 });
 
 it('sends events that have no email of their own only through the CRM', function () {
