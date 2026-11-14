@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Tantra\Http\Controllers\Api\AgentRunnerController;
 use App\Tantra\Http\Controllers\Api\BatchController;
 use App\Tantra\Http\Controllers\Api\ChannelScheduleController;
+use App\Tantra\Http\Controllers\Api\ContextController;
 use App\Tantra\Http\Controllers\Api\IdeaController;
 use App\Tantra\Http\Controllers\Api\MessagesController;
 use App\Tantra\Http\Controllers\Api\ProfileController;
@@ -29,6 +30,7 @@ Route::middleware(['api', 'auth:api', 'tantra.owner-token', 'throttle:api'])
     ->name('tantra.api.')
     ->group(function (): void {
         Route::get('/profiles', [ProfileController::class, 'index'])->name('profiles.index');
+        Route::get('/context', [ContextController::class, 'show'])->name('context.show');
         Route::post('/uploads', [UploadController::class, 'media'])->name('uploads.store');
         Route::post('/previews', [UploadController::class, 'preview'])->name('previews.store');
         Route::post('/batches', [BatchController::class, 'store'])->name('batches.store');

@@ -43,6 +43,7 @@ use App\Tantra\Console\RoadmapKeyCommand;
 use App\Tantra\Console\SyncChannelsCommand;
 use App\Tantra\Console\TeamAccountCommand;
 use App\Tantra\Console\TeamAccountsCommand;
+use App\Tantra\Console\TrackLinksCommand;
 use App\Tantra\Console\ZernioConnectCommand;
 use App\Tantra\Http\Controllers\Web\ReviewPageController;
 use App\Tantra\Http\Middleware\EnsureOwnerToken;
@@ -50,6 +51,7 @@ use App\Tantra\Http\Middleware\EnsureRunnerToken;
 use App\Tantra\Http\Middleware\EnsureTantraAdmin;
 use App\Tantra\Http\Middleware\LandOnReview;
 use App\Tantra\Ideas\IdeaMeta;
+use App\Tantra\Links\TrackPieceLinks;
 use App\Tantra\Manual\ManualTask;
 use App\Tantra\Ops\LeanHorizon;
 use App\Tantra\Rebrand\Rebrand;
@@ -154,6 +156,9 @@ class TantraServiceProvider extends ServiceProvider
             }
         });
 
+        // Every link saved into a piece becomes a CRM short link for that piece and person (card 29 rule).
+        TrackPieceLinks::listen();
+
         // A teammate connecting LinkedIn turns their waiting posts into drafts.
         SocialAccount::created(fn (SocialAccount $channel) => DraftMaker::forWorkspace($channel));
 
@@ -233,10 +238,12 @@ class TantraServiceProvider extends ServiceProvider
             // Post and page numbers (PRD 10.6).
             $schedule->command('tantra:check-connectors')->hourly()->withoutOverlapping();
             $schedule->command('tantra:collect-metrics')->twiceDaily(6, 18)->withoutOverlapping();
+            // The safety net behind the save hooks: any untracked link left in open content.
+            $schedule->command('tantra:track-links --quiet-summary')->everyTenMinutes()->withoutOverlapping();
         });
 
         if ($this->app->runningInConsole()) {
-            $this->commands([AiConnectorCommand::class, CheckConnectorsCommand::class, CollectMetricsCommand::class, CreateOwnerCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class, TeamAccountsCommand::class, TeamAccountCommand::class, ClerkUnlinkCommand::class, LinkedInSyncCommand::class, AgentJobsCommand::class, RepurposeCadenceCommand::class, GiveawayRepliesCommand::class, HealthCommand::class, HeartbeatCommand::class, ReconnectRemindersCommand::class, SyncChannelsCommand::class, RoadmapKeyCommand::class]);
+            $this->commands([AiConnectorCommand::class, CheckConnectorsCommand::class, CollectMetricsCommand::class, CreateOwnerCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class, TeamAccountsCommand::class, TeamAccountCommand::class, ClerkUnlinkCommand::class, LinkedInSyncCommand::class, AgentJobsCommand::class, RepurposeCadenceCommand::class, GiveawayRepliesCommand::class, HealthCommand::class, HeartbeatCommand::class, ReconnectRemindersCommand::class, SyncChannelsCommand::class, RoadmapKeyCommand::class, TrackLinksCommand::class]);
         }
 
         if ($this->app->environment('production') && config('tantra.lean_workers.enabled')) {

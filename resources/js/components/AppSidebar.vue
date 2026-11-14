@@ -133,10 +133,12 @@ const mainNavItems = computed<NavItem[]>(() => [
         count: scheduledPostsCount.value,
         countTestId: 'sidebar-publish-count',
     },
+    // tantra: in a Tantra workspace Insights opens the team results, built around traffic and leads.
     {
         title: trans('channels.insights'),
-        href: insights.url(),
+        href: tantraReview.value ? '/tantra/insights' : insights.url(),
         icon: IconTrendingUp,
+        activePattern: tantraReview.value ? '/tantra/insights' : undefined,
     },
     ...(canManageRepurposes.value
         ? [

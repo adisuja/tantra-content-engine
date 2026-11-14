@@ -19,6 +19,7 @@ import PostChannelFilter from '@/components/posts/PostChannelFilter.vue';
 import InsightsChannelsTable from '@/components/tantra/insights/InsightsChannelsTable.vue'; // tantra
 import InsightsPostsTable from '@/components/tantra/insights/InsightsPostsTable.vue'; // tantra
 import InsightsScopeFilters from '@/components/tantra/insights/InsightsScopeFilters.vue'; // tantra
+import InsightsTabs from '@/components/tantra/insights/InsightsTabs.vue'; // tantra
 import { useAnalyticsCoveragePoll } from '@/composables/useAnalyticsCoveragePoll';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { accountColor } from '@/lib/analyticsColors';
@@ -202,6 +203,10 @@ const accountColors = computed<Record<string, string>>(() => {
                     <HeaderTitle
                         :title="$t('analytics.title')"
                         :icon="IconTrendingUp"
+                    />
+                    <InsightsTabs
+                        v-if="$page.props.tantraReview"
+                        active="posts"
                     />
                     <div class="flex shrink-0 items-center gap-2">
                         <InsightsSyncStatus

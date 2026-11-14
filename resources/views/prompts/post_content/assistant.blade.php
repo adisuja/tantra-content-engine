@@ -50,4 +50,6 @@ Previous suggestion:
 """
 @endif
 
+@include('prompts.tantra.content_context')
+
 Return only the proposed caption as plain text, with no heading, explanation, quotation marks, or Markdown fence. Preserve factual details and URLs from the existing caption. Do not invent claims, prices, dates, or results. Never use em dashes or en dashes.

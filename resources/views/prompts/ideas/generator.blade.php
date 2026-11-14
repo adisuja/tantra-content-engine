@@ -25,4 +25,6 @@ Rules:
 - No hashtags and no emojis.
 - Write the title and body in {{ $language }}.
 
+@include('prompts.tantra.content_context')
+
 Return JSON matching the schema.

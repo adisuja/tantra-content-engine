@@ -67,6 +67,23 @@ return [
     'crm' => [
         'url' => env('TANTRA_CRM_URL', 'https://crm-api.usetantra.com'),
         'intake_key' => env('TANTRA_CRM_INTAKE_KEY'),
+        // The CRM's /api/trk key: tracked short links and the traffic report. Server side only, never sent to the browser.
+        'api_key' => env('TANTRA_CRM_API_KEY'),
+        // Every link in content becomes a CRM short link for its piece and person (card 29 context, 2026-11-14).
+        'links' => [
+            'enabled' => (bool) env('TANTRA_CRM_LINKS', true),
+            'campaign_id' => env('TANTRA_CRM_LINKS_CAMPAIGN', 'cmp_f427ef8e47514047be1d'),
+            // Known campaign channels per platform; others are added to the campaign on first use.
+            'channels' => ['linkedin' => 'chn_c1118abc4dc74c06a10b'],
+            'short_host' => 'go.usetantra.com',
+            'utm_campaign' => 'enterprise-webinar',
+            // Organic traffic lands here. The cold calendar domain and the old brand fold into it.
+            'organic' => 'https://jointantra.com/',
+            'organic_hosts' => ['jointantra.com', 'www.jointantra.com', 'webinar.sellwithtantra.com'],
+            'retired_hosts' => ['growthclub.org', 'www.growthclub.org'],
+            // Never rewritten: the short links themselves and the app's own hosted files and previews.
+            'skip_hosts' => ['go.usetantra.com', 'content.usetantra.com', 'linkedin.com', 'www.linkedin.com', 'lnkd.in'],
+        ],
     ],
 
     'unipile' => [
