@@ -24,6 +24,9 @@ use Illuminate\Support\Str;
  */
 class InviteTeammateCommand extends Command
 {
+    /** How long a set-password link stays valid (Adi 2026-11-14: at least 30 days). */
+    public const LINK_DAYS = 30;
+
     protected $signature = 'tantra:invite
         {workspace : Workspace name or id}
         {email : The teammate\'s login email}
@@ -76,13 +79,13 @@ class InviteTeammateCommand extends Command
             return $user;
         });
 
-        $link = URL::temporarySignedRoute('tantra.join', now()->addDays(14), ['user' => $user->id]);
+        $link = URL::temporarySignedRoute('tantra.join', now()->addDays(self::LINK_DAYS), ['user' => $user->id]);
 
         if ($this->option('send')) {
             Mail::to($user)->send(new TeammateWelcome($user->name, $workspace->name, $link));
             $this->components->info("Welcome email sent to {$email}.");
         } else {
-            $this->components->info("{$email} can join {$workspace->name}. Link (14 days): {$link}");
+            $this->components->info("{$email} can join {$workspace->name}. Link (".self::LINK_DAYS." days): {$link}");
         }
 
         return self::SUCCESS;
