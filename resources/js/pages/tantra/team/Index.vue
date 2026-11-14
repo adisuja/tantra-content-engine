@@ -14,6 +14,7 @@ import { postJson } from '@/components/tantra/review/reviewApi';
 import ChannelScheduleCard, {
     type TeamChannel,
 } from '@/components/tantra/team/ChannelScheduleCard.vue';
+import RebrandPanel from '@/components/tantra/team/RebrandPanel.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -277,6 +278,17 @@ const send = async (url: string, body: Record<string, unknown>) => {
                     />
                 </div>
             </section>
+
+            <RebrandPanel
+                :people="
+                    members.map((m) => ({
+                        id: m.id,
+                        name: m.name,
+                        is_me: m.is_me,
+                    }))
+                "
+                :can-start-for-others="isOwner"
+            />
 
             <section v-if="isOwner" class="flex flex-col gap-3">
                 <h2 class="font-heading text-base font-medium">

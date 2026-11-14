@@ -95,6 +95,10 @@ PRD 25.10. `Repurposing` is the fifth Create tab (`RepurposingController`, `page
 - `RepostApplier` (also for `repurpose`) makes one idea per version (external key `job-<id>-<n>`, so applying twice changes nothing); a Repost to a connected channel goes straight to Review through `IdeaToReview`.
 - `tantra:repurpose-cadence` (Mondays 04:21 UTC, `WeeklyCadence`) queues the next network for every original published post whose week has come; `tantra_repurpose_progress` (unique per post and network) keeps a post from reaching a network twice. The first job of a run fires a cloud run, which claims the rest.
 
+## Profile rebrands
+
+PRD 25.11. On the Team page (`RebrandPanel.vue`, `RebrandController`): the person, the Account owner or an admin asks for one; `Rebrands::start` reads the profile through the person's own Unipile account and queues a `rebrand` agent job; `RebrandApplier` stores the proposal (headline options, About, banner, featured). Only the person applies the headline (`PATCH users/me` through `UnipileClient::updateProfile`, then read back to check it took); the rest is copied by hand.
+
 ## Connectors tab
 
 `/settings/workspace/connectors` (`app/Tantra/Ai`, `ConnectorController`, `pages/tantra/connectors`). One row per Account and provider in `tantra_ai_connectors`, key encrypted with the app key. Every AI call goes through `TantraAi::prompt()`: the default connector first, then the other working AI connectors; each failure is classified (`AiFailure`: out of credits, rate limited, key rejected, model not available, signed out, unreachable) and shown where the AI was used, on the card and in the app banner (`tantraAlerts`). With no connector it runs on the `.env` provider as upstream did. Claude and ChatGPT plans run through the official Claude Code and Codex CLIs installed in the image (`CliTextGateway`).

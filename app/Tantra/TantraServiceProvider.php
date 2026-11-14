@@ -49,6 +49,8 @@ use App\Tantra\Http\Middleware\LandOnReview;
 use App\Tantra\Ideas\IdeaMeta;
 use App\Tantra\Manual\ManualTask;
 use App\Tantra\Ops\LeanHorizon;
+use App\Tantra\Rebrand\Rebrand;
+use App\Tantra\Rebrand\RebrandApplier;
 use App\Tantra\Repurpose\RepostApplier;
 use App\Tantra\Review\Actions\DraftMaker;
 use App\Tantra\Review\Listeners\RecordComposerEdit;
@@ -175,12 +177,14 @@ class TantraServiceProvider extends ServiceProvider
             'tantraContentTemplate' => ContentTemplate::class,
             'tantraReviewItem' => ReviewItem::class,
             'tantraMemberProfile' => MemberProfile::class,
+            'tantraRebrand' => Rebrand::class,
         ]);
 
         // What the Engine does with each kind of agent job result (PRD 25.5).
         Appliers::register('template_from_post', TemplateFromPostApplier::class);
         Appliers::register('repost', RepostApplier::class);
         Appliers::register('repurpose', RepostApplier::class);
+        Appliers::register('rebrand', RebrandApplier::class);
 
         // Studio ops in the sidebar for admins only (PRD 25.4).
         Inertia::share('tantraAdmin', fn (): bool => Admin::is(Auth::user()));

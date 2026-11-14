@@ -430,4 +430,18 @@ return [
         'send' => 'Write :count new versions',
         'failed' => 'That did not go through.',
     ],
+    'rebrand' => [
+        'title' => 'LinkedIn profile rebrand',
+        'intro' => 'A new headline, About section, banner and featured picks, written from your own profile and your role at Tantra. Nothing changes on LinkedIn until you pick a headline and apply it yourself.',
+        'start' => 'Write a rebrand',
+        'failed' => 'That did not go through.',
+        'headline' => 'Headline',
+        'apply_headline' => 'Use this headline on LinkedIn',
+        'copy' => 'Copy',
+        'copied' => 'Copied.',
+        'about' => 'About',
+        'banner' => 'Banner',
+        'featured' => 'Pin these to Featured',
+        'states' => ['writing' => 'Being written', 'proposed' => 'Ready to look at', 'applied' => 'Applied', 'dismissed' => 'Put away'],
+    ],
 ];

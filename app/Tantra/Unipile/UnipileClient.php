@@ -103,6 +103,12 @@ class UnipileClient
         return $this->get("/{$accountId}/users/me/posts?{$query}", allowFailure: true);
     }
 
+    /** Update the connected account's own LinkedIn profile (PATCH users/me); true when Unipile accepted it. */
+    public function updateProfile(string $accountId, array $fields): bool
+    {
+        return $this->send('patch', "/{$accountId}/users/me", $fields, true)->successful();
+    }
+
     /** The LinkedIn member id of the account itself, to tell its own comments apart. */
     public function ownId(string $accountId): ?string
     {

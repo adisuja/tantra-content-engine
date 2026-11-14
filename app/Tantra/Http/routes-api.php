@@ -11,6 +11,7 @@ use App\Tantra\Http\Controllers\Api\ResultsController;
 use App\Tantra\Http\Controllers\Api\UploadController;
 use App\Tantra\Http\Controllers\HealthController;
 use App\Tantra\Http\Controllers\OpsController;
+use App\Tantra\Http\Controllers\RebrandController;
 use App\Tantra\Http\Controllers\RepostController;
 use App\Tantra\Http\Controllers\RepurposingController;
 use App\Tantra\Http\Controllers\TemplatesController;
@@ -51,6 +52,9 @@ Route::middleware(['api', 'auth:api', 'throttle:api'])
         Route::get('/repurposing', [RepurposingController::class, 'show'])->name('repurposing.show');
         Route::get('/repost/targets', [RepostController::class, 'targets'])->name('repost.targets');
         Route::post('/repost', [RepostController::class, 'store'])->name('repost.store');
+        Route::get('/rebrands', [RebrandController::class, 'index'])->name('rebrands.index');
+        Route::post('/team/{member}/rebrand', [RebrandController::class, 'start'])->whereUuid('member')->name('rebrands.start');
+        Route::post('/rebrands/{rebrand}/headline', [RebrandController::class, 'headline'])->whereUuid('rebrand')->name('rebrands.headline');
         Route::put('/repurposing/cadence', [RepurposingController::class, 'cadence'])->name('repurposing.cadence');
         Route::put('/repurposing/rules/{network}', [RepurposingController::class, 'rules'])->where('network', '[a-z]{1,16}')->name('repurposing.rules');
         Route::post('/repurposing/presets', [RepurposingController::class, 'presets'])->name('repurposing.presets');
