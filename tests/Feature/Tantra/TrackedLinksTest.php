@@ -190,6 +190,7 @@ it('gives the generator and agents the standing card 29 context', function () {
         ->assertJson(fn ($json) => $json->where('data.context', fn (string $c) => str_contains($c, 'Organic traffic')
             && str_contains($c, 'Leading the team @ Tantra') && str_contains($c, 'go.usetantra.com') && ! str_contains($c, "\u{2014}"))->etc());
 
+    config(['tantra.branding.enabled' => true]); // the context is part of Tantra's prompt, not upstream's
     $prompt = (new PostWritingAssistant(PostAssistantMode::cases()[0], 'Draft', Locale::cases()[0], Platform::LinkedIn))->instructions();
     expect($prompt)->toContain('https://jointantra.com/')->toContain('bhaskar-funnel-leaks');
 });

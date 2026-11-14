@@ -25,6 +25,9 @@ Rules:
 - No hashtags and no emojis.
 - Write the title and body in {{ $language }}.
 
+{{-- tantra: the Tantra standing context only with Tantra branding on; upstream's tests run with it off and check upstream's prompt. --}}
+@if (config('tantra.branding.enabled'))
 @include('prompts.tantra.content_context')
+@endif
 
 Return JSON matching the schema.

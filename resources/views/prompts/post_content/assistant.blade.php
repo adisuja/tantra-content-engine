@@ -50,6 +50,9 @@ Previous suggestion:
 """
 @endif
 
+{{-- tantra: the Tantra standing context only with Tantra branding on; upstream's tests run with it off and check upstream's prompt. --}}
+@if (config('tantra.branding.enabled'))
 @include('prompts.tantra.content_context')
+@endif
 
 Return only the proposed caption as plain text, with no heading, explanation, quotation marks, or Markdown fence. Preserve factual details and URLs from the existing caption. Do not invent claims, prices, dates, or results. Never use em dashes or en dashes.
