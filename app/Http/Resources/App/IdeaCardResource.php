@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources\App;
 
 use App\Models\Idea;
+use App\Tantra\Ideas\IdeasBoard;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Str;
@@ -26,6 +27,8 @@ class IdeaCardResource extends JsonResource
             'excerpt' => Str::substr((string) $this->body, 0, Idea::EXCERPT_LENGTH),
             'cover' => data_get($this->media, 0),
             'label_ids' => $this->labels->pluck('id')->values(),
+            // tantra: a Tantra idea's network, phone preview and state (PRD 25.8).
+            'tantra' => $this->when(IdeasBoard::card($this->resource) !== null, fn (): ?array => IdeasBoard::card($this->resource)),
         ];
     }
 }

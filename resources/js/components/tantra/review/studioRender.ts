@@ -319,3 +319,174 @@ export function plainScreen(p: ReviewItemRow): string {
       ${files[0] ? `<img src="${esc(files[0])}" alt="" style="width:100%;border-radius:10px;margin-top:12px" data-lb="${esc(files[0])}">` : ''}
     </div>${homeBar()}`;
 }
+
+/* ---------- Facebook, Instagram, YouTube, Threads and TikTok (PRD 25.8) ----------
+   Simple, recognisable screens for the small previews on the Ideas board and for
+   review: who posts, the text with "more", and the media in that app's frame.
+   Styles in css/studio-networks.css. */
+
+const NET_I = {
+    heart: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>',
+    bubble: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-3.3-6.5A8 8 0 0 1 20 12zM20 20l-3.3-2.4"/></svg>',
+    plane: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M21 3L3 10l7 3 3 7z"/><path d="M10 13l11-10"/></svg>',
+    save: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M6 3h12v18l-6-5-6 5z"/></svg>',
+    repost: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V7a2 2 0 0 1 2-2h11l-3-3M20 15v2a2 2 0 0 1-2 2H7l3 3"/></svg>',
+    thumb: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M7 10v11H3V10zM7 10l4.5-7a2 2 0 0 1 2 2.5L12.7 10H19a2 2 0 0 1 2 2.4l-1.6 6.4A2.5 2.5 0 0 1 17 21H7"/></svg>',
+    share: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M14 4l7 7-7 7v-4c-5 0-8 1.5-11 5 1-5 4-9 11-10z"/></svg>',
+    search: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>',
+    play: '<svg width="44" height="44" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>',
+};
+
+const firstLine = (s: string): string =>
+    (s || '').split('\n').find((l) => l.trim()) ?? '';
+
+const lines = (text: string): string => esc(text).replace(/\n/g, '<br>');
+
+/** Escaped text, line breaks kept, clamped by CSS with a "more" at the end. */
+function netText(text: string, cls: string, more: string): string {
+    if (!text) {
+        return '';
+    }
+
+    return `<div class="${cls} nclamp">${lines(text)}<span class="net-more" title="Show the full post">${esc(more)}</span></div>`;
+}
+
+type Frame = 'wide' | 'square' | 'portrait' | 'tall' | 'free';
+
+/** The media in a frame of the given shape: the video, the first image or a placeholder. */
+function netMedia(p: ReviewItemRow, shape: Frame, dark = false): string {
+    const m = p.media;
+    const files = m.files ?? [];
+    const cls = `net-media ${shape}${dark ? ' dark' : ''}`;
+    if (m.type === 'video' && m.video) {
+        return `<div class="${cls}"><video src="${esc(m.video)}"${files[0] ? ` poster="${esc(files[0])}"` : ''} muted playsinline loop autoplay preload="metadata"></video></div>`;
+    }
+    if (files.length) {
+        const count =
+            files.length > 1
+                ? `<span class="net-count">1/${files.length}</span>`
+                : '';
+        const play =
+            m.type === 'video'
+                ? `<span class="net-play">${NET_I.play}</span>`
+                : '';
+
+        return `<div class="${cls}"><img loading="lazy" src="${esc(files[0])}" alt="${esc(p.engine_post_id)}" data-lb="${esc(files[0])}">${count}${play}</div>`;
+    }
+    if (m.type && m.type !== 'text') {
+        const label =
+            m.type === 'pending' ? 'Media in production' : p.format || m.type;
+
+        return `<div class="${cls} empty"><span>${esc(label)}</span></div>`;
+    }
+
+    return '';
+}
+
+const netName = (pr: ReviewProfile): string => esc(pr.name || '');
+const netHandle = (pr: ReviewProfile): string =>
+    esc(
+        (pr.x_handle || pr.name || '')
+            .replace(/^@/, '')
+            .replace(/\s+/g, '')
+            .toLowerCase(),
+    );
+
+export function facebookScreen(p: ReviewItemRow): string {
+    const pr = p.profile;
+    const top = `<div class="fb-top"><span class="fb-logo">facebook</span><span class="net-sp"></span><span class="fb-ic">${NET_I.search}</span></div>`;
+    const post = `<article class="fb-post">
+      <div class="fb-head">${avatar(pr, 40)}<div class="fb-who"><div class="fb-name">${netName(pr)}</div><div class="fb-sub">Just now · ${LI_I.globe}</div></div><span class="net-dots">···</span></div>
+      ${netText(p.text, 'fb-text', '... See more')}
+      ${netMedia(p, p.media.tall ? 'portrait' : 'free')}
+      <div class="fb-acts"><span>${NET_I.thumb}Like</span><span>${NET_I.bubble}Comment</span><span>${NET_I.share}Share</span></div>
+    </article>`;
+
+    return `${statusBar()}${top}<div class="scroll fb-feed">${post}</div>${homeBar()}`;
+}
+
+/** Instagram leads with the media (square, or 4:5 for a tall post), the caption under it. */
+export function instagramScreen(p: ReviewItemRow): string {
+    const pr = p.profile;
+    const top = `<div class="ig-top"><span class="ig-logo">Instagram</span><span class="net-sp"></span>${NET_I.heart}${NET_I.plane}</div>`;
+    const media =
+        netMedia(p, p.media.tall ? 'portrait' : 'square') ||
+        `<div class="net-media square empty"><span>${esc(firstLine(p.text))}</span></div>`;
+    const caption = p.text
+        ? `<div class="ig-cap nclamp"><b>${netHandle(pr)}</b> ${lines(p.text)}<span class="net-more">... more</span></div>`
+        : '';
+    const post = `<article class="ig-post">
+      <div class="ig-head">${avatar(pr, 32)}<span class="ig-name">${netHandle(pr)}</span><span class="net-sp"></span><span class="net-dots">···</span></div>
+      ${media}
+      <div class="ig-acts">${NET_I.heart}${NET_I.bubble}${NET_I.plane}<span class="net-sp"></span>${NET_I.save}</div>
+      ${caption}
+    </article>`;
+
+    return `${statusBar()}${top}<div class="scroll ig-feed">${post}</div>${homeBar()}`;
+}
+
+/** YouTube: a Short (9:16, dark) for a tall or short-format post, else a 16:9 video with its title. */
+export function youtubeScreen(p: ReviewItemRow): string {
+    const pr = p.profile;
+    const title = p.media.title || p.idea || firstLine(p.text);
+    const short = p.media.tall || /short/i.test(p.format || '');
+    if (short) {
+        const frame =
+            netMedia(p, 'tall', true) ||
+            '<div class="net-media tall dark empty"></div>';
+
+        return `${statusBar(true)}<div class="scroll net-full">${frame}
+          <div class="net-side">${NET_I.thumb}<span>Like</span>${NET_I.bubble}<span>0</span>${NET_I.share}<span>Share</span></div>
+          <div class="net-over"><div class="yt-who">${avatar(pr, 32)}<b>@${netHandle(pr)}</b><span class="yt-sub">Subscribe</span></div><div class="yt-short-title">${esc(title)}</div></div>
+        </div>${homeBar(true)}`;
+    }
+    const frame =
+        netMedia(p, 'wide') ||
+        `<div class="net-media wide empty"><span class="net-play">${NET_I.play}</span></div>`;
+
+    return `${statusBar()}<div class="yt-top"><span class="yt-logo"><i></i>YouTube</span></div><div class="scroll yt-feed">
+      ${frame}
+      <div class="yt-title">${esc(title)}</div>
+      <div class="yt-meta">No views · Just now</div>
+      <div class="yt-chan">${avatar(pr, 36)}<b>${netName(pr)}</b><span class="net-sp"></span><span class="yt-sub">Subscribe</span></div>
+      ${netText(p.text, 'yt-desc', '...more')}
+    </div>${homeBar()}`;
+}
+
+/** Threads: like X, with 500 characters a post. */
+export function threadsScreen(p: ReviewItemRow): string {
+    const pr = p.profile;
+    const posts = [p.text, ...p.thread].filter((t) => t !== '');
+    const one = (text: string, i: number, all: string[]): string => {
+        const n = [...text].length;
+        const over = n > 500;
+
+        return `<article class="th-post${i < all.length - 1 ? ' has-next' : ''}">
+          <div class="th-l">${avatar(pr, 36)}</div>
+          <div class="th-r"><div class="th-h"><b>${netHandle(pr)}</b><span class="th-time">1m</span></div>
+          <div class="th-text">${lines(text)}</div>
+          ${i === 0 ? netMedia(p, 'free') : ''}
+          <div class="th-acts">${NET_I.heart}${NET_I.bubble}${NET_I.repost}${NET_I.plane}</div>
+          <div class="th-cc${over ? ' over' : ''}" title="Review aid, not part of Threads: characters in this post">${n} / 500${over ? ' · over the limit' : ''}</div></div>
+        </article>`;
+    };
+
+    return `${statusBar()}<div class="th-top"><span class="th-logo">@</span></div><div class="scroll th-feed">${(posts.length ? posts : ['']).map(one).join('')}</div>${homeBar()}`;
+}
+
+/** TikTok: a 9:16 video with the caption over it. */
+export function tiktokScreen(p: ReviewItemRow): string {
+    const pr = p.profile;
+    const frame =
+        netMedia(p, 'tall', true) ||
+        '<div class="net-media tall dark empty"></div>';
+    const caption = p.text
+        ? `<div class="tt-cap nclamp">${lines(p.text)}<span class="net-more">more</span></div>`
+        : '';
+
+    return `${statusBar(true)}<div class="scroll net-full">${frame}
+      <div class="tt-tabs"><span>Following</span><span class="on">For You</span></div>
+      <div class="net-side">${avatar(pr, 44)}${NET_I.heart}<span>0</span>${NET_I.bubble}<span>0</span>${NET_I.save}<span>0</span>${NET_I.share}<span>Share</span></div>
+      <div class="net-over"><b>@${netHandle(pr)}</b>${caption}</div>
+    </div>${homeBar(true)}`;
+}

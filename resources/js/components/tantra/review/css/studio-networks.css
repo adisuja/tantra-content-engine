@@ -1,0 +1,106 @@
+/* tantra: the Facebook, Instagram, YouTube, Threads and TikTok screens
+   (studioRender.ts, PRD 25.8). Written by hand, not generated: simple,
+   recognisable feeds for the Ideas board and review. */
+
+.tantra-studio .screen.fb,
+.tantra-studio .screen.ig,
+.tantra-studio .screen.yt,
+.tantra-studio .screen.th,
+.tantra-studio .screen.tt {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.38;
+}
+.tantra-studio .net-sp { flex: 1; }
+.tantra-studio .net-dots { font-weight: 700; letter-spacing: 1px; color: #65676b; }
+.tantra-studio .nclamp { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; position: relative; }
+.tantra-studio .nclamp .net-more { position: absolute; right: 0; bottom: 0; padding-left: 28px; background: linear-gradient(90deg, rgba(255, 255, 255, 0), #fff 24px); color: #65676b; cursor: pointer; }
+.tantra-studio :not(.nclamp) > .net-more { display: none; }
+
+/* Media frames */
+.tantra-studio .net-media { position: relative; width: 100%; background: #e9ebee; overflow: hidden; }
+.tantra-studio .net-media img,
+.tantra-studio .net-media video { display: block; width: 100%; height: 100%; object-fit: cover; }
+.tantra-studio .net-media.free img,
+.tantra-studio .net-media.free video { height: auto; max-height: 520px; }
+.tantra-studio .net-media.wide { aspect-ratio: 16 / 9; }
+.tantra-studio .net-media.square { aspect-ratio: 1 / 1; }
+.tantra-studio .net-media.portrait { aspect-ratio: 4 / 5; }
+.tantra-studio .net-media.tall { position: absolute; inset: 0; aspect-ratio: auto; }
+.tantra-studio .net-media.dark { background: #111; }
+.tantra-studio .net-media.empty { display: flex; align-items: center; justify-content: center; min-height: 220px; padding: 24px; text-align: center; color: #65676b; font-weight: 600; }
+.tantra-studio .net-media.dark.empty { color: #aaa; }
+.tantra-studio .net-count { position: absolute; top: 10px; right: 10px; padding: 2px 8px; border-radius: 12px; background: rgba(0, 0, 0, .6); color: #fff; font-size: 12px; }
+.tantra-studio .net-play { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; width: 64px; height: 64px; align-items: center; justify-content: center; border-radius: 50%; background: rgba(0, 0, 0, .55); }
+
+/* Full screen video apps: YouTube Shorts and TikTok */
+.tantra-studio .net-full { position: relative; flex: 1; background: #000; color: #fff; overflow: hidden; }
+.tantra-studio .net-side { position: absolute; right: 10px; bottom: 120px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, .5); }
+.tantra-studio .net-side svg { width: 32px; height: 32px; margin-top: 12px; }
+.tantra-studio .net-side .av { border: 2px solid #fff; }
+.tantra-studio .net-over { position: absolute; left: 14px; right: 78px; bottom: 40px; color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, .6); }
+.tantra-studio .net-over .nclamp { -webkit-line-clamp: 3; margin-top: 6px; }
+.tantra-studio .net-over .nclamp .net-more { background: none; color: #fff; font-weight: 600; }
+
+/* Facebook */
+.tantra-studio .screen.fb { background: #c9ccd1; color: #050505; }
+.tantra-studio .fb-top { display: flex; align-items: center; gap: 10px; height: 50px; padding: 0 14px; background: #fff; flex: 0 0 auto; }
+.tantra-studio .fb-logo { color: #0866ff; font-size: 30px; font-weight: 800; letter-spacing: -1.2px; }
+.tantra-studio .fb-ic { display: flex; width: 36px; height: 36px; align-items: center; justify-content: center; border-radius: 50%; background: #e4e6eb; color: #050505; }
+.tantra-studio .fb-feed { padding-top: 8px; }
+.tantra-studio .fb-post { background: #fff; padding-top: 12px; }
+.tantra-studio .fb-head { display: flex; align-items: center; gap: 8px; padding: 0 12px 8px; }
+.tantra-studio .fb-who { flex: 1; min-width: 0; }
+.tantra-studio .fb-name { font-weight: 600; }
+.tantra-studio .fb-sub { display: flex; align-items: center; gap: 3px; font-size: 13px; color: #65676b; }
+.tantra-studio .fb-text { padding: 0 12px 10px; }
+.tantra-studio .fb-acts { display: flex; justify-content: space-around; padding: 8px 4px; border-top: 1px solid #ced0d4; margin: 8px 12px 0; color: #65676b; font-size: 14px; font-weight: 600; }
+.tantra-studio .fb-acts span { display: flex; align-items: center; gap: 6px; }
+
+/* Instagram */
+.tantra-studio .screen.ig { background: #fff; color: #000; }
+.tantra-studio .ig-top { display: flex; align-items: center; gap: 18px; height: 50px; padding: 0 14px; flex: 0 0 auto; }
+.tantra-studio .ig-logo { font-family: 'Snell Roundhand', 'Brush Script MT', cursive; font-size: 30px; font-weight: 600; }
+.tantra-studio .ig-head { display: flex; align-items: center; gap: 10px; padding: 8px 12px; }
+.tantra-studio .ig-name { font-size: 14px; font-weight: 600; }
+.tantra-studio .ig-acts { display: flex; align-items: center; gap: 14px; padding: 10px 12px 6px; }
+.tantra-studio .ig-cap { padding: 0 12px 12px; font-size: 14px; -webkit-line-clamp: 2; }
+
+/* YouTube */
+.tantra-studio .screen.yt { background: #fff; color: #0f0f0f; }
+.tantra-studio .yt-top { display: flex; align-items: center; height: 48px; padding: 0 12px; flex: 0 0 auto; }
+.tantra-studio .yt-logo { display: flex; align-items: center; gap: 4px; font-size: 20px; font-weight: 700; letter-spacing: -.8px; }
+.tantra-studio .yt-logo i { display: inline-block; width: 28px; height: 20px; border-radius: 6px; background: #f00; }
+.tantra-studio .yt-title { padding: 12px 12px 4px; font-size: 18px; font-weight: 600; line-height: 1.3; }
+.tantra-studio .yt-meta { padding: 0 12px; font-size: 12px; color: #606060; }
+.tantra-studio .yt-chan { display: flex; align-items: center; gap: 10px; padding: 12px; }
+.tantra-studio .yt-sub { padding: 6px 14px; border-radius: 18px; background: #0f0f0f; color: #fff; font-size: 13px; font-weight: 600; }
+.tantra-studio .net-full .yt-sub { background: #fff; color: #0f0f0f; }
+.tantra-studio .yt-desc { margin: 0 12px; padding: 10px; border-radius: 10px; background: #f2f2f2; font-size: 14px; -webkit-line-clamp: 3; }
+.tantra-studio .yt-desc .net-more { background: linear-gradient(90deg, rgba(242, 242, 242, 0), #f2f2f2 24px); }
+.tantra-studio .yt-who { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.tantra-studio .yt-short-title { margin-top: 8px; font-size: 15px; }
+
+/* Threads */
+.tantra-studio .screen.th { background: #fff; color: #000; }
+.tantra-studio .th-top { display: flex; justify-content: center; height: 48px; align-items: center; flex: 0 0 auto; }
+.tantra-studio .th-logo { font-size: 30px; font-weight: 700; }
+.tantra-studio .th-post { display: flex; gap: 10px; padding: 12px 14px 4px; }
+.tantra-studio .th-post:not(.has-next) { border-bottom: 1px solid #e5e5e5; }
+.tantra-studio .th-l { display: flex; flex-direction: column; align-items: center; }
+.tantra-studio .th-post.has-next .th-l::after { content: ''; flex: 1; width: 2px; margin-top: 6px; background: #e5e5e5; }
+.tantra-studio .th-r { flex: 1; min-width: 0; }
+.tantra-studio .th-h { display: flex; gap: 6px; font-size: 15px; }
+.tantra-studio .th-time { color: #999; }
+.tantra-studio .th-text { margin-top: 2px; }
+.tantra-studio .th-r .net-media { margin-top: 8px; border-radius: 8px; }
+.tantra-studio .th-acts { display: flex; gap: 16px; padding: 10px 0 4px; }
+.tantra-studio .th-acts svg { width: 20px; height: 20px; }
+.tantra-studio .th-cc { font-size: 11px; color: #999; padding-bottom: 6px; }
+.tantra-studio .th-cc.over { color: #d00; font-weight: 600; }
+
+/* TikTok */
+.tantra-studio .screen.tt { background: #000; color: #fff; }
+.tantra-studio .tt-tabs { position: absolute; top: 8px; left: 0; right: 0; display: flex; justify-content: center; gap: 18px; font-size: 16px; font-weight: 600; color: rgba(255, 255, 255, .65); }
+.tantra-studio .tt-tabs .on { color: #fff; border-bottom: 2px solid #fff; padding-bottom: 4px; }
+.tantra-studio .screen.yt:has(.net-full) { background: #000; color: #fff; }
