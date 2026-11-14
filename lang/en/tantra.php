@@ -637,8 +637,8 @@ return [
                 ],
                 'meta_threads' => [
                     'owner' => 'In the Meta developer dashboard, open the app, go to App roles, then Roles, choose Add People, pick Threads Tester and enter your Threads username.',
-                    'you' => 'On threads.net open Settings, then Account, then Website permissions, then Invites, and accept the invite. It can take a few minutes to show up. If Threads later shows a line of code saying you have not accepted the invite, accept it first, then come back and press Continue.',
-                    'live' => 'Request Advanced Access in App Review for threads_basic, threads_content_publish and threads_manage_insights, then switch the app to Live.',
+                    'you' => 'On threads.com open Settings, then Website permissions, then the Invitations tab, and accept the invite. It can take a few minutes to show up. If Threads later shows a line of code saying you have not accepted the invite, accept it first, then come back and press Continue.',
+                    'live' => 'Request Advanced Access in App Review for threads_basic, threads_content_publish, threads_manage_insights, threads_read_replies and threads_manage_replies, then switch the app to Live.',
                 ],
                 'x' => [
                     'owner' => 'X has no tester list, so there is nothing to add.',
@@ -757,5 +757,23 @@ return [
             'suspended' => 'Bluesky says this account is suspended or deactivated.',
             'unavailable' => 'Bluesky did not answer. Try again in a few minutes.',
         ],
+    ],
+    'threads_app' => [
+        'removed_in_threads' => 'The Threads account removed Tantra Content Engine in Threads. Connect it again to keep publishing.',
+    ],
+    'threads_replies' => [
+        'title' => 'Replies',
+        'help' => 'Replies to your latest Threads posts. Answer one here and it posts under it on Threads.',
+        'empty' => 'No replies on your latest posts yet.',
+        'no_posts' => 'Nothing published on this channel yet.',
+        'reply' => 'Reply',
+        'placeholder' => 'Write a reply',
+        'sent' => 'Reply posted.',
+        'failed' => 'Threads did not accept the reply. Try again.',
+        'not_found' => 'That reply is no longer on your latest posts. Refresh and try again.',
+        'reconnect' => 'Reconnect Threads',
+        'replies_failed' => 'Threads did not list the replies for this post.',
+        'you_replied' => 'You replied',
+        'needs_reconnect' => 'Reconnect this channel to read and answer replies.',
     ],
 ];

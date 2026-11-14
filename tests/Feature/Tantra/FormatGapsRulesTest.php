@@ -112,12 +112,14 @@ test('the composer lists a youtube channel playlists and a pinterest board secti
 });
 
 test('comment and reply scopes are asked for only once switched on', function () {
+    config(['tantra.meta.engagement_networks' => []]);
+
     expect(EngagementScopes::with(Platform::Threads, ['threads_basic']))->toBe(['threads_basic'])
         ->and(EngagementScopes::with(Platform::Facebook, ['pages_manage_posts']))->toBe(['pages_manage_posts']);
 
     config(['tantra.meta.engagement_scopes' => true]);
 
-    expect(EngagementScopes::with(Platform::Threads, ['threads_basic']))->toBe(['threads_basic', 'threads_manage_replies'])
+    expect(EngagementScopes::with(Platform::Threads, ['threads_basic']))->toBe(['threads_basic', 'threads_read_replies', 'threads_manage_replies'])
         ->and(EngagementScopes::with(Platform::Instagram, []))->toBe(['instagram_business_manage_comments'])
         ->and(EngagementScopes::with(Platform::InstagramFacebook, []))->toBe(['instagram_manage_comments'])
         ->and(EngagementScopes::with(Platform::Facebook, []))->toBe(['pages_manage_engagement'])
@@ -125,12 +127,21 @@ test('comment and reply scopes are asked for only once switched on', function ()
 });
 
 test('the threads connect asks for the reply scope only when switched on', function (bool $on) {
-    config(['tantra.meta.engagement_scopes' => $on, 'services.threads.client_id' => 'tid', 'services.threads.redirect' => 'https://engine.test/accounts/threads/callback']);
+    config(['tantra.meta.engagement_scopes' => $on, 'tantra.meta.engagement_networks' => [], 'services.threads.client_id' => 'tid', 'services.threads.redirect' => 'https://engine.test/accounts/threads/callback']);
     $result = createApiTestToken();
 
     $response = $this->actingAs($result['user'])->get(route('app.social.threads.connect'));
     $location = urldecode((string) ($response->headers->get('Location') ?: $response->headers->get('X-Inertia-Location')));
 
     expect(str_contains($location, 'threads_manage_replies'))->toBe($on)
+        ->and(str_contains($location, 'threads_read_replies'))->toBe($on)
         ->and($location)->toContain('threads_content_publish');
 })->with(['off' => [false], 'on' => [true]]);
+
+test('one network can ask for its reply scopes while the others stay off', function () {
+    config(['tantra.meta.engagement_scopes' => false, 'tantra.meta.engagement_networks' => ['threads']]);
+
+    expect(EngagementScopes::with(Platform::Threads, ['threads_basic']))->toBe(['threads_basic', 'threads_read_replies', 'threads_manage_replies'])
+        ->and(EngagementScopes::with(Platform::Facebook, ['pages_manage_posts']))->toBe(['pages_manage_posts'])
+        ->and(EngagementScopes::with(Platform::Instagram, []))->toBe([]);
+});

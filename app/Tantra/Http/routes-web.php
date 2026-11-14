@@ -28,6 +28,8 @@ use App\Tantra\Http\Controllers\Web\ReconnectController;
 use App\Tantra\Http\Controllers\Web\ReviewItemActionController;
 use App\Tantra\Http\Controllers\Web\ReviewPageController;
 use App\Tantra\Http\Controllers\Web\TeamController;
+use App\Tantra\Http\Controllers\Web\ThreadsAppCallbackController;
+use App\Tantra\Http\Controllers\Web\ThreadsRepliesController;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Support\Facades\Route;
 
@@ -248,3 +250,23 @@ Route::middleware(['web', 'auth', 'throttle:30,1'])->group(function (): void {
     Route::post('tantra/rebrands/{rebrand}/headline', [RebrandController::class, 'headline'])->whereUuid('rebrand')->name('tantra.rebrands.headline');
     Route::post('tantra/rebrands/{rebrand}/dismiss', [RebrandController::class, 'dismiss'])->whereUuid('rebrand')->name('tantra.rebrands.dismiss');
 });
+
+// tantra: the Threads app's Uninstall and Delete callbacks. Meta posts a signed_request, which is the check (no session or CSRF).
+Route::middleware(['throttle:60,1'])->group(function (): void {
+    Route::post('accounts/threads/uninstall', [ThreadsAppCallbackController::class, 'uninstall'])->name('tantra.threads.uninstall');
+    Route::post('accounts/threads/delete', [ThreadsAppCallbackController::class, 'delete'])->name('tantra.threads.delete');
+});
+Route::middleware(['signed', 'throttle:30,1'])
+    ->get('accounts/threads/deletion/{code}', [ThreadsAppCallbackController::class, 'status'])
+    ->where('code', '[A-Z0-9]{12}')
+    ->name('tantra.threads.deletion');
+
+// tantra: replies to a Threads channel's recent posts, read and answered from its Insights page.
+Route::middleware(['web', 'auth', 'throttle:30,1'])
+    ->prefix('tantra/channels/{account}/threads-replies')
+    ->whereUuid('account')
+    ->name('tantra.threads.replies.')
+    ->group(function (): void {
+        Route::get('/', [ThreadsRepliesController::class, 'index'])->name('index');
+        Route::post('/', [ThreadsRepliesController::class, 'store'])->name('store');
+    });

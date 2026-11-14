@@ -52,6 +52,8 @@ return [
     'meta' => [
         // Comment and reply scopes, asked for only once the Meta and Threads apps have them.
         'engagement_scopes' => (bool) env('TANTRA_META_ENGAGEMENT_SCOPES', false),
+        // One network at a time, comma separated (for example "threads"), while the others lack the permission.
+        'engagement_networks' => array_values(array_filter(array_map('trim', explode(',', (string) env('TANTRA_META_ENGAGEMENT_NETWORKS', 'threads'))))),
     ],
 
     'zernio' => [
