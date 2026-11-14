@@ -83,6 +83,7 @@ return [
     ],
     'events' => [
         'group_posts' => '投稿',
+        'group_roadmap' => 'Roadmap', // tantra
         'post_created' => '投稿を作成',
         'post_scheduled' => '投稿を予約',
         'post_unscheduled' => '予約を解除',
@@ -92,6 +93,8 @@ return [
         'post_deleted' => '投稿を削除',
         'post_deleted_on_network' => 'ネットワークで投稿を削除',
         'post_restored' => '投稿がネットワークに復帰',
+        'roadmap_request_created' => 'Roadmap request', // tantra
+        'roadmap_item_moved' => 'Roadmap card moved', // tantra
     ],
     'event_descriptions' => [
         'post_created' => '新しい投稿が作成されたとき。',
@@ -102,6 +105,8 @@ return [
         'post_deleted' => '投稿が削除されたとき。',
         'post_deleted_on_network' => '公開済みの投稿がネットワークで削除されたとき。',
         'post_restored' => '削除された投稿がネットワークに再び表示されたとき。',
+        'roadmap_request_created' => 'When someone asks for a feature on the public roadmap.', // tantra
+        'roadmap_item_moved' => 'When a roadmap card moves to another column.', // tantra
     ],
     'http_reasons' => [
         'unknown' => '不明',

@@ -108,6 +108,10 @@ PRD 25.12. Every screen has an API under `api/tantra/*` (reference: tantra-conte
 
 `/settings/workspace/connectors` (`app/Tantra/Ai`, `ConnectorController`, `pages/tantra/connectors`). One row per Account and provider in `tantra_ai_connectors`, key encrypted with the app key. Every AI call goes through `TantraAi::prompt()`: the default connector first, then the other working AI connectors; each failure is classified (`AiFailure`: out of credits, rate limited, key rejected, model not available, signed out, unreachable) and shown where the AI was used, on the card and in the app banner (`tantraAlerts`). With no connector it runs on the `.env` provider as upstream did. Claude and ChatGPT plans run through the official Claude Code and Codex CLIs installed in the image (`CliTextGateway`).
 
+## Public roadmap
+
+`/roadmap` (`app/Tantra/Roadmap`, `routes-roadmap.php`, `pages/tantra/roadmap`, `components/tantra/roadmap`): a read only Kanban with a request form, a JSON API, an Atom feed, llms.txt, MCP tools, webhooks and Settings > Roadmap for the owner. Full reference: `docs/tantra-roadmap.md`.
+
 ## Upstream files we touch
 
 Each change is small and marked `// tantra:` (or `<!-- tantra: -->`). After merging upstream TryPost, check each one still applies.
@@ -125,6 +129,7 @@ Each change is small and marked `// tantra:` (or `<!-- tantra: -->`). After merg
 - Ideas (PRD 25.8): `app/Actions/Idea/BuildIdeasPageProps.php` (the `tantraIdeas` prop), `app/Actions/Idea/ListIdeas.php` (loads the meta), `app/Http/Resources/App/IdeaCardResource.php` (the card's `tantra`), and on the front end `pages/create/Ideas.vue` (the strip and the provider), `components/create/ideas/IdeaCard.vue` (the panel), `types/idea.ts`. The `tantraMeta` relation is added from `TantraServiceProvider`, not in `Idea.php`.
 - AI through the Connectors tab: `app/Actions/Idea/GenerateIdea.php`, `app/Actions/Ai/AssistPostContent.php`, `app/Actions/Ai/GenerateMediaAltText.php`, the error paths of `IdeaGenerateController`, `PostAiAssistantController`, `MediaAltTextController`, the error line in `GenerateIdeasDialog.vue`, `WritingAssistantPanel.vue`, `MediaEditorAltTextPanel.vue`, the banner in `AppSidebarLayout.vue`, the nav item in `useSettingsNavigation.ts`, the CLIs in `docker/Dockerfile`, and the `connectors` label in `lang/*/settings.php` (16 locales, no marker).
 - Branding: `app/Services/Http/SafeHttpFetcher.php` (our user agent).
+- Roadmap: the two `roadmap.*` cases in `app/Enums/Webhook/EventType.php`, their group in `components/webhook/webhook-events.ts` and keys in `lang/*/webhooks.php` (16 locales), the `roadmap` label in `lang/*/settings.php`, the nav item in `useSettingsNavigation.ts`, the page title callback in `resources/js/app.ts`, and `tests/Unit/Enums/WebhookEventTypeTest.php`.
 - Insights for LinkedIn (PRD 25.7): `Platform::isIncludedInAnalytics()`, the three collector factories in `app/Services/Analytics/Collectors/{Followers,Publications,Metrics}`, the calendar import guard in `app/Actions/Post/ImportExternalPosts.php`, poll and document types in `app/Actions/Analytics/SyncTryPostPublication.php`, and the LinkedIn metric sets in `lib/publicationMetrics.ts`.
 - Tooling: `.prettierignore` (the studio CSS, generated in tantra-content).
 - Copy without a marker: the Zernio entries in `lang/*/posts.php` (16 locales).

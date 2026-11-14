@@ -26,6 +26,7 @@ return [
             'webhooks' => 'ウェブフック',
             'api_keys' => 'API',
             'connectors' => 'Connectors',
+            'roadmap' => 'Roadmap', // tantra
             'mcp' => 'MCP',
             'billing' => 'お支払い',
         ],

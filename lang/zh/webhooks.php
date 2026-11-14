@@ -83,6 +83,7 @@ return [
     ],
     'events' => [
         'group_posts' => '帖子',
+        'group_roadmap' => 'Roadmap', // tantra
         'post_created' => '帖子已创建',
         'post_scheduled' => '帖子已排期',
         'post_unscheduled' => '已取消排期',
@@ -92,6 +93,8 @@ return [
         'post_deleted' => '帖子已删除',
         'post_deleted_on_network' => '帖子已在网络上删除',
         'post_restored' => '帖子已回到网络',
+        'roadmap_request_created' => 'Roadmap request', // tantra
+        'roadmap_item_moved' => 'Roadmap card moved', // tantra
     ],
     'event_descriptions' => [
         'post_created' => '创建新帖子时。',
@@ -102,6 +105,8 @@ return [
         'post_deleted' => '帖子被删除时。',
         'post_deleted_on_network' => '已发布的帖子在网络上被删除时。',
         'post_restored' => '已删除的帖子重新出现在网络上时。',
+        'roadmap_request_created' => 'When someone asks for a feature on the public roadmap.', // tantra
+        'roadmap_item_moved' => 'When a roadmap card moves to another column.', // tantra
     ],
     'http_reasons' => [
         'unknown' => '未知',

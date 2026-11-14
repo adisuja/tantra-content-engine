@@ -83,6 +83,7 @@ return [
     ],
     'events' => [
         'group_posts' => 'Posty',
+        'group_roadmap' => 'Roadmap', // tantra
         'post_created' => 'Post utworzony',
         'post_scheduled' => 'Post zaplanowany',
         'post_unscheduled' => 'Planowanie anulowane',
@@ -92,6 +93,8 @@ return [
         'post_deleted' => 'Post usunięty',
         'post_deleted_on_network' => 'Post usunięty w sieci',
         'post_restored' => 'Post wrócił do sieci',
+        'roadmap_request_created' => 'Roadmap request', // tantra
+        'roadmap_item_moved' => 'Roadmap card moved', // tantra
     ],
     'event_descriptions' => [
         'post_created' => 'Gdy zostanie utworzony nowy post.',
@@ -102,6 +105,8 @@ return [
         'post_deleted' => 'Gdy post zostanie usunięty.',
         'post_deleted_on_network' => 'Gdy opublikowany post zostanie usunięty w sieci.',
         'post_restored' => 'Gdy usunięty post wróci do swojej sieci.',
+        'roadmap_request_created' => 'When someone asks for a feature on the public roadmap.', // tantra
+        'roadmap_item_moved' => 'When a roadmap card moves to another column.', // tantra
     ],
     'http_reasons' => [
         'unknown' => 'Nieznany',

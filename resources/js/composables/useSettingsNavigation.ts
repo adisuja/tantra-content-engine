@@ -6,6 +6,7 @@ import {
     IconCode,
     IconCoin,
     IconLayoutGrid,
+    IconLayoutKanban,
     IconMcp,
     IconPlugConnected,
     IconSignature,
@@ -54,6 +55,13 @@ export const useSettingsNavigation = () => {
         Boolean(page.props.auth?.currentWorkspace),
     );
     const selfHosted = computed(() => Boolean(page.props.selfHosted));
+    // tantra: the instance owner manages the public roadmap.
+    const canManageRoadmap = computed(() =>
+        Boolean(
+            (page.props.tantraChannels as { canSetUp?: boolean } | undefined)
+                ?.canSetUp,
+        ),
+    );
     const channelCount = computed(
         () => ((page.props.channels as unknown[] | undefined) ?? []).length,
     );
@@ -166,6 +174,13 @@ export const useSettingsNavigation = () => {
                         workspace && canManageWorkspace.value,
                     ),
                     ...item('mcp', mcp.url(), IconMcp, workspace),
+                    // tantra: the public roadmap's cards (owner only).
+                    ...item(
+                        'roadmap',
+                        '/settings/workspace/roadmap',
+                        IconLayoutKanban,
+                        canManageRoadmap.value,
+                    ),
                     ...item(
                         'webhooks',
                         webhooks.url(),
