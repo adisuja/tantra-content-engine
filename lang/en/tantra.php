@@ -30,6 +30,7 @@ return [
             'edited' => 'Edited',
             'save' => 'Save',
             'restore' => 'Restore original',
+            'resource_link' => 'Resource link',
         ],
         'share' => [
             'copy' => 'Copy link to this post',

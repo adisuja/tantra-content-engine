@@ -99,6 +99,9 @@ return [
             // Never rewritten: the short links themselves and the app's own hosted files and previews.
             'skip_hosts' => ['go.usetantra.com', 'content.usetantra.com', 'linkedin.com', 'www.linkedin.com', 'lnkd.in'],
         ],
+        // Each imported giveaway (DM, connection note, email, resource link) goes to the CRM's Engagement asset
+        // library as its defaults (App\Tantra\Review\Jobs\SyncEngagementAssets). Main Account only, needs api_key.
+        'engagement_assets' => (bool) env('TANTRA_CRM_ENGAGEMENT_ASSETS', true),
     ],
 
     'unipile' => [

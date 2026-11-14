@@ -7,6 +7,7 @@ namespace App\Tantra\Http\Controllers\Web;
 use App\Http\Controllers\Controller;
 use App\Tantra\Giveaway\GiveawayReply;
 use App\Tantra\Review\Actions\ReviewActions;
+use App\Tantra\Review\Jobs\SyncEngagementAssets;
 use App\Tantra\Review\Models\ReviewItem;
 use App\Tantra\Review\ReviewGate;
 use Illuminate\Http\JsonResponse;
@@ -82,6 +83,7 @@ class ReviewItemActionController extends Controller
         $this->authorizeView($request, $item);
         $data = $request->validate(['text' => ['nullable', 'string', 'max:10000']]);
         ReviewActions::editMessage($request->user(), $item, $channel, $data['text'] ?? null);
+        SyncEngagementAssets::forItem($item->refresh());
 
         return $this->ok($item, 'Saved.');
     }
