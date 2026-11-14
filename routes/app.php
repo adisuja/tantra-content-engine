@@ -80,6 +80,7 @@ use App\Http\Controllers\FaviconController;
 use App\Http\Middleware\App\EnsureAccountReady;
 use App\Http\Middleware\App\EnsureHasWorkspace;
 use App\Support\TemplateLibrary;
+use App\Tantra\Http\Middleware\PreConnectGate;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth'])->group(function () {
@@ -124,7 +125,8 @@ Route::middleware(['auth'])->group(function () {
     // one — during onboarding they redirect to workspace creation. Disconnecting
     // lives here too (and not behind EnsureAccountReady) so it works before a
     // subscription exists; the controller still authorizes workspace ownership.
-    Route::middleware(EnsureHasWorkspace::class)->group(function () {
+    // tantra: PreConnectGate shows the pre-connect step first while a network's app is in testing or has no keys.
+    Route::middleware([EnsureHasWorkspace::class, PreConnectGate::class])->group(function () {
         Route::get('connect/linkedin', [LinkedInController::class, 'connect'])->name('app.social.linkedin.connect');
         Route::post('channels/{account}/posting-schedule/generate', [ChannelPostingScheduleController::class, 'generate'])->name('app.channels.posting-schedule.generate');
         Route::get('connect/x', [XController::class, 'connect'])->name('app.social.x.connect');

@@ -29,13 +29,21 @@ final class ChannelApps
 {
     private const CACHE_KEY = 'tantra:channel-apps:v1';
 
+    private const MODES_CACHE_KEY = 'tantra:channel-app-modes:v1';
+
+    /** An app in development only lets invited testers connect; a live one lets anyone. */
+    public const MODES = ['development', 'live'];
+
     /**
      * One entry per developer app.
      *
      * fields: key => [label, secret?, switch?, config paths written on boot]
      * networks: platform value => fields that must be filled for it to be ready
+     * mode: where the app stands until the owner says otherwise: "development"
+     * (only testers the owner invited can connect) or "live" (anyone can)
+     * testing: where the owner adds testers, and where a tester accepts
      *
-     * @return array<string, array{label: string, portal: string, help: string, catch: string|null, fields: array<string, array{label: string, secret?: bool, switch?: bool, generated?: bool, config: list<string>}>, networks: array<string, list<string>>, callbacks: list<string>}>
+     * @return array<string, array{label: string, portal: string, help: string, catch: string|null, mode: string, testing: array{console: string, accept: string|null}, fields: array<string, array{label: string, secret?: bool, switch?: bool, generated?: bool, config: list<string>}>, networks: array<string, list<string>>, callbacks: list<string>}>
      */
     public static function catalog(): array
     {
@@ -45,6 +53,8 @@ final class ChannelApps
                 'portal' => 'https://www.linkedin.com/developers/apps',
                 'help' => 'Add the "Share on LinkedIn" and "Sign In with LinkedIn using OpenID Connect" products. Company pages use their own app (LinkedIn: company pages).',
                 'catch' => 'Profiles reconnect every 60 days.',
+                'mode' => 'live',
+                'testing' => ['console' => 'https://www.linkedin.com/developers/apps', 'accept' => null],
                 'fields' => [
                     'client_id' => ['label' => 'Client ID', 'config' => ['services.linkedin.client_id', 'services.linkedin-openid.client_id']],
                     'client_secret' => ['label' => 'Client secret', 'secret' => true, 'config' => ['services.linkedin.client_secret', 'services.linkedin-openid.client_secret']],
@@ -60,6 +70,8 @@ final class ChannelApps
                 'portal' => 'https://www.linkedin.com/developers/apps',
                 'help' => 'Create a second app with only the "Community Management API" product and copy its Client ID and secret. Left empty, pages use the LinkedIn app keys.',
                 'catch' => 'LinkedIn must approve Community Management first; the Tantra page posts through Zernio until then. Pages already connected with the LinkedIn app reconnect once after you add these keys.',
+                'mode' => 'live',
+                'testing' => ['console' => 'https://www.linkedin.com/developers/apps', 'accept' => null],
                 'fields' => [
                     'client_id' => ['label' => 'Client ID', 'config' => ['services.linkedin-page.client_id']],
                     'client_secret' => ['label' => 'Client secret', 'secret' => true, 'config' => ['services.linkedin-page.client_secret']],
@@ -75,6 +87,8 @@ final class ChannelApps
                 'portal' => 'https://developers.facebook.com/apps',
                 'help' => 'Create a Business app, add "Facebook Login for Business", and use its App ID and App secret. Also unlocks Instagram accounts linked to a Facebook Page.',
                 'catch' => 'Free. While the app is in development mode only people with a role on it can connect, so add each teammate as a tester.',
+                'mode' => 'development',
+                'testing' => ['console' => 'https://developers.facebook.com/apps', 'accept' => 'https://developers.facebook.com/requests'],
                 'fields' => [
                     'client_id' => ['label' => 'App ID', 'config' => ['services.facebook.client_id']],
                     'client_secret' => ['label' => 'App secret', 'secret' => true, 'config' => ['services.facebook.client_secret']],
@@ -90,6 +104,8 @@ final class ChannelApps
                 'portal' => 'https://developers.facebook.com/apps',
                 'help' => 'In the same Meta app add "Instagram API with Instagram Login" and copy the Instagram app ID and secret shown there (they differ from the Meta App ID).',
                 'catch' => 'Newer Meta apps no longer get Instagram Login (Meta shows "not available for newer apps"); for those, connect Instagram through "Instagram via Facebook" (Meta: Facebook Pages keys). Same tester rule while in development mode.',
+                'mode' => 'development',
+                'testing' => ['console' => 'https://developers.facebook.com/apps', 'accept' => 'https://www.instagram.com/accounts/manage_access/'],
                 'fields' => [
                     'client_id' => ['label' => 'Instagram app ID', 'config' => ['services.instagram.client_id']],
                     'client_secret' => ['label' => 'Instagram app secret', 'secret' => true, 'config' => ['services.instagram.client_secret']],
@@ -102,6 +118,8 @@ final class ChannelApps
                 'portal' => 'https://developers.facebook.com/apps',
                 'help' => 'In the same Meta app add the "Threads API" use case and copy the Threads app ID and secret.',
                 'catch' => 'Free. Same tester rule as Facebook while in development mode.',
+                'mode' => 'development',
+                'testing' => ['console' => 'https://developers.facebook.com/apps', 'accept' => 'https://www.threads.net/settings/account'],
                 'fields' => [
                     'client_id' => ['label' => 'Threads app ID', 'config' => ['services.threads.client_id']],
                     'client_secret' => ['label' => 'Threads app secret', 'secret' => true, 'config' => ['services.threads.client_secret']],
@@ -114,6 +132,8 @@ final class ChannelApps
                 'portal' => 'https://developer.x.com/en/portal/dashboard',
                 'help' => 'Create a project and app, turn on OAuth 2.0 (Web App, Read and write), and copy the OAuth 2.0 Client ID and secret.',
                 'catch' => 'X bills API posting per use, so each post costs a little.',
+                'mode' => 'live',
+                'testing' => ['console' => 'https://developer.x.com/en/portal/dashboard', 'accept' => null],
                 'fields' => [
                     'client_id' => ['label' => 'OAuth 2.0 Client ID', 'config' => ['services.x.client_id']],
                     'client_secret' => ['label' => 'OAuth 2.0 Client secret', 'secret' => true, 'config' => ['services.x.client_secret']],
@@ -126,6 +146,8 @@ final class ChannelApps
                 'portal' => 'https://console.cloud.google.com/apis/credentials',
                 'help' => 'Enable "YouTube Data API v3" and "YouTube Analytics API", then create an OAuth client (Web application).',
                 'catch' => 'Free. While the OAuth consent screen is in Testing, until Google verifies the app, only the 100 test users you list can connect and they reconnect every 7 days. Since 2 November 2026 uploads from unverified projects are no longer locked to private.',
+                'mode' => 'development',
+                'testing' => ['console' => 'https://console.cloud.google.com/auth/audience', 'accept' => null],
                 'fields' => [
                     'client_id' => ['label' => 'Client ID', 'config' => ['services.google.client_id']],
                     'client_secret' => ['label' => 'Client secret', 'secret' => true, 'config' => ['services.google.client_secret']],
@@ -138,6 +160,8 @@ final class ChannelApps
                 'portal' => 'https://console.cloud.google.com/apis/credentials',
                 'help' => 'Use a separate OAuth client (Web application) with the Business Profile APIs enabled.',
                 'catch' => 'Google must grant Business Profile API access to the project first (a short form).',
+                'mode' => 'live',
+                'testing' => ['console' => 'https://console.cloud.google.com/auth/audience', 'accept' => null],
                 'fields' => [
                     'client_id' => ['label' => 'Client ID', 'config' => ['services.google-business.client_id']],
                     'client_secret' => ['label' => 'Client secret', 'secret' => true, 'config' => ['services.google-business.client_secret']],
@@ -150,6 +174,8 @@ final class ChannelApps
                 'portal' => 'https://developers.tiktok.com/apps',
                 'help' => 'Add "Login Kit" and "Content Posting API" (Direct Post) to the app.',
                 'catch' => 'Until TikTok audits the app, posts go out as private (only you can see them).',
+                'mode' => 'development',
+                'testing' => ['console' => 'https://developers.tiktok.com/apps', 'accept' => null],
                 'fields' => [
                     'client_id' => ['label' => 'Client key', 'config' => ['services.tiktok.client_id']],
                     'client_secret' => ['label' => 'Client secret', 'secret' => true, 'config' => ['services.tiktok.client_secret']],
@@ -162,6 +188,8 @@ final class ChannelApps
                 'portal' => 'https://developers.pinterest.com/apps',
                 'help' => 'Create an app and copy its App ID and App secret key.',
                 'catch' => 'New apps start on trial access: pins are visible only to you until Pinterest grants standard access.',
+                'mode' => 'development',
+                'testing' => ['console' => 'https://developers.pinterest.com/apps', 'accept' => null],
                 'fields' => [
                     'client_id' => ['label' => 'App ID', 'config' => ['services.pinterest.client_id']],
                     'client_secret' => ['label' => 'App secret key', 'secret' => true, 'config' => ['services.pinterest.client_secret']],
@@ -174,6 +202,8 @@ final class ChannelApps
                 'portal' => 'https://discord.com/developers/applications',
                 'help' => 'Create an application, copy the OAuth2 Client ID and secret, then add a Bot and copy its token.',
                 'catch' => 'Free.',
+                'mode' => 'live',
+                'testing' => ['console' => 'https://discord.com/developers/applications', 'accept' => null],
                 'fields' => [
                     'client_id' => ['label' => 'Client ID', 'config' => ['services.discord.client_id']],
                     'client_secret' => ['label' => 'Client secret', 'secret' => true, 'config' => ['services.discord.client_secret']],
@@ -187,6 +217,8 @@ final class ChannelApps
                 'portal' => 'https://t.me/BotFather',
                 'help' => 'Message @BotFather, send /newbot, and copy the token and the bot username. The webhook is registered when you save.',
                 'catch' => 'Free.',
+                'mode' => 'live',
+                'testing' => ['console' => 'https://t.me/BotFather', 'accept' => null],
                 'fields' => [
                     'bot_token' => ['label' => 'Bot token', 'secret' => true, 'config' => ['trypost.platforms.telegram.bot_token']],
                     'bot_username' => ['label' => 'Bot username (without @)', 'config' => ['trypost.platforms.telegram.bot_username']],
@@ -500,6 +532,56 @@ final class ChannelApps
     public static function forget(): void
     {
         Cache::forget(self::CACHE_KEY);
+        Cache::forget(self::MODES_CACHE_KEY);
+    }
+
+    /**
+     * The modes the owner saved: app => mode. Not secret, so cached plain.
+     *
+     * @return array<string, string>
+     */
+    public static function savedModes(): array
+    {
+        try {
+            return (array) Cache::remember(self::MODES_CACHE_KEY, 300, fn (): array => Schema::hasColumn('tantra_channel_apps', 'mode')
+                ? ChannelApp::query()->whereNotNull('mode')->pluck('mode', 'app')->all()
+                : []);
+        } catch (Throwable) {
+            return [];
+        }
+    }
+
+    /** Whether an app is in development or live: the owner's choice, else the catalog's. */
+    public static function mode(string $app): string
+    {
+        $saved = self::savedModes()[$app] ?? null;
+        if (is_string($saved) && in_array($saved, self::MODES, true)) {
+            return $saved;
+        }
+
+        return self::catalog()[$app]['mode'] ?? 'live';
+    }
+
+    /**
+     * Whether anyone may connect a network, not only invited testers. Open
+     * networks (Bluesky, Mastodon) have no app and are always live.
+     */
+    public static function isLive(string $network): bool
+    {
+        $app = self::appFor($network);
+
+        return $app === null || self::mode($app) === 'live';
+    }
+
+    /**
+     * The person who looks after the developer apps: the owner of the
+     * instance's first Account (see canManage()).
+     */
+    public static function manager(): ?User
+    {
+        $account = Account::query()->orderBy('created_at')->orderBy('id')->first();
+
+        return $account?->owner_id ? User::query()->find($account->owner_id) : null;
     }
 
     /**

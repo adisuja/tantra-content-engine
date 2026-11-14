@@ -21,6 +21,7 @@ use App\Tantra\Boost\Boost;
 use App\Tantra\Boost\MemberProfile;
 use App\Tantra\Boost\StartBoostRun;
 use App\Tantra\Channels\ChannelApps;
+use App\Tantra\Channels\ConnectSafetyNet;
 use App\Tantra\Composer\MakeComposerThread;
 use App\Tantra\Console\AgentJobsCommand;
 use App\Tantra\Console\AiConnectorCommand;
@@ -65,11 +66,14 @@ use App\Tantra\Roadmap\Roadmap;
 use App\Tantra\Templates\ContentTemplate;
 use App\Tantra\Templates\TemplateFromPostApplier;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Http\Kernel as HttpKernel;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Foundation\Exceptions\Handler as FoundationExceptionHandler;
 use Illuminate\Foundation\Http\Kernel as FoundationHttpKernel;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Broadcast;
@@ -80,6 +84,7 @@ use Inertia\Inertia;
 use Laravel\Ai\Ai;
 use Laravel\Ai\Providers\OpenAiCompatibleProvider;
 use Laravel\Passport\Passport;
+use Throwable;
 
 /**
  * Entry point for everything Tantra adds to the TryPost fork.
@@ -109,6 +114,11 @@ class TantraServiceProvider extends ServiceProvider
         Inertia::share('tantraChannels', fn (): array => [
             'canSetUp' => ChannelApps::canManage(Auth::user()),
         ]);
+        // Whatever escapes a sign in still ends on the confirmation page, never a 500.
+        $handler = $this->app->make(ExceptionHandler::class);
+        if ($handler instanceof FoundationExceptionHandler) {
+            $handler->renderable(fn (Throwable $e, Request $request) => ConnectSafetyNet::render($e, $request));
+        }
         $this->loadViewsFrom(__DIR__.'/views', 'tantra');
 
         $this->app->make(Router::class)->aliasMiddleware('tantra.owner-token', EnsureOwnerToken::class);

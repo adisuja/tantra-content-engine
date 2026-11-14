@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Support\Social\PendingConnection;
+use App\Tantra\Channels\ConnectFailures;
 use App\Tantra\Social\EngagementScopes;
 use Exception;
 use Illuminate\Http\RedirectResponse;
@@ -55,6 +56,11 @@ class InstagramController extends SocialController
 
             $scopes = $this->reportedScopes($socialUser->approvedScopes, $this->scopes);
 
+            // tantra: a personal account cannot publish through the API; say how to switch.
+            if (strtoupper((string) data_get($socialUser->user, 'account_type')) === 'PERSONAL') {
+                return $this->failConnection(ConnectFailures::INSTAGRAM_PERSONAL);
+            }
+
             return $this->refusalForMissingPublishScopes($scopes) ?? $this->offerIdentities($workspace, [
                 PendingConnection::identity(
                     $this->platform,
@@ -83,7 +89,7 @@ class InstagramController extends SocialController
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return $this->failConnection('error_connecting');
+            return $this->failConnection(ConnectFailures::fromException($e, $this->platform)); // tantra: say which failure
         }
     }
 }

@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
  *
  * @property string $app
  * @property array<string, string|bool> $credentials
+ * @property string|null $mode development or live; null keeps the catalog default
  * @property string|null $updated_by
  */
 class ChannelApp extends Model
@@ -20,7 +21,7 @@ class ChannelApp extends Model
 
     protected $table = 'tantra_channel_apps';
 
-    protected $fillable = ['app', 'credentials', 'updated_by'];
+    protected $fillable = ['app', 'credentials', 'mode', 'updated_by'];
 
     protected $hidden = ['credentials'];
 

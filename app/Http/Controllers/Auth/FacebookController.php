@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Auth;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Services\Social\Meta\ManagedPages;
 use App\Support\Social\PendingConnection;
+use App\Tantra\Channels\ConnectFailures;
 use App\Tantra\Social\EngagementScopes;
 use Exception;
 use Illuminate\Http\RedirectResponse;
@@ -106,7 +107,7 @@ class FacebookController extends MetaController
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return $this->failConnection('error_connecting');
+            return $this->failConnection(ConnectFailures::fromException($e, $this->platform)); // tantra: say which failure
         }
     }
 

@@ -9,6 +9,7 @@ use App\Models\SocialAccount;
 use App\Services\Social\ConnectionVerifier;
 use App\Services\Social\Meta\ManagedPages;
 use App\Support\Social\PendingConnection;
+use App\Tantra\Channels\ConnectFailures;
 use App\Tantra\Social\EngagementScopes;
 use Exception;
 use Illuminate\Http\Client\Pool;
@@ -126,7 +127,7 @@ class InstagramFacebookController extends MetaController
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return $this->failConnection('error_connecting');
+            return $this->failConnection(ConnectFailures::fromException($e, $this->platform)); // tantra: say which failure
         }
     }
 

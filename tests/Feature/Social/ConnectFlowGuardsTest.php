@@ -254,7 +254,7 @@ test('a callback whose state does not match the one issued never reaches the pro
         ->assertRedirect(route('app.social.connect.show', connectRoutePlatform($routeName)));
 
     expect($calls)->toHaveCount(0)
-        ->and(socialConnectFailure())->toBe('error_connecting')
+        ->and(socialConnectFailure())->toBe('invalid_state') // tantra: its own reason (ConnectFailures)
         ->and(SocialAccount::query()->count())->toBe(0);
     Http::assertNothingSent();
 })->with('socialite callbacks');
@@ -268,7 +268,7 @@ test('a callback replayed after it was used is refused because its state is spen
         ->assertRedirect(route('app.social.connect.show', connectRoutePlatform($routeName)));
 
     expect($calls)->toHaveCount(0)
-        ->and(socialConnectFailure())->toBe('error_connecting')
+        ->and(socialConnectFailure())->toBe('invalid_state') // tantra: its own reason (ConnectFailures)
         ->and(SocialAccount::query()->count())->toBe(0);
 })->with('socialite callbacks');
 
@@ -322,8 +322,9 @@ test('a provider error that is not a cancel still reports a failed connect', fun
         ->get(route('app.social.x.callback', ['error' => 'server_error', 'state' => 'issued-state']))
         ->assertRedirect(route('app.social.connect.show', Platform::X));
 
-    expect($calls)->toHaveCount(1)
-        ->and(socialConnectFailure())->toBe('error_connecting')
+    // tantra: the network's error is named without a token exchange (ConnectFailures).
+    expect($calls)->toHaveCount(0)
+        ->and(socialConnectFailure())->toBe('provider_unavailable')
         ->and(SocialAccount::query()->count())->toBe(0);
 });
 
