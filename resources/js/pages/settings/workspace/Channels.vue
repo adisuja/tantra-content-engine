@@ -62,39 +62,43 @@ const disconnectChannel = (channel: ConnectedAccount): void =>
         :description="$t('channels.description')"
     >
         <template #actions>
-            <Button data-testid="channels-connect" @click="openConnectDialog()">
+            <Button
+                v-if="channels.length > 0"
+                data-testid="channels-connect"
+                @click="openConnectDialog()"
+            >
                 <IconPlus class="size-4" />
                 {{ $t('channels.connect') }}
             </Button>
         </template>
 
-            <ul v-if="channels.length > 0" class="flex flex-col gap-3">
-                <li
-                    v-for="channel in channels"
-                    :key="channel.id"
-                    :data-testid="`channel-list-row-${channel.id}`"
-                >
-                    <ChannelListItem
-                        :channel="channel"
-                        :can-link-facebook="canLinkFacebook(channel)"
-                        @reconnect="reconnectChannel"
-                        @link-facebook="linkFacebook"
-                        @disconnect="disconnectChannel"
-                    />
-                </li>
-            </ul>
-
-            <!-- tantra: no channels yet, so the logo grid is the page (Adi 2026-11-14). -->
-            <section
-                v-else
-                class="flex w-full flex-col gap-4"
-                data-testid="channels-empty"
+        <ul v-if="channels.length > 0" class="flex flex-col gap-3">
+            <li
+                v-for="channel in channels"
+                :key="channel.id"
+                :data-testid="`channel-list-row-${channel.id}`"
             >
-                <p class="text-sm text-muted-foreground">
-                    Click a logo and sign in.
-                </p>
-                <ConnectGrid @select="(n) => showNetwork(n.value, false)" />
-            </section>
+                <ChannelListItem
+                    :channel="channel"
+                    :can-link-facebook="canLinkFacebook(channel)"
+                    @reconnect="reconnectChannel"
+                    @link-facebook="linkFacebook"
+                    @disconnect="disconnectChannel"
+                />
+            </li>
+        </ul>
+
+        <!-- tantra: no channels yet, so the logo grid is the page (Adi 2026-11-14). -->
+        <section
+            v-else
+            class="flex w-full flex-col gap-4"
+            data-testid="channels-empty"
+        >
+            <p class="text-sm text-muted-foreground">
+                Click a logo and sign in.
+            </p>
+            <ConnectGrid @select="(n) => showNetwork(n.value, false)" />
+        </section>
 
         <DisconnectChannelDialog
             ref="disconnectDialog"

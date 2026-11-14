@@ -35,6 +35,11 @@ function mcpExpectedToolAnnotations(): array
         'tantra-winning-formula-tool' => [true, false, false],
         'tantra-list-manual-tasks-tool' => [true, false, false],
         'tantra-mark-manual-task-posted-tool' => [false, false, false],
+        'tantra-get-channel-schedule-tool' => [true, false, false],
+        'tantra-update-channel-schedule-tool' => [false, true, false],
+        'tantra-list-ideas-tool' => [true, false, false],
+        'tantra-upsert-ideas-tool' => [false, true, false],
+        'tantra-idea-to-review-tool' => [false, false, false],
 
         // Posts
         'list-posts-tool' => [true, false, false],

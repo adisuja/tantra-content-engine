@@ -47,7 +47,7 @@ const setupUrl = (n: ConnectNetwork): string =>
                         ? `${n.label}, ${status(n).toLowerCase()}. Connect another`
                         : `Connect ${n.label}`
                 "
-                :data-testid="`connect-tile-${n.value}`"
+                :data-testid="`connect-channel-${n.value}`"
                 @click="emit('select', n)"
             >
                 <span
@@ -76,7 +76,7 @@ const setupUrl = (n: ConnectNetwork): string =>
                     <span
                         v-if="n.connected"
                         class="inline-flex items-center justify-center gap-1 text-xs leading-4 text-success-text"
-                        :data-testid="`connect-tile-status-${n.value}`"
+                        :data-testid="`connect-channel-status-${n.value}`"
                     >
                         <IconCheck class="size-3" aria-hidden="true" />{{
                             status(n)
@@ -89,7 +89,7 @@ const setupUrl = (n: ConnectNetwork): string =>
             <div
                 v-else
                 class="relative flex min-h-[132px] w-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-card/50 px-3 py-5 text-center"
-                :data-testid="`connect-tile-${n.value}`"
+                :data-testid="`connect-channel-${n.value}`"
                 data-ready="false"
             >
                 <span
@@ -108,13 +108,13 @@ const setupUrl = (n: ConnectNetwork): string =>
                         :href="setupUrl(n)"
                         class="rounded text-xs leading-4 font-medium text-primary-text underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                         :aria-label="`Set up ${n.label}`"
-                        :data-testid="`connect-tile-setup-${n.value}`"
+                        :data-testid="`connect-channel-setup-${n.value}`"
                         >Set up</Link
                     >
                     <span
                         v-else
                         class="text-xs leading-4 text-muted-foreground"
-                        :data-testid="`connect-tile-soon-${n.value}`"
+                        :data-testid="`connect-channel-soon-${n.value}`"
                         >Coming soon</span
                     >
                 </span>

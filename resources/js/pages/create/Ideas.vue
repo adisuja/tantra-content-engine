@@ -14,6 +14,9 @@ import IdeaEditorDialog from '@/components/create/ideas/IdeaEditorDialog.vue';
 import IdeaGallery from '@/components/create/ideas/IdeaGallery.vue';
 import IdeasToolbar from '@/components/create/ideas/IdeasToolbar.vue';
 import EmptyState from '@/components/EmptyState.vue';
+import { provideTantraIdeas } from '@/components/tantra/ideas/tantraIdeas'; // tantra:
+import TantraIdeasStrip from '@/components/tantra/ideas/TantraIdeasStrip.vue'; // tantra:
+import type { TantraIdeasBoard } from '@/components/tantra/ideas/types'; // tantra:
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/AppLayout.vue';
 import {
@@ -41,8 +44,8 @@ import {
     type IdeaDraft,
     type IdeaEditorState,
     type IdeaFilters,
-    type IdeaStage,
     type IdeaLabel,
+    type IdeaStage,
     type IdeasView,
 } from '@/types/idea';
 
@@ -56,6 +59,7 @@ const props = defineProps<{
     editor: IdeaEditorState | null;
     columns?: Record<string, IdeaCardPage>;
     ideas?: IdeaCardPage;
+    tantraIdeas?: TantraIdeasBoard; // tantra:
 }>();
 
 type Query = Record<string, string | string[] | undefined>;
@@ -527,6 +531,16 @@ provide(ideaCardActionsKey, {
 });
 
 const galleryCards = computed(() => props.ideas?.data ?? []);
+
+// tantra: Tantra ideas get a phone preview, a connect prompt and Send to review (PRD 25.8).
+provideTantraIdeas(
+    computed(() => props.tantraIdeas ?? null),
+    () =>
+        router.reload({
+            ...listReload.value,
+            only: [...listReload.value.only, 'tantraIdeas'],
+        }),
+);
 </script>
 
 <template>
@@ -557,9 +571,13 @@ const galleryCards = computed(() => props.ideas?.data ?? []);
                 >
                     <IconTrash class="size-4" />
                     {{
-                        $tChoice('create.ideas.delete_selected', selectedIds.size, {
-                            count: String(selectedIds.size),
-                        })
+                        $tChoice(
+                            'create.ideas.delete_selected',
+                            selectedIds.size,
+                            {
+                                count: String(selectedIds.size),
+                            },
+                        )
                     }}
                 </Button>
             </div>
@@ -605,6 +623,9 @@ const galleryCards = computed(() => props.ideas?.data ?? []);
                     />
                 </template>
             </CreateTabs>
+
+            <!-- tantra: "N posts ready for <Network>" (PRD 25.8). -->
+            <TantraIdeasStrip />
 
             <p
                 v-if="view === 'board' && isBoardFiltered"

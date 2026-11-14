@@ -69,30 +69,21 @@ test('disconnecting a channel asks for the translated disconnect keyword, not th
     expect(SocialAccount::find($channel->id))->toBeNull();
 });
 
-test('an empty workspace shows only the centered illustration with a connect button', function () {
+test('an empty workspace shows the logo grid, and a logo opens its pop-up', function () {
     $this->actingAs(channelsSettingsAdmin());
 
     $page = visit(route('app.workspace.channels'));
     waitFor($page, '@channels-empty');
 
-    $page->assertVisible('@channels-empty-illustration')
-        ->assertSeeIn('@channels-empty', __('channels.empty'))
-        ->assertMissing('@header-title')
+    // tantra: no channels yet, so the logo grid is the page (Adi 2026-11-14).
+    $page->assertVisible('@connect-grid')
+        ->assertVisible('@connect-channel-linkedin')
         ->assertMissing('@channels-connect');
 
-    expect($page->script(<<<'JS'
-        (() => {
-            const scroller = document.querySelector('[data-testid="app-layout-scroller"]').getBoundingClientRect();
-            const empty = document.querySelector('[data-testid="channels-empty"]').getBoundingClientRect();
-            return Math.abs((empty.top + empty.height / 2) - (scroller.top + scroller.height / 2)) <= 24
-                && Math.abs((empty.left + empty.width / 2) - (scroller.left + scroller.width / 2)) <= 24;
-        })()
-    JS))->toBeTrue();
-
-    $page->click('@channels-empty-connect');
+    $page->click('@connect-channel-bluesky');
     waitFor($page, '@connect-channel-dialog');
 
-    $page->assertVisible('@connect-channel-dialog')->assertNoJavaScriptErrors();
+    $page->assertVisible('@connect-panel-bluesky')->assertNoJavaScriptErrors();
 });
 
 test('a channel with a lost connection shows the disconnected dot in the list and the channel header', function () {

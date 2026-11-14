@@ -133,6 +133,12 @@ class ImportExternalPosts
                 return null;
             }
 
+            // tantra: LinkedIn channels link their publications to the Engine's own
+            // posts but never add network posts to the calendar (PRD 25.7).
+            if (in_array($account->platform, [Platform::LinkedIn, Platform::ZernioLinkedInPage, Platform::UnipileLinkedIn], true)) {
+                return null;
+            }
+
             if (self::isTryPostThreadSegment($account, $publication)) {
                 return null;
             }

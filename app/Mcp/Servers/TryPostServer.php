@@ -118,6 +118,13 @@ class TryPostServer extends Server
         \App\Tantra\Mcp\Tools\TantraWinningFormulaTool::class,
         \App\Tantra\Mcp\Tools\TantraListManualTasksTool::class,
         \App\Tantra\Mcp\Tools\TantraMarkManualTaskPostedTool::class,
+        // tantra: each teammate's posting days and times per channel (PRD 25.6).
+        \App\Tantra\Mcp\Tools\TantraGetChannelScheduleTool::class,
+        \App\Tantra\Mcp\Tools\TantraUpdateChannelScheduleTool::class,
+        // tantra: ideas with a network, a preview and a path to Review (PRD 25.8).
+        \App\Tantra\Mcp\Tools\TantraListIdeasTool::class,
+        \App\Tantra\Mcp\Tools\TantraUpsertIdeasTool::class,
+        \App\Tantra\Mcp\Tools\TantraIdeaToReviewTool::class,
 
         ListPostsTool::class,
         GetPostTool::class,

@@ -88,6 +88,10 @@ interface ConnectResult {
     created: boolean;
 }
 
+// tantra: one connection can create several channels (a profile and its
+// pages); the posting goal step opens for each in turn (PRD 25.6).
+const goalQueue = ref<string[]>([]);
+
 const openGoalForNewChannel = (result: ConnectResult | undefined): void => {
     if (result?.created && result.accountId) {
         openGoal(result.accountId);
@@ -96,6 +100,7 @@ const openGoalForNewChannel = (result: ConnectResult | undefined): void => {
 
 const handleConnected = (result: ConnectResult): void => {
     toast.success('Channel connected.');
+    goalQueue.value = []; // tantra
     router.reload();
     openGoalForNewChannel(result);
 };
@@ -114,17 +119,36 @@ const connectedChannel = computed(
             ?.connectedChannel,
 );
 
+const openGoalsForNewChannels = (result: ConnectResult | undefined): void => {
+    const ids =
+        (page.flash as { connectedChannels?: string[] } | undefined)
+            ?.connectedChannels ?? [];
+    goalQueue.value = ids.filter((id) => id !== result?.accountId);
+    openGoalForNewChannel(result);
+};
+
+const nextGoal = (): void => {
+    const next = goalQueue.value.shift();
+
+    if (next) {
+        openGoal(next);
+    } else {
+        close();
+    }
+};
+
 watch(
     connectedChannel,
     (result) => {
         // tantra: every finished connection says so (Adi 2026-11-14).
         if (result) toast.success('Channel connected.');
-        openGoalForNewChannel(result);
+        openGoalsForNewChannels(result);
     },
     { immediate: true },
 );
 
 const customize = (accountId: string): void => {
+    goalQueue.value = []; // tantra: the Team page holds the rest.
     close();
     router.visit(channelSettings.url(accountId));
 };
@@ -149,7 +173,7 @@ const customize = (accountId: string): void => {
             <PostingGoalFlow
                 v-if="state.flow === 'goal' && state.goalAccountId"
                 :account-id="state.goalAccountId"
-                @done="close"
+                @done="nextGoal"
                 @customize="customize(state.goalAccountId)"
             />
             <ConnectChannelFlow

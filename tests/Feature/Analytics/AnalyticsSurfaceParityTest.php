@@ -173,8 +173,8 @@ test('API and MCP expose imported publication metrics and isolate workspaces', f
     $foreign = AnalyticsPublication::factory()->create(['workspace_id' => Workspace::factory()->create()->id]);
     $excluded = AnalyticsPublication::factory()->create([
         'workspace_id' => $workspace->id,
-        'platform' => Platform::LinkedIn,
-        'network' => Platform::LinkedIn->network(),
+        'platform' => Platform::LinkedInPage, // tantra: LinkedIn is measured (PRD 25.7)
+        'network' => Platform::LinkedInPage->network(),
     ]);
     Http::fake();
 

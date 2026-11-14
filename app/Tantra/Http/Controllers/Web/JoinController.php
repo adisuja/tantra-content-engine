@@ -6,6 +6,7 @@ namespace App\Tantra\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Tantra\Auth\ClerkLogin;
 use App\Tantra\Review\ReviewGate;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
@@ -20,7 +21,7 @@ class JoinController extends Controller
     public function __invoke(User $user): RedirectResponse
     {
         if (ReviewGate::hasJoined($user)) {
-            return redirect()->route(Auth::check() ? 'tantra.review.index' : 'login');
+            return Auth::check() ? redirect()->route('tantra.review.index') : redirect()->route('login', ClerkLogin::enabled() ? ['password' => 1] : []);
         }
 
         Auth::logout();

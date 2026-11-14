@@ -7,10 +7,15 @@ namespace App\Tantra\Http\Controllers\Web;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\App\ChannelPostingScheduleResource;
 use App\Models\SocialAccount;
 use App\Models\User;
+use App\Support\Timezone;
+use App\Tantra\Auth\ClerkLogin;
 use App\Tantra\Boost\Boost;
 use App\Tantra\Boost\MemberProfile;
+use App\Tantra\Channels\ChannelSchedules;
+use App\Tantra\Http\Requests\ChannelScheduleRequest;
 use App\Tantra\LinkedIn\LinkedInSync;
 use App\Tantra\LinkedIn\SyncLinkedInIdentity;
 use App\Tantra\Review\Models\WorkspaceSettings;
@@ -18,6 +23,7 @@ use App\Tantra\Review\ReviewGate;
 use App\Tantra\Unipile\UnipileClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -26,8 +32,9 @@ use Throwable;
 
 /**
  * tantra: the Team page (PRD 10.5 step 3 and 10.9): each person's consent and
- * expertise, and for the Account owner, which Unipile LinkedIn account belongs
- * to which teammate.
+ * expertise, the posting times of every channel they review (PRD 25.6), and
+ * for the Account owner, which Unipile LinkedIn account belongs to which
+ * teammate.
  */
 class TeamController extends Controller
 {
@@ -37,8 +44,11 @@ class TeamController extends Controller
         $isOwner = $user->account?->owner_id === $user->id;
         $profiles = MemberProfile::query()->whereIn('user_id', User::query()->where('account_id', $user->account_id)->select('id'))->get()->keyBy('user_id');
 
-        $members = User::query()->where('account_id', $user->account_id)->orderBy('name')->get()
-            ->filter(fn (User $u): bool => $isOwner || $u->id === $user->id)
+        $people = User::query()->where('account_id', $user->account_id)->orderBy('name')->get()
+            ->filter(fn (User $u): bool => $isOwner || $u->id === $user->id);
+        $channels = ChannelSchedules::reviewedBy($people->pluck('id')->values()->all());
+
+        $members = $people
             ->map(fn (User $u): array => [
                 'id' => $u->id,
                 'name' => $u->name,
@@ -50,8 +60,10 @@ class TeamController extends Controller
                 'consent' => $profiles->get($u->id)?->boost_consent_at !== null,
                 'paused_until' => $profiles->get($u->id)?->boost_paused_until?->isFuture() ? $profiles->get($u->id)->boost_paused_until->toIso8601String() : null,
                 'expertise' => $profiles->get($u->id)?->expertise,
-                'checklist' => $this->checklist($u, $profiles->get($u->id)),
+                'checklist' => $this->checklist($u, $profiles->get($u->id), $channels->get($u->id, collect())),
+                'channels' => $channels->get($u->id, collect())->map(fn (SocialAccount $c): array => ChannelSchedules::card($c))->values(),
                 'linkedin' => $this->linkedin($profiles->get($u->id)),
+                'clerk_linked' => $u->clerk_user_id !== null,
             ])->values();
 
         return Inertia::render('tantra/team/Index', [
@@ -59,7 +71,17 @@ class TeamController extends Controller
             'isOwner' => $isOwner,
             'boostEnabled' => Boost::enabled(),
             'unipileAccounts' => $isOwner ? $this->unipileAccounts($members->pluck('name')->all()) : [],
+            'timezones' => Timezone::options(),
         ]);
+    }
+
+    /**
+     * Saves one channel's days, times and timezone from the Team page, for the
+     * review owner of its workspace or the Account owner (PRD 25.6).
+     */
+    public function schedule(ChannelScheduleRequest $request): ChannelPostingScheduleResource
+    {
+        return ChannelPostingScheduleResource::make(ChannelSchedules::update($request->targetChannel(), $request->validated()));
     }
 
     /**
@@ -86,11 +108,13 @@ class TeamController extends Controller
     /**
      * The onboarding checklist (PRD 10.9): joined, LinkedIn connected in a
      * workspace they review, expertise written, Unipile account matched,
-     * team comments switched on, an API key for MCP.
+     * team comments switched on, an API key for MCP, posting times on every
+     * channel they review.
      *
+     * @param  Collection<int, SocialAccount>  $channels
      * @return array<string, bool>
      */
-    private function checklist(User $user, ?MemberProfile $profile): array
+    private function checklist(User $user, ?MemberProfile $profile, Collection $channels): array
     {
         $reviewed = WorkspaceSettings::query()->where('review_owner_user_id', $user->id)->pluck('workspace_id');
 
@@ -102,6 +126,7 @@ class TeamController extends Controller
             'unipile' => $profile?->unipile_confirmed_at !== null,
             'consent' => $profile?->boost_consent_at !== null,
             'api_key' => $user->tokens()->where('revoked', false)->exists(),
+            'schedule' => ChannelSchedules::allSet($channels),
         ];
     }
 
@@ -119,6 +144,21 @@ class TeamController extends Controller
         MemberProfile::query()->updateOrCreate(['user_id' => $request->user()->id], ['expertise' => $text]);
 
         return response()->json(['message' => 'Saved.']);
+    }
+
+    /**
+     * The Account owner clears the Clerk user a teammate signs in as, so their
+     * next usetantra.com login links again by verified email.
+     */
+    public function clerkUnlink(Request $request, string $member): JsonResponse
+    {
+        $owner = $request->user();
+        abort_unless(ClerkLogin::enabled(), 404);
+        abort_unless($owner->account?->owner_id === $owner->id, 403);
+        $user = User::query()->where('account_id', $owner->account_id)->findOrFail($member);
+        $user->forceFill(['clerk_user_id' => null])->save();
+
+        return response()->json(['message' => "{$user->name} signs in with usetantra.com again to link."]);
     }
 
     public function match(Request $request): JsonResponse

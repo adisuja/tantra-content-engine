@@ -87,6 +87,14 @@ const onClick = (event: MouseEvent): void => {
         return;
     }
 
+    // The other networks' "more" (studio-networks.css).
+    const netMore = target.closest('.net-more');
+    if (netMore) {
+        netMore.closest('.nclamp')?.classList.remove('nclamp');
+
+        return;
+    }
+
     const arrow = target.closest<HTMLElement>('.li-arr');
     if (arrow) {
         const slides = arrow.parentElement?.querySelector('.li-slides');

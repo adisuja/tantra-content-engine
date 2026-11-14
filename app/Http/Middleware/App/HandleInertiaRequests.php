@@ -26,6 +26,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Support\HeicConverter;
 use App\Support\LinkTlds;
+use App\Tantra\Channels\ConnectNetworks;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Inertia\Middleware;
@@ -67,6 +68,9 @@ class HandleInertiaRequests extends Middleware
             'channels' => fn (): array => $user?->currentWorkspace
                 ? SidebarChannelResource::collection($user->currentWorkspace)
                 : [],
+            // tantra: the "Connect a channel" logo grid (ConnectNetworks); the
+            // instance owner also gets "Set up" links and the Admin settings page.
+            'tantraChannels' => fn (): array => ConnectNetworks::share($user),
             'referralSources' => fn (): ?array => $this->showsReferralSources($user, $account, $isSelfHosted)
                     ? array_map(fn (ReferralSource $source): string => $source->value, ReferralSource::cases())
                     : null,

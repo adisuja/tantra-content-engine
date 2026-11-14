@@ -51,6 +51,16 @@ class ZernioClient
         return $this->send('get', "/posts/{$postId}", allowFailure: true);
     }
 
+    /**
+     * One page of the published LinkedIn posts made through Zernio, newest first,
+     * each with `platforms[]` (accountId, platformPostUrl, publishedAt), and
+     * `pagination` {page, pages}.
+     */
+    public function publishedLinkedInPosts(int $page, int $limit = 50): Response
+    {
+        return $this->send('get', '/posts?'.http_build_query(['platform' => 'linkedin', 'status' => 'published', 'page' => $page, 'limit' => $limit]), allowFailure: true);
+    }
+
     /** One LinkedIn post's numbers by URN: impressions, reach, likes, comments, shares, clicks. */
     public function linkedInPostAnalytics(string $accountId, string $urn): Response
     {

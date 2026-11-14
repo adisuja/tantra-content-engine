@@ -100,7 +100,8 @@ test('handle returns silently when PostHog is disabled', function () {
     config(['services.posthog.enabled' => false]);
     Queue::fake();
 
-    $socialAccount = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
+    // tantra: a LinkedIn page, since connecting a LinkedIn profile now queues its Insights (PRD 25.7).
+    $socialAccount = SocialAccount::factory()->linkedinPage()->create(['workspace_id' => $this->workspace->id]);
 
     (new TrackSocialAccountConnected((string) $socialAccount->id, (string) $this->user->id, 'app.workspace.channels'))
         ->handle(app(PostHogService::class));

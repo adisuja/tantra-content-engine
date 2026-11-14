@@ -54,6 +54,19 @@ final class ConnectNetworks
     ];
 
     /**
+     * The shared tantraChannels prop.
+     *
+     * @return array{canSetUp: bool, networks: list<array<string, mixed>>}
+     */
+    public static function share(?User $user): array
+    {
+        return [
+            'canSetUp' => ChannelApps::canManage($user),
+            'networks' => $user === null ? [] : self::for($user),
+        ];
+    }
+
+    /**
      * @return list<array{value: string, label: string, kind: string, ready: bool, methods: list<string>, connected: bool, count: int, avatar_url: string|null, setup_app: string|null}>
      */
     public static function for(?User $user): array

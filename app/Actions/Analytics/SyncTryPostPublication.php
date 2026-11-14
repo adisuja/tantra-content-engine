@@ -60,6 +60,7 @@ class SyncTryPostPublication
             ContentType::TikTokVideo, ContentType::PinterestVideoPin => PublicationContentType::Video,
             ContentType::TikTokPhoto, ContentType::PinterestCarousel => PublicationContentType::Carousel,
             ContentType::XPoll => PublicationContentType::Poll,
+            ContentType::LinkedInPoll, ContentType::LinkedInPagePoll => PublicationContentType::Poll, // tantra:
             default => null,
         };
 
@@ -71,6 +72,11 @@ class SyncTryPostPublication
 
         if (! $media || $media->isEmpty()) {
             return PublicationContentType::Text;
+        }
+
+        // tantra: a LinkedIn PDF document shows as a swipeable carousel.
+        if ($media->contains(fn ($item): bool => $item->isDocument())) {
+            return PublicationContentType::Carousel;
         }
 
         if ($media->count() > 1) {
