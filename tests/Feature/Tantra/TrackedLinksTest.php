@@ -12,6 +12,7 @@ use App\Models\SocialAccount;
 use App\Support\PostingSchedule;
 use App\Tantra\Ideas\IdeaMeta;
 use App\Tantra\Links\LinkRules;
+use App\Tantra\Links\Piece;
 use App\Tantra\Links\PieceLinks;
 use App\Tantra\Links\TrackedLink;
 use App\Tantra\Review\Actions\ImportBatch;
@@ -86,6 +87,7 @@ it('builds readable codes, destinations and UTMs by the card 29 rule', function 
         ->and(LinkRules::destination('https://crm.usetantra.com/book/tantra/ai-revops-strategy-consultation'))->toBe('https://crm.usetantra.com/book/tantra/ai-revops-strategy-consultation')
         ->and(LinkRules::utm('unipile-linkedin', 'comment', 'ben-x'))->toBe(['utm_source' => 'linkedin', 'utm_medium' => 'comment', 'utm_campaign' => 'enterprise-webinar', 'utm_content' => 'ben-x'])
         ->and(LinkRules::urls('Register here: https://jointantra.com/?a=1. Or jointantra.com.'))->toBe(['https://jointantra.com/?a=1', 'jointantra.com'])
+        ->and(PieceLinks::assetName(new Piece('aquila', null, 'ri:1', 'The first 48 hours after payment', 'facebook', 'post')))->toBe('aquila: The first 48 hours af fb')
         ->and(LinkRules::needsTracking('https://go.usetantra.com/l/ben-x', fn () => false))->toBeFalse()
         ->and(LinkRules::needsTracking('https://adisuja.github.io/tantra-revops/sheet/', fn () => false))->toBeTrue();
 });

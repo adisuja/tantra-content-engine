@@ -249,7 +249,7 @@ class PieceLinks
         $assetId = $existing?->crm_asset_id ?? TrackedLink::query()
             ->where(['member_key' => $piece->memberKey, 'piece_ref' => $piece->ref, 'platform' => $piece->platform])
             ->whereNotNull('crm_asset_id')->value('crm_asset_id')
-            ?? $this->crm->asset($piece->memberKey.': '.$piece->name.' ('.$piece->platform.')', $piece->ref.':'.$piece->platform);
+            ?? $this->crm->asset(self::assetName($piece), $piece->ref.':'.$piece->platform);
 
         $created = null;
         $code = '';
@@ -314,6 +314,17 @@ class PieceLinks
                 return $candidate;
             }
         }
+    }
+
+    /**
+     * The CRM asset's name: person, piece and platform in at most 32 characters
+     * (the CRM answers 500 to longer asset names, 2026-11-14). The full piece is in ref_id.
+     */
+    public static function assetName(Piece $piece): string
+    {
+        $tag = LinkRules::platformTag($piece->platform) ?: 'li';
+
+        return rtrim(mb_substr($piece->memberKey.': '.$piece->name, 0, 32 - strlen($tag) - 1)).' '.$tag;
     }
 
     private function messagePlacement(string $channel): string
