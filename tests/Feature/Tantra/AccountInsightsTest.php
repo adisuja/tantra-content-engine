@@ -191,7 +191,7 @@ it('ranks the Top 5 under each sort and sorts and pages the posts table', functi
             ->where('tantraInsights.top_posts.comments.0.id', $sharp->id)
             ->where('tantraInsights.top_posts.shares.0.id', $sharp->id)
             ->where('tantraInsights.top_posts.engagement_rate.0.id', $sharp->id)
-            ->where('tantraInsights.top_posts.engagement_rate.0.engagement_rate', 35.0)
+            ->where('tantraInsights.top_posts.engagement_rate.0.engagement_rate', fn (mixed $rate): bool => (float) $rate === 35.0)
             ->has('tantraInsights.top_posts.engagement', 5)
             ->where('tantraInsights.posts.sort', 'published_at')
             ->where('tantraInsights.posts.total', 12)
