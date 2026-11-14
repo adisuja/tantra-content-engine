@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace App\Tantra\Review\Actions;
 
 use App\Models\User;
+use App\Tantra\Notify\Notify;
 use App\Tantra\Review\Mail\NumbersToSignOff;
 use App\Tantra\Review\Mail\ReviewReady;
 use App\Tantra\Review\Models\ReviewItem;
 use App\Tantra\Review\ReviewGate;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Facades\Mail;
 
 /**
  * tantra: after an import, one email per workspace to its review owner, and one
@@ -42,7 +42,7 @@ final class NotifyReviewers
                 $earliest = $sorted->first()?->planned_date;
                 $week = $earliest ? CarbonImmutable::parse($earliest->toDateString())->startOfWeek()->format('j M') : now()->startOfWeek()->format('j M');
 
-                Mail::to($reviewer)->queue(new ReviewReady(
+                Notify::send($reviewer, 'review_ready', ['batch' => (string) $batchId, 'count' => $sorted->count(), 'week' => $week], new ReviewReady(
                     (string) $batchId,
                     (string) $workspace?->name,
                     $week,
@@ -52,7 +52,7 @@ final class NotifyReviewers
                         'short' => $i->short,
                         'revised' => $i->revision > 1,
                     ])->all(),
-                ));
+                ), (string) $workspace?->name, url('/tantra/review'), 'Open Review');
             }
 
             $adi = User::query()->find($workspace?->account?->owner_id);
@@ -73,7 +73,7 @@ final class NotifyReviewers
                 ->values();
 
             if ($quoting->isNotEmpty()) {
-                Mail::to($adi)->queue(new NumbersToSignOff((string) $batchId, (string) $workspace?->name, $quoting->all()));
+                Notify::send($adi, 'numbers_to_sign_off', ['batch' => (string) $batchId, 'count' => count($quoting->all())], new NumbersToSignOff((string) $batchId, (string) $workspace?->name, $quoting->all()), (string) $workspace?->name, url('/tantra/review'), 'Sign off');
             }
         }
     }

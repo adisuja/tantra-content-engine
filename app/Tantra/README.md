@@ -104,6 +104,10 @@ PRD 25.11. On the Team page (`RebrandPanel.vue`, `RebrandController`): the perso
 
 PRD 25.12. Every screen has an API under `api/tantra/*` (reference: tantra-content `knowledge/content/engine-api.md`, made by `kits/engine/routes_doc.py`; one CLI over it: `kits/engine/engine.py`). The read side of the screens (`TantraReadController`: review items, posts by hand, team, Insights) and the screens' own action controllers answer as the token's own user, with the same rights. Owner-only stays for cross-workspace writes (batches, bulk ideas, the template seed); ops needs an admin; runners use their own token.
 
+## Notifications through the CRM
+
+Every notification to an app user goes through `App\Tantra\Notify\Notify::send` (2026-11-14). With `TANTRA_CRM_INTAKE_KEY` set, `SendToCrm` posts the event (`engine.review_ready`, `engine.numbers_to_sign_off`, `engine.reconnect_channel`, `engine.manual_task_due`, `engine.media_missing`, `engine.teammate_welcome`, `engine.template_ready`, `engine.rebrand_ready`, `engine.agent_job_waiting`) to the Tantra CRM's `POST /intake/engine`, with the rendered email as its message; the CRM's sequences send it by email through Resend and add Slack, WhatsApp, SMS or an AI call. Without the key, or after 4 refused tries, the Engine sends its own email as before. Contract: tantra-crm `docs/crm/ENGINE_NOTIFICATIONS_SPEC.md`.
+
 ## Connectors tab
 
 `/settings/workspace/connectors` (`app/Tantra/Ai`, `ConnectorController`, `pages/tantra/connectors`). One row per Account and provider in `tantra_ai_connectors`, key encrypted with the app key. Every AI call goes through `TantraAi::prompt()`: the default connector first, then the other working AI connectors; each failure is classified (`AiFailure`: out of credits, rate limited, key rejected, model not available, signed out, unreachable) and shown where the AI was used, on the card and in the app banner (`tantraAlerts`). With no connector it runs on the `.env` provider as upstream did. Claude and ChatGPT plans run through the official Claude Code and Codex CLIs installed in the image (`CliTextGateway`).

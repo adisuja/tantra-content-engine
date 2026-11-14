@@ -7,6 +7,7 @@ namespace App\Tantra\Rebrand;
 use App\Tantra\Agent\AgentJob;
 use App\Tantra\Agent\InvalidResult;
 use App\Tantra\Agent\JobApplier;
+use App\Tantra\Notify\Notify;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
@@ -54,6 +55,10 @@ final class RebrandApplier implements JobApplier
         $proposal = $result;
         unset($proposal['banner']['image_base64']);
         $rebrand->forceFill(['proposal' => $proposal, 'status' => 'proposed', 'banner_path' => $banner ?? $rebrand->banner_path])->save();
+
+        if ($rebrand->user !== null) {
+            Notify::send($rebrand->user, 'rebrand_ready', ['subject' => 'Your LinkedIn rebrand is ready to look at', 'text' => 'A new headline, About section and banner are waiting for you on the Team page. Nothing changes on LinkedIn until you apply it.'], null, null, url('/tantra/team'), 'Open the Team page');
+        }
 
         return 'Rebrand ready for '.($rebrand->user?->name ?? 'them').' to look at.';
     }

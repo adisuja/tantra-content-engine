@@ -7,10 +7,10 @@ namespace App\Tantra\Ops;
 use App\Enums\Post\Status as PostStatus;
 use App\Models\Post;
 use App\Models\User;
+use App\Tantra\Notify\Notify;
 use App\Tantra\Review\Models\WorkspaceSettings;
 use App\Tantra\Review\ReviewGate;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
 
@@ -50,7 +50,7 @@ final class MediaCheck
             $ownerId = ReviewGate::reviewOwnerIdFor($post->workspace_id, $post->workspace?->account?->owner_id);
             $owner = $ownerId ? User::query()->find($ownerId) : null;
             if ($owner !== null) {
-                Mail::to($owner)->queue(new MediaMissing($post->id, $post->workspace?->name ?? '', $post->scheduled_at->toIso8601ZuluString(), mb_substr(trim((string) $post->content), 0, 90)));
+                Notify::send($owner, 'media_missing', ['post_id' => $post->id, 'due_at' => $post->scheduled_at->toIso8601ZuluString()], new MediaMissing($post->id, $post->workspace?->name ?? '', $post->scheduled_at->toIso8601ZuluString(), mb_substr(trim((string) $post->content), 0, 90)), $post->workspace?->name);
             }
         }
 
