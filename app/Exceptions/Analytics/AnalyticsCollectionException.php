@@ -67,6 +67,7 @@ class AnalyticsCollectionException extends Exception
     {
         $reason = (string) data_get($response->json(), 'error.errors.0.reason', '');
         $category = match (true) {
+            self::planRequired($response) => 'plan_required', // tantra: no paid API plan or credit (X answers 402), PRD 26
             $response->status() === 429,
             in_array($reason, ['quotaExceeded', 'rateLimitExceeded', 'userRateLimitExceeded'], true) => 'rate_limited',
             $response->status() === 401 => 'authentication',
@@ -82,5 +83,26 @@ class AnalyticsCollectionException extends Exception
             in_array($response->status(), [404, 410], true),
             $missingObject,
         );
+    }
+
+    /**
+     * tantra: a read the network refuses until a paid API plan or credit is in place:
+     * HTTP 402, or X's problem answers for an app without the access level or with
+     * no credit left ("client-not-enrolled", "CreditsDepleted").
+     */
+    private static function planRequired(Response $response): bool
+    {
+        if ($response->status() === 402) {
+            return true;
+        }
+
+        $problem = strtolower(implode(' ', array_filter([
+            data_get($response->json(), 'title'),
+            data_get($response->json(), 'type'),
+            data_get($response->json(), 'reason'),
+        ], is_string(...))));
+
+        return $response->status() === 403
+            && (str_contains($problem, 'client-not-enrolled') || str_contains($problem, 'creditsdepleted') || str_contains($problem, '/problems/credits'));
     }
 }

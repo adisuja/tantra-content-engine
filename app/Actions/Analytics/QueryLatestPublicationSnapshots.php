@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Analytics;
 
 use App\Enums\SocialAccount\Platform;
+use App\Tantra\Analytics\InsightsScope;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Database\Query\JoinClause;
@@ -22,7 +23,11 @@ class QueryLatestPublicationSnapshots
         $latest = $this->scope(DB::table('analytics_publication_daily_snapshots as daily')
             ->join('analytics_publications as parent', 'parent.id', '=', 'daily.publication_id'), 'parent', $workspaceId, $accountKeys, $start, $end)
             ->select('daily.publication_id')
-            ->selectRaw('MAX(daily.date) as latest_date')
+            // tantra: the latest reading on or before the period's last day, else the post's latest one (PRD 26)
+            ->when($end !== null, fn (Builder $dated): Builder => $dated->selectRaw(
+                'COALESCE(MAX(CASE WHEN daily.date <= ? THEN daily.date END), MAX(daily.date)) as latest_date',
+                [$end->utc()->toDateString()],
+            ), fn (Builder $dated): Builder => $dated->selectRaw('MAX(daily.date) as latest_date'))
             ->groupBy('daily.publication_id');
 
         return $this->scope(DB::table('analytics_publications as publication'), 'publication', $workspaceId, $accountKeys, $start, $end)
@@ -36,7 +41,7 @@ class QueryLatestPublicationSnapshots
     private function scope(Builder $query, string $alias, string $workspaceId, ?array $accountKeys, ?CarbonImmutable $start, ?CarbonImmutable $end): Builder
     {
         return $query
-            ->where("{$alias}.workspace_id", $workspaceId)
+            ->whereIn("{$alias}.workspace_id", InsightsScope::ids($workspaceId)) // tantra: Account-wide Insights (PRD 26)
             ->whereIn("{$alias}.platform", Platform::analyticsValues())
             ->when($start !== null && $end !== null, fn (Builder $scoped): Builder => $scoped
                 ->whereBetween("{$alias}.provider_published_at", [$start->utc(), $end->utc()]))

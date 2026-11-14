@@ -17,6 +17,7 @@ use App\Tantra\Agent\Admin;
 use App\Tantra\Agent\Appliers;
 use App\Tantra\Ai\AiAlerts;
 use App\Tantra\Ai\CliTextGateway;
+use App\Tantra\Analytics\InsightsScope;
 use App\Tantra\Boost\Boost;
 use App\Tantra\Boost\MemberProfile;
 use App\Tantra\Boost\StartBoostRun;
@@ -97,6 +98,8 @@ class TantraServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->scoped(ReviewChips::class);
+        // The workspaces one Insights request reads (PRD 26).
+        $this->app->scoped(InsightsScope::class);
     }
 
     public function boot(): void

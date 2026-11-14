@@ -17,15 +17,34 @@ import { formatNumberCompact } from '@/lib/utils';
 import { videoFrameUrl } from '@/lib/videoFrame';
 import type { TopPost, WorkspaceAnalyticsReport } from '@/types/analytics';
 import { Platform } from '@/types/platform';
-
+import { TOP_SORTS } from '@/types/tantra-insights'; // tantra: the Top 5 sorts (PRD 26)
 
 const props = defineProps<{
     topPosts: WorkspaceAnalyticsReport['top_posts'];
     range: WorkspaceAnalyticsReport['range'];
     filtered?: boolean;
 }>();
-const metric = ref<'reactions' | 'comments'>('reactions');
-const buttons = [
+// tantra: the Insights tab sends the Top 5 under every sort; engagement leads (PRD 26)
+const tantraSorts = computed(() =>
+    TOP_SORTS.filter((sort) => sort in props.topPosts),
+);
+const metric = ref<string>(
+    tantraSorts.value.length ? tantraSorts.value[0] : 'reactions',
+);
+const metricLabel = (mode: string): string =>
+    tantraSorts.value.length
+        ? `tantra.insights_all.sorts.${mode}`
+        : `analytics.dashboard.${mode}`;
+const metricValue = (post: TopPost): string => {
+    const value = Number(
+        (post as unknown as Record<string, unknown>)[metric.value] ?? 0,
+    );
+
+    return metric.value === 'engagement_rate'
+        ? `${value}%`
+        : formatNumberCompact(value);
+};
+const upstreamButtons = [
     {
         mode: 'reactions',
         label: 'analytics.dashboard.reactions',
@@ -37,7 +56,18 @@ const buttons = [
         test: 'top-comments',
     },
 ] as const;
-const posts = computed<TopPost[]>(() => props.topPosts[metric.value]);
+const buttons = computed(() =>
+    tantraSorts.value.length
+        ? tantraSorts.value.map((mode) => ({
+              mode,
+              label: metricLabel(mode),
+              test: `top-${mode}`,
+          }))
+        : upstreamButtons,
+);
+const posts = computed<TopPost[]>(
+    () => (props.topPosts as Record<string, TopPost[]>)[metric.value] ?? [],
+);
 const {
     detailsPost,
     detailsOpen,
@@ -79,10 +109,12 @@ const thumbnailFor = (post: TopPost): string | null => {
         flush
     >
         <template #actions>
+            <!-- tantra: six sorts wrap on a phone -->
             <AnalyticsModeToggle
                 v-model="metric"
                 label="analytics.dashboard.top_posts_sort"
                 :options="buttons"
+                class="flex-wrap"
             />
         </template>
 
@@ -107,20 +139,22 @@ const thumbnailFor = (post: TopPost): string | null => {
             <article
                 v-for="post in posts"
                 :key="post.id"
-                class="group relative flex min-w-0 flex-col gap-3 p-4 shadow-[1px_0_0_var(--border),0_1px_0_var(--border)] transition-colors duration-150 has-[button:hover]:bg-muted/60 has-[button:focus-visible]:bg-muted/60 sm:px-5"
+                class="group relative flex min-w-0 flex-col gap-3 p-4 shadow-[1px_0_0_var(--border),0_1px_0_var(--border)] transition-colors duration-150 has-[button:focus-visible]:bg-muted/60 has-[button:hover]:bg-muted/60 sm:px-5"
                 data-testid="analytics-top-post"
             >
                 <div class="mb-1 flex items-stretch justify-between gap-2">
                     <div class="flex min-w-0 flex-col">
                         <span
                             class="font-heading text-2xl leading-8 font-medium text-foreground tabular-nums"
-                            >{{ formatNumberCompact(post[metric] ?? 0) }}</span
+                            >{{ metricValue(post) }}</span
                         >
                         <span class="text-xs leading-4 text-muted-foreground">{{
-                            $t(`analytics.dashboard.${metric}`)
+                            $t(metricLabel(metric))
                         }}</span>
                     </div>
-                    <div class="flex shrink-0 flex-col items-end justify-between gap-1">
+                    <div
+                        class="flex shrink-0 flex-col items-end justify-between gap-1"
+                    >
                         <RankBadge
                             :rank="post.rank"
                             :data-testid="`analytics-top-post-rank-${post.id}`"
@@ -128,7 +162,9 @@ const thumbnailFor = (post: TopPost): string | null => {
                         <span
                             class="text-xs leading-4 whitespace-nowrap text-muted-foreground"
                             :data-testid="`analytics-top-post-date-${post.id}`"
-                            >{{ date.formatDayMonthYear(post.published_at) }}</span
+                            >{{
+                                date.formatDayMonthYear(post.published_at)
+                            }}</span
                         >
                     </div>
                 </div>
@@ -142,7 +178,9 @@ const thumbnailFor = (post: TopPost): string | null => {
                     <p
                         class="line-clamp-3 min-w-0 flex-1 text-sm leading-[18px] text-foreground"
                     >
-                        {{ post.excerpt || $t('analytics.dashboard.no_excerpt') }}
+                        {{
+                            post.excerpt || $t('analytics.dashboard.no_excerpt')
+                        }}
                     </p>
                     <video
                         v-if="post.media && isVideo(post.media)"

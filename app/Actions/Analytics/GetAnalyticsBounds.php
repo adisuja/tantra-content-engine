@@ -6,6 +6,7 @@ namespace App\Actions\Analytics;
 
 use App\Enums\SocialAccount\Platform;
 use App\Models\Workspace;
+use App\Tantra\Analytics\InsightsScope;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
@@ -21,13 +22,13 @@ class GetAnalyticsBounds
     public function execute(Workspace $workspace, ?array $accountKeys = null, string $timezone = 'UTC'): array
     {
         $accounts = DB::table('analytics_account_daily_snapshots')
-            ->where('workspace_id', $workspace->id)
+            ->whereIn('workspace_id', InsightsScope::ids($workspace->id)) // tantra: Account-wide Insights (PRD 26)
             ->whereIn('platform', Platform::analyticsValues())
             ->when($accountKeys !== null, fn (Builder $query): Builder => $query->whereIn('social_account_key', $accountKeys))
             ->selectRaw('MIN(date) as earliest, MAX(date) as latest')
             ->first();
         $publications = DB::table('analytics_publications')
-            ->where('workspace_id', $workspace->id)
+            ->whereIn('workspace_id', InsightsScope::ids($workspace->id)) // tantra: Account-wide Insights (PRD 26)
             ->whereIn('platform', Platform::analyticsValues())
             ->when($accountKeys !== null, fn (Builder $query): Builder => $query->whereIn('social_account_key', $accountKeys))
             ->selectRaw('MIN(provider_published_at) as earliest, MAX(provider_published_at) as latest')

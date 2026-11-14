@@ -7,6 +7,7 @@ namespace App\Actions\Analytics;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Support\RequestIds;
+use App\Tantra\Analytics\InsightsScope;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 
@@ -20,7 +21,8 @@ class ResolveAnalyticsChannelFilter
      */
     public function execute(Workspace $workspace, Collection $requested): array
     {
-        $accounts = $workspace->socialAccounts()
+        $accounts = SocialAccount::query()
+            ->whereIn('workspace_id', InsightsScope::ids($workspace->id)) // tantra: Account-wide Insights (PRD 26)
             ->includedInAnalytics()
             ->get();
         $keys = $this->accountKey->forMany($accounts);

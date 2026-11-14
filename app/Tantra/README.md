@@ -86,6 +86,19 @@ The upstream Insights tab and each channel's Insights page show every LinkedIn c
 - Each post is stored under the id our publishers keep in `posts.platform_post_id` (Unipile's id, Zernio's post id, or the OAuth share URN, matched to Unipile's id once and remembered), so the Engine's own posts link to their numbers. Network posts of these channels are never added to the calendar: upstream's external import only links them to Engine posts.
 - `tantra:collect-metrics` still feeds `/tantra/insights` and the batch results; it reads a Unipile channel through its own account too.
 
+## Insights across every workspace
+
+PRD 26. The Insights tab (`app.insights`) covers every workspace the viewer can see: the Account owner all of the Account's, anyone else the workspaces they are a member of (`InsightsScope::visibleTo`). `AccountInsights::begin` sets `InsightsScope` for the request (a scoped instance, so jobs, the API, MCP and the channel page keep reading their own workspace) and upstream's readers ask it for the workspace ids to scope by.
+
+- Filters: people (`workspaces[]`), networks (`networks[]`, grouped by `Platform::network()`, each with its logo) and channels (`channels[]`). People and networks narrow the channels handed to upstream's channel filter; a filter that leaves no channel shows nothing, never everything. Default: every channel.
+- Top 5 under six sorts (engagement, impressions, reactions, comments, shares, engagement rate). Engagement is the network's own count, else reactions, comments and shares added up; impressions fall back to exposure, then views; the rate divides engagement by exposure (reach, impressions or views). A post the Engine published in another workspace opens as its publication.
+- "Every channel" (`InsightsChannelsTable.vue`): each channel with its person, latest follower count (a single reading shows its count), the change in the period, its posts, and why its numbers are missing, from `analytics_sync_states.last_error_category` and `metric_failures` (`tantra.insights_all.reasons`).
+- "Every post" (`InsightsPostsTable.vue`): every post of the period, external ones included, sorted on the server (`posts_sort`, `posts_dir`) and paged ten at a time (`posts_page`).
+- Date basis: a post belongs to the period its `provider_published_at` falls in (never empty, so no fallback is needed); its numbers are its latest reading on or before the period's last day, else its latest reading (`QueryLatestPublicationSnapshots`).
+- A failed publication backfill is bootstrapped again by the discovery run once a day, so a cause fixed since recovers. New channels, Unipile and Zernio ones included, are bootstrapped by upstream's `SocialAccountObserver::created`.
+- X: a 402, or X's `client-not-enrolled` and `CreditsDepleted` answers, is `plan_required` ("X needs a paid API plan to read post numbers"), not `malformed`, and does not count against a post's metric failures.
+- The Zernio page lists only posts made through Zernio, so its row says so until LinkedIn Community Management access is approved.
+
 ## Studio ops and agent jobs
 
 `/tantra/ops` (`OpsController`, `pages/tantra/ops/Index.vue`) and `api/tantra/ops/*`, for `TANTRA_ADMIN_EMAILS` with a verified email only (`App\Tantra\Agent\Admin`, `EnsureTantraAdmin`); everyone else gets a 404 and no sidebar entry. PRD 25.4 and 25.5.
@@ -147,6 +160,7 @@ Each change is small and marked `// tantra:` (or `<!-- tantra: -->`). After merg
 - Branding: `app/Services/Http/SafeHttpFetcher.php` (our user agent).
 - Roadmap: the two `roadmap.*` cases in `app/Enums/Webhook/EventType.php`, their group in `components/webhook/webhook-events.ts` and keys in `lang/*/webhooks.php` (16 locales), the `roadmap` label in `lang/*/settings.php`, the nav item in `useSettingsNavigation.ts`, the page title callback in `resources/js/app.ts`, and `tests/Unit/Enums/WebhookEventTypeTest.php`.
 - Insights for LinkedIn (PRD 25.7): `Platform::isIncludedInAnalytics()`, the three collector factories in `app/Services/Analytics/Collectors/{Followers,Publications,Metrics}`, the calendar import guard in `app/Actions/Post/ImportExternalPosts.php`, poll and document types in `app/Actions/Analytics/SyncTryPostPublication.php`, and the LinkedIn metric sets in `lib/publicationMetrics.ts`.
+- Insights across every workspace (PRD 26): the workspace scope in `app/Actions/Analytics/{QueryLatestPublicationSnapshots,GetAnalyticsBounds,BuildFollowerAnalyticsReport,BuildWorkspaceAnalyticsReport,ResolveAnalyticsChannelFilter,ReadPublicationAnalytics}.php` (also the latest reading on or before the period's end in `QueryLatestPublicationSnapshots`), `app/Http/Controllers/App/InsightsController.php`, `plan_required` in `app/Exceptions/Analytics/AnalyticsCollectionException.php`, the daily retry in `app/Console/Commands/Analytics/DispatchPublicationDiscovery.php`, and on the front end `pages/insights/Index.vue`, `components/analytics/workspace/TopPosts.vue` (six sorts) and `AccountIdentity.vue` (the person).
 - Tooling: `.prettierignore` (the studio CSS, generated in tantra-content).
 - Copy without a marker: the Zernio entries in `lang/*/posts.php` (16 locales).
 - Tests that pin upstream failure keys, now named by `ConnectFailures`: the state and provider error cases in `tests/Feature/Social/ConnectFlowGuardsTest.php` (`invalid_state`, `provider_unavailable`) and the two token failures in `tests/Feature/Social/ThreadsControllerTest.php` (`code_expired`, `provider_unavailable`).
