@@ -152,6 +152,27 @@ function openEmbedFrame(string $to = '/settings/workspace/channels'): mixed
 
     expect($page->script("window.got('tantra:session')[0]"))->toMatchArray(['v' => 1, 'type' => 'tantra:session', 'ok' => true, 'email' => 'priya@usetantra.com']);
 
+    // The bridge is up once the frame reports where it is. On a failure the
+    // whole state prints, so the cause shows in the CI log.
+    waitForCondition($page, "window.got('tantra:navigate').length > 0");
+    expect($page->script(<<<'JS'
+        (() => {
+            const w = window.fwin();
+            const read = (fn) => { try { return fn(); } catch (e) { return 'error: ' + e.message; } };
+            const dataPage = read(() => w.document.querySelector('[data-page]')?.getAttribute('data-page') || w.document.querySelector('script[data-page]')?.textContent || null);
+            return {
+                navigated: window.got('tantra:navigate').length > 0,
+                origin: location.origin,
+                frameOrigin: read(() => w.location.origin),
+                stored: read(() => w.sessionStorage.getItem('tantra.parent')),
+                ancestor: read(() => w.location.ancestorOrigins[0] ?? null),
+                statePage: read(() => JSON.stringify(w.history.state?.page?.props?.tantraEmbedParents ?? null)),
+                dataPage: read(() => dataPage ? JSON.stringify(JSON.parse(dataPage).props?.tantraEmbedParents ?? null) : null),
+                messages: JSON.stringify(window.messages).slice(0, 600),
+            };
+        })()
+    JS))->toMatchArray(['navigated' => true]);
+
     return $page;
 }
 

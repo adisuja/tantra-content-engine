@@ -13,6 +13,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
@@ -88,9 +89,7 @@ class EmbedController extends Controller
             Log::warning('tantra.embed: sign in failed', ['reason' => $e->getMessage()]);
             // Never leave the previous person's session in place when we cannot tell who this is.
             if (Auth::guard('web')->check()) {
-                Auth::guard('web')->logoutCurrentDevice();
-                $request->session()->invalidate();
-                $request->session()->regenerateToken();
+                self::endSession($request);
             }
 
             return response()->json(['code' => 'server'], 503);
@@ -100,9 +99,7 @@ class EmbedController extends Controller
         // without cycling their remember token (their other devices stay in).
         $guard = Auth::guard('web');
         if ($guard->check() && ($user === null || $guard->id() !== $user->getAuthIdentifier())) {
-            $guard->logoutCurrentDevice();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
+            self::endSession($request);
         }
 
         // 4. A CRM user with no Engine login. Without CLERK_SECRET_KEY the
@@ -126,5 +123,20 @@ class EmbedController extends Controller
 
         // 6. The boot page now opens the page it was given.
         return response()->json(['ok' => true, 'email' => $user->email]);
+    }
+
+    /**
+     * Ends the previous person's Engine session in this browser: a new
+     * session id, and their remember cookie forgotten, so it cannot sign
+     * them back in on the next request. Their remember token stays, so
+     * their other devices stay signed in.
+     */
+    private static function endSession(Request $request): void
+    {
+        $guard = Auth::guard('web');
+        $guard->logoutCurrentDevice();
+        Cookie::queue(Cookie::forget($guard->getRecallerName()));
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
     }
 }

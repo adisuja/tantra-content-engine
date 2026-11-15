@@ -188,30 +188,29 @@ describe('embed session', function () {
         $this->assertGuest();
     });
 
-    it('gives the new person a new session id when it swaps, and keeps it for the same person', function () {
+    it('starts a fresh session when it swaps, and keeps the session for the same person', function () {
         $adi = embedUser('adi@usetantra.com', 'user_adi');
         $priya = embedUser('priya@usetantra.com', 'user_priya');
-        $session = app('session')->driver();
-        $session->start();
-        $before = $session->getId();
 
         $this->actingAs($adi)
-            ->withCookie(config('session.cookie'), $before)
+            ->withSession(['tantra_marker' => 'adi'])
             ->postJson('/tantra/embed/session', ['token' => embedToken('user_adi')])
             ->assertOk();
-        expect(app('session')->driver()->getId())->toBe($before);
+        expect(session('tantra_marker'))->toBe('adi');
+        $before = app('session')->driver()->getId();
 
-        $this->withCookie(config('session.cookie'), $before)
-            ->postJson('/tantra/embed/session', ['token' => embedToken('user_priya')])
-            ->assertOk();
+        $this->postJson('/tantra/embed/session', ['token' => embedToken('user_priya')])->assertOk();
 
         $this->assertAuthenticatedAs($priya);
-        expect(app('session')->driver()->getId())->not->toBe($before);
+        expect(session('tantra_marker'))->toBeNull()
+            ->and(app('session')->driver()->getId())->not->toBe($before);
     });
 
     it('answers 503 server, not a bad token, when Clerk\'s signing keys are down', function () {
         embedUser('priya@usetantra.com', 'user_priya');
-        Http::fake([EMBED_ISSUER.'/.well-known/jwks.json' => Http::response('down', 503)]);
+        // Another Frontend API, whose key set is down (the default fake stays for the real one).
+        config(['tantra.clerk.frontend_api' => 'https://clerk-down.example.com']);
+        Http::fake(['https://clerk-down.example.com/.well-known/jwks.json' => Http::response('down', 503)]);
 
         $this->postJson('/tantra/embed/session', ['token' => embedToken('user_priya')])
             ->assertStatus(503)
