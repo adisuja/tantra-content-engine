@@ -32,6 +32,11 @@ interface Rebrand {
 
 const props = defineProps<{ people: Person[]; canStartForOthers: boolean }>();
 
+// Branding moved into Tantra (Content, Brand). Inside the Tantra frame the link
+// replaces the whole page; on content.usetantra.com it opens a new tab.
+const BRAND_URL = 'https://crm.usetantra.com/content/brand';
+const embedded = typeof window !== 'undefined' && window.top !== window.self;
+
 const rebrands = ref<Rebrand[]>([]);
 const busy = ref(false);
 const pick = ref<Record<string, string>>({});
@@ -114,6 +119,20 @@ const copy = async (text: string) => {
         <p class="max-w-2xl text-sm text-muted-foreground">
             {{ $t('tantra.rebrand.intro') }}
         </p>
+        <div
+            class="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/40 p-3 text-sm"
+            data-testid="team-rebrand-tantra"
+        >
+            <span class="flex-1">{{ $t('tantra.rebrand.in_tantra') }}</span>
+            <Button size="sm" as-child>
+                <a
+                    :href="BRAND_URL"
+                    :target="embedded ? '_top' : '_blank'"
+                    rel="noopener"
+                    >{{ $t('tantra.rebrand.open_brand') }}</a
+                >
+            </Button>
+        </div>
         <div
             v-for="p in props.people.filter(
                 (x) => x.is_me || canStartForOthers,

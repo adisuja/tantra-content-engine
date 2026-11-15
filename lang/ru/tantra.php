@@ -572,6 +572,8 @@ return [
     ],
     'rebrand' => [
         'title' => 'LinkedIn profile rebrand',
+        'in_tantra' => 'Rebrands now live in Tantra under Content, Brand: every element of your profile, checked, in a LinkedIn preview, with one approval each.',
+        'open_brand' => 'Open Brand in Tantra',
         'intro' => 'A new headline, About section, banner and featured picks, written from your own profile and your role at Tantra. Nothing changes on LinkedIn until you pick a headline and apply it yourself.',
         'start' => 'Write a rebrand',
         'failed' => 'That did not go through.',
