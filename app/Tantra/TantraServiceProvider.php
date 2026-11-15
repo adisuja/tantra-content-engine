@@ -35,6 +35,7 @@ use App\Tantra\Console\CreateOwnerCommand;
 use App\Tantra\Console\DailyDigestCommand;
 use App\Tantra\Console\EngagementBackfillCommand;
 use App\Tantra\Console\GiveawayRepliesCommand;
+use App\Tantra\Console\GatewayKeyUsageCommand;
 use App\Tantra\Console\HealthCommand;
 use App\Tantra\Console\HeartbeatCommand;
 use App\Tantra\Console\InviteTeammateCommand;
@@ -42,6 +43,7 @@ use App\Tantra\Console\LinkedInSyncCommand;
 use App\Tantra\Console\ManualTasksCommand;
 use App\Tantra\Console\MapProfileCommand;
 use App\Tantra\Console\ReconnectRemindersCommand;
+use App\Tantra\Console\RoutesJsonCommand;
 use App\Tantra\Console\RepurposeCadenceCommand;
 use App\Tantra\Console\RoadmapKeyCommand;
 use App\Tantra\Console\SyncChannelsCommand;
@@ -50,6 +52,7 @@ use App\Tantra\Console\TeamAccountsCommand;
 use App\Tantra\Console\TrackLinksCommand;
 use App\Tantra\Console\ZernioConnectCommand;
 use App\Tantra\Embed\Embed;
+use App\Tantra\Gateway\AuthenticateTantraGateway;
 use App\Tantra\Http\Controllers\Web\ReviewPageController;
 use App\Tantra\Http\Middleware\EnsureOwnerToken;
 use App\Tantra\Http\Middleware\EnsureRunnerToken;
@@ -136,6 +139,7 @@ class TantraServiceProvider extends ServiceProvider
         $this->app->make(Router::class)->aliasMiddleware('tantra.owner-token', EnsureOwnerToken::class);
         $this->app->make(Router::class)->aliasMiddleware('tantra.admin', EnsureTantraAdmin::class);
         $this->app->make(Router::class)->aliasMiddleware('tantra.runner', EnsureRunnerToken::class);
+        $this->app->make(Router::class)->aliasMiddleware('tantra.gateway', AuthenticateTantraGateway::class);
         // People land on Review, not the calendar, in Tantra workspaces (PRD 10.2).
         $kernel = $this->app->make(HttpKernel::class);
         if ($kernel instanceof FoundationHttpKernel) {
@@ -146,6 +150,7 @@ class TantraServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/Http/routes-api.php');
         $this->loadRoutesFrom(__DIR__.'/Http/routes-web.php');
         $this->loadRoutesFrom(__DIR__.'/Http/routes-roadmap.php');
+        $this->loadRoutesFrom(__DIR__.'/Http/routes-gateway.php');
 
         // The public roadmap: an API key with this scope may edit it (tantra:roadmap-key).
         Passport::tokensCan(Passport::$scopes + [Roadmap::SCOPE => 'Edit the Tantra product roadmap']);
@@ -273,7 +278,7 @@ class TantraServiceProvider extends ServiceProvider
         });
 
         if ($this->app->runningInConsole()) {
-            $this->commands([AiConnectorCommand::class, CheckConnectorsCommand::class, CollectMetricsCommand::class, CreateOwnerCommand::class, DailyDigestCommand::class, BillingTickCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class, TeamAccountsCommand::class, TeamAccountCommand::class, ClerkUnlinkCommand::class, LinkedInSyncCommand::class, AgentJobsCommand::class, RepurposeCadenceCommand::class, GiveawayRepliesCommand::class, EngagementBackfillCommand::class, HealthCommand::class, HeartbeatCommand::class, ReconnectRemindersCommand::class, SyncChannelsCommand::class, RoadmapKeyCommand::class, TrackLinksCommand::class, ReportAiUsageCommand::class]);
+            $this->commands([AiConnectorCommand::class, CheckConnectorsCommand::class, CollectMetricsCommand::class, CreateOwnerCommand::class, DailyDigestCommand::class, BillingTickCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class, TeamAccountsCommand::class, TeamAccountCommand::class, ClerkUnlinkCommand::class, LinkedInSyncCommand::class, AgentJobsCommand::class, RepurposeCadenceCommand::class, GiveawayRepliesCommand::class, EngagementBackfillCommand::class, HealthCommand::class, HeartbeatCommand::class, ReconnectRemindersCommand::class, SyncChannelsCommand::class, RoadmapKeyCommand::class, TrackLinksCommand::class, ReportAiUsageCommand::class, GatewayKeyUsageCommand::class, RoutesJsonCommand::class]);
         }
 
         if ($this->app->environment('production') && config('tantra.lean_workers.enabled')) {

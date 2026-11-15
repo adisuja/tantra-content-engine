@@ -43,6 +43,7 @@ use App\Socialite\DiscordProvider;
 use App\Socialite\InstagramProvider;
 use App\Socialite\LinkedInPageExtendSocialite;
 use App\Support\Auth\PasswordRequirements;
+use App\Tantra\Gateway\AuthenticateTantraGateway;
 use App\Tantra\Mail\CoreEmails;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Notifications\ResetPassword;
@@ -178,6 +179,15 @@ class AppServiceProvider extends ServiceProvider
             }
 
             $user = $request->user();
+            if ($user === null) {
+                // tantra: a gateway call (api/gateway/*) is signed and its person is resolved by the gateway middleware, which
+                // runs after this limiter, so there is no user yet. Count it against the workspace the call names, else its address.
+                $pin = (string) $request->header('X-Tantra-Content-Workspace', '');
+
+                return Limit::perMinute($request->is('api/gateway/*') ? AuthenticateTantraGateway::PER_MINUTE : 60)
+                    ->by($pin !== '' ? 'workspace:'.substr($pin, 0, 64) : 'ip:'.$request->ip());
+            }
+
             $workspaceId = $user->current_workspace_id;
 
             $key = $workspaceId !== null
