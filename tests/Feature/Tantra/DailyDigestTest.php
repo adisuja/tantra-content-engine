@@ -117,3 +117,16 @@ it('turns the digest off only on POST from the signed link', function () {
 
     $this->post(route('tantra.digest.unsubscribe', ['user' => $user->id]))->assertForbidden();
 });
+
+it('--user takes an email or a user id without failing on Postgres uuid comparison (O-20)', function () {
+    Mail::fake();
+    $this->travelTo(CarbonImmutable::parse('2026-11-20 02:31', 'UTC')); // 08:01 in Kolkata
+    [$user] = digestWorld();
+
+    $this->artisan('tantra:daily-digest', ['--user' => $user->email, '--dry' => true])->assertSuccessful();
+    $this->artisan('tantra:daily-digest', ['--user' => (string) $user->id, '--dry' => true])->assertSuccessful();
+    $this->artisan('tantra:daily-digest', ['--user' => 'nobody@example.com', '--dry' => true])
+        ->expectsOutputToContain('0 digest(s) to send')->assertSuccessful();
+    $this->artisan('tantra:daily-digest', ['--user' => $user->email])->assertSuccessful();
+    Mail::assertQueuedCount(1);
+});
