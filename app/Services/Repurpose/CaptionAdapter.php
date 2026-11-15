@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\ContentSanitizer;
 use App\Support\Hashtags;
+use App\Tantra\Ai\TantraAi;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
@@ -57,18 +58,24 @@ class CaptionAdapter
         $key = "{$limit}:".md5($caption);
 
         $shortened = $this->shortened[$key] ??= rescue(
-            fn (): string => $this->ask($caption, $platform, $limit),
+            fn (): string => $this->ask($workspace, $caption, $platform, $limit),
         );
 
         return filled($shortened) && $this->fits($shortened, $platform, $limit) ? $shortened : null;
     }
 
-    private function ask(string $caption, Platform $platform, int $limit): string
+    /**
+     * tantra: on the Account's AI connectors (Connectors tab), like every other AI call, with the server's provider only
+     * when the Account has none. Recorded for Tantra's AI cost ledger as content.shorten.
+     */
+    private function ask(Workspace $workspace, string $caption, Platform $platform, int $limit): string
     {
-        $result = (new PostContentShortener(
-            platformLabel: $platform->label(),
-            limit: $limit,
-        ))->prompt($caption);
+        $result = TantraAi::prompt(
+            new PostContentShortener(platformLabel: $platform->label(), limit: $limit),
+            $caption,
+            $workspace->account_id,
+            task: 'content.shorten',
+        );
 
         return trim((string) $result->text);
     }

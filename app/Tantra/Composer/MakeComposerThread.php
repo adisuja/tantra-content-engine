@@ -60,7 +60,7 @@ class MakeComposerThread implements ShouldQueue
         }
 
         try {
-            $response = TantraAi::prompt(new ComposerThreadWriter($settings->brand_profile_key, $teammates), "The post:\n\n".trim((string) $post->content), $post->workspace->account_id);
+            $response = TantraAi::prompt(new ComposerThreadWriter($settings->brand_profile_key, $teammates), "The post:\n\n".trim((string) $post->content), $post->workspace->account_id, task: 'content.thread');
             $thread = self::thread((array) ($response['comments'] ?? []), array_keys($teammates), $settings->brand_profile_key);
         } catch (Throwable $e) {
             report($e);

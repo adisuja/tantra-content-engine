@@ -35,10 +35,12 @@ final class TantraAi
 
     /**
      * @param  array<int, mixed>  $attachments
+     * @param  string|null  $task  The task key in Tantra's model registry (content.assist, ...): each call is recorded
+     *                             for the AI cost ledger (AiUsage). Null records nothing.
      *
      * @throws AiUnavailableException
      */
-    public static function prompt(Agent $agent, string $prompt, ?string $accountId, array $attachments = []): AgentResponse
+    public static function prompt(Agent $agent, string $prompt, ?string $accountId, array $attachments = [], ?string $task = null): AgentResponse
     {
         $needsImages = $attachments !== [];
         $all = self::chain($accountId);
@@ -49,12 +51,27 @@ final class TantraAi
                 throw new AiUnavailableException([], reason: AiUnavailableException::NO_IMAGE_PROVIDER);
             }
 
+            $server = (string) config('ai.default');
+            $serverModel = config("ai.providers.{$server}.models.text.default");
+
             if (self::serverProviderConfigured()) {
-                return $agent->prompt($prompt, $attachments); // upstream behaviour, upstream errors
+                try {
+                    $response = $agent->prompt($prompt, $attachments); // upstream behaviour, upstream errors
+                } catch (Throwable $e) {
+                    self::usage($task, $accountId, $server, $serverModel, null, AiFailure::from($server, $e)->reason);
+
+                    throw $e;
+                }
+                self::usage($task, $accountId, $server, $serverModel, $response);
+
+                return $response;
             }
 
             try {
-                return $agent->prompt($prompt, $attachments); // a test fake still answers
+                $response = $agent->prompt($prompt, $attachments); // a test fake still answers
+                self::usage($task, $accountId, $server, $serverModel, $response);
+
+                return $response;
             } catch (AiException|RequestException|ConnectionException) {
                 throw new AiUnavailableException([], reason: AiUnavailableException::NONE_CONFIGURED);
             }
@@ -79,11 +96,13 @@ final class TantraAi
                     timeout: min($connector->isSubscription() ? self::CLI_TIMEOUT : 60, $remaining),
                 ));
                 self::recordSuccess($connector);
+                self::usage($task, $accountId, $connector->provider, $connector->effectiveModel(), $response);
 
                 return $response;
             } catch (Throwable $e) {
                 $failure = AiFailure::from($connector->provider, $e);
                 self::recordFailure($connector, $failure);
+                self::usage($task, $accountId, $connector->provider, $connector->effectiveModel(), null, $failure->reason);
                 $failures[] = $failure;
             }
         }
@@ -168,6 +187,14 @@ final class TantraAi
             'bedrock' => filled($provider['key'] ?? null) || filled($provider['access_key_id'] ?? null) || (bool) ($provider['use_default_credential_provider'] ?? false),
             default => filled($provider['key'] ?? null),
         };
+    }
+
+    /** One row for Tantra's AI cost ledger (A-05b). A failure is recorded by its reason only, never the provider's words. */
+    private static function usage(?string $task, ?string $accountId, string $provider, mixed $model, mixed $response, ?string $error = null): void
+    {
+        if ($task !== null) {
+            AiUsage::record($task, $accountId, $provider, is_string($model) ? $model : null, $response, $error);
+        }
     }
 
     public static function recordSuccess(AiConnector $connector): void
