@@ -91,6 +91,8 @@ it('sends unsent rows to Tantra with the server key, once, and keeps them on a s
     AiUsage::record('content.shorten', (string) $this->owner->account_id, 'groq', 'openai/gpt-oss-120b');
     AiUsage::record('not.a.task', null, 'groq', 'x');
     expect(DB::table('tantra_ai_usages')->count())->toBe(2);
+    // Rows made in the same second have no order; pin the first one earlier so the send order is fixed.
+    DB::table('tantra_ai_usages')->where('task', 'content.assist')->update(['created_at' => now()->subMinute()]);
 
     Http::fakeSequence('crm.example.test/*')->push(['recorded' => true], 201)->push(['error' => 'busy'], 503);
     $this->artisan('tantra:report-ai-usage')->assertSuccessful();
