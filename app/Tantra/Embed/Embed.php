@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tantra\Embed;
 
+use Illuminate\Http\Request;
+
 /**
  * tantra: the Engine inside the Tantra CRM's Content tab (PRD 2026-11-15).
  *
@@ -91,26 +93,65 @@ class Embed
         if ($url === null || ! self::enabled() || ! (bool) config('tantra.embed.email_links')) {
             return $url;
         }
+
+        return self::shellUrl($url) ?? $url;
+    }
+
+    /**
+     * C-10: where the standalone sign in page sends a person instead (TANTRA_EMBED_STANDALONE_REDIRECT), or null
+     * to show the page as before. Inside the Tantra frame (Sec-Fetch-Dest: iframe), for ?password=1 and when the
+     * page the person was going to is a standalone path (an OAuth or connect flow), the sign in page stays.
+     */
+    public static function loginRedirect(Request $request): ?string
+    {
+        if (! self::enabled() || ! (bool) config('tantra.embed.standalone_redirect') || $request->boolean('password')) {
+            return null;
+        }
+        if (strtolower((string) $request->headers->get('Sec-Fetch-Dest')) === 'iframe') {
+            return null;
+        }
+        $shell = (string) config('tantra.embed.shell_url');
+        if ($shell === '') {
+            return null;
+        }
+        $intended = $request->hasSession() ? $request->session()->get('url.intended') : null;
+        if (! is_string($intended) || $intended === '') {
+            return $shell;
+        }
+        $path = parse_url($intended, PHP_URL_PATH);
+        if (is_string($path) && preg_match(self::STANDALONE, $path) === 1) {
+            return null;
+        }
+
+        return self::shellUrl($intended) ?? $shell;
+    }
+
+    /**
+     * A page on this site as a link inside Tantra (shell_url?p=<path>), or null for another host, a standalone
+     * path, the home page, a signed link or a path that is not safe.
+     */
+    private static function shellUrl(string $url): ?string
+    {
         $shell = (string) config('tantra.embed.shell_url');
         $app = parse_url((string) config('app.url'));
         $parts = parse_url($url);
         if ($shell === '' || $parts === false || ! isset($parts['host'], $app['host']) || strcasecmp($parts['host'], $app['host']) !== 0) {
-            return $url;
+            return null;
         }
         if (isset($parts['port']) || isset($parts['user']) || ! in_array($parts['scheme'] ?? '', ['https', 'http'], true)) {
-            return $url;
+            return null;
         }
         $path = ($parts['path'] ?? '') === '' ? '/' : $parts['path'];
         if ($path === '/' || preg_match(self::STANDALONE, $path) === 1) {
-            return $url;
+            return null;
         }
         parse_str($parts['query'] ?? '', $query);
         if (array_key_exists('signature', $query) || array_key_exists('token', $query)) {
-            return $url;
+            return null;
         }
         $full = $path.(isset($parts['query']) ? '?'.$parts['query'] : '');
         if (self::safePath($full, '') === '') {
-            return $url;
+            return null;
         }
 
         return $shell.'?p='.rawurlencode($full).(isset($parts['fragment']) ? '#'.$parts['fragment'] : '');
