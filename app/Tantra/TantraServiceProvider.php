@@ -50,6 +50,7 @@ use App\Tantra\Console\TeamAccountsCommand;
 use App\Tantra\Console\TrackLinksCommand;
 use App\Tantra\Console\ZernioConnectCommand;
 use App\Tantra\Embed\Embed;
+use App\Tantra\Gateway\AuthenticateTantraGateway;
 use App\Tantra\Http\Controllers\Web\ReviewPageController;
 use App\Tantra\Http\Middleware\EnsureOwnerToken;
 use App\Tantra\Http\Middleware\EnsureRunnerToken;
@@ -136,6 +137,7 @@ class TantraServiceProvider extends ServiceProvider
         $this->app->make(Router::class)->aliasMiddleware('tantra.owner-token', EnsureOwnerToken::class);
         $this->app->make(Router::class)->aliasMiddleware('tantra.admin', EnsureTantraAdmin::class);
         $this->app->make(Router::class)->aliasMiddleware('tantra.runner', EnsureRunnerToken::class);
+        $this->app->make(Router::class)->aliasMiddleware('tantra.gateway', AuthenticateTantraGateway::class);
         // People land on Review, not the calendar, in Tantra workspaces (PRD 10.2).
         $kernel = $this->app->make(HttpKernel::class);
         if ($kernel instanceof FoundationHttpKernel) {
@@ -146,6 +148,7 @@ class TantraServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/Http/routes-api.php');
         $this->loadRoutesFrom(__DIR__.'/Http/routes-web.php');
         $this->loadRoutesFrom(__DIR__.'/Http/routes-roadmap.php');
+        $this->loadRoutesFrom(__DIR__.'/Http/routes-gateway.php');
 
         // The public roadmap: an API key with this scope may edit it (tantra:roadmap-key).
         Passport::tokensCan(Passport::$scopes + [Roadmap::SCOPE => 'Edit the Tantra product roadmap']);
