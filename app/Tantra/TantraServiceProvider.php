@@ -72,6 +72,7 @@ use App\Tantra\Review\ReviewGate;
 use App\Tantra\Roadmap\Roadmap;
 use App\Tantra\Templates\ContentTemplate;
 use App\Tantra\Templates\TemplateFromPostApplier;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Contracts\Events\Dispatcher;
@@ -86,6 +87,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Inertia\Inertia;
 use Laravel\Ai\Ai;
@@ -220,6 +222,9 @@ class TantraServiceProvider extends ServiceProvider
 
         // Studio ops in the sidebar for admins only (PRD 25.4).
         Inertia::share('tantraAdmin', fn (): bool => Admin::is(Auth::user()));
+
+        // The CRM's engagement channels endpoint: per caller IP, ENGINE_CHANNELS_PER_MINUTE (60 by default).
+        RateLimiter::for('tantra-engagement-channels', fn (Request $request): Limit => Limit::perMinute(max(1, (int) config('tantra.engagement_channels.per_minute', 60)))->by('engagement-channels:'.$request->ip()));
 
         Inertia::share('tantraReview', fn (): ?array => Auth::user() === null ? null : [
             'waiting' => ReviewGate::waitingCount(Auth::user()),

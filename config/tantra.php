@@ -180,4 +180,15 @@ return [
         'parents' => array_values(array_filter(array_map(fn (string $origin): string => rtrim(trim($origin), '/'), explode(',', (string) env('TANTRA_EMBED_PARENTS', ''))))),
     ],
 
+    // Engagement channels (tantra-crm docs/crm/ENGAGEMENT_CHANNELS_CONTRACT.md): the CRM fetches each team's connected
+    // accounts server to server, and gets the Telegram bot's private-chat updates. Shared key, compared in constant time.
+    'engagement_channels' => [
+        'key' => env('ENGINE_CHANNELS_KEY'),
+        // CRM workspace id => Engine workspace ids, mapped explicitly: "ws_abc=uuid1|uuid2,ws_def=uuid3". Unmapped => empty list.
+        'workspaces' => env('ENGINE_CHANNELS_WORKSPACES', ''),
+        'per_minute' => (int) env('ENGINE_CHANNELS_PER_MINUTE', 60),
+        'telegram_forward_url' => env('TELEGRAM_ENGAGEMENT_URL', 'https://crm.usetantra.com/hooks/engagement/telegram'),
+        'telegram_secret' => env('TELEGRAM_ENGAGEMENT_SECRET'),
+    ],
+
 ];

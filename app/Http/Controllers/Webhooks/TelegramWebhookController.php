@@ -9,6 +9,7 @@ use App\Actions\SocialAccount\StoreTelegramReactions;
 use App\Http\Controllers\Controller;
 use App\Models\Workspace;
 use App\Services\Social\Telegram\TelegramConnectCode;
+use App\Tantra\Engagement\ForwardTelegramUpdate;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
@@ -36,6 +37,9 @@ class TelegramWebhookController extends Controller
 
             return response()->noContent();
         }
+
+        // tantra: private chats with the bot (a /start keyword, a keyword message) go on to the CRM's Engagement.
+        ForwardTelegramUpdate::maybe($update, (string) $request->getContent());
 
         $chat = data_get($update, 'message.chat') ?? data_get($update, 'channel_post.chat');
         $text = data_get($update, 'message.text') ?? data_get($update, 'channel_post.text');
