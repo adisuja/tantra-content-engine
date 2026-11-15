@@ -25,6 +25,44 @@ final class Messages
         'sms' => ['SMS', 480],
     ];
 
+    /** The Content Studio's dm block (posts.json) => the Engine's channel keys. */
+    public const STUDIO_DM = [
+        'message' => 'linkedin_dm',
+        'connect' => 'linkedin_connect',
+        'email_subject' => 'email_subject',
+        'email_body' => 'email_body',
+        'whatsapp' => 'whatsapp',
+        'sms' => 'sms',
+    ];
+
+    /**
+     * A pushed post with its follow-up messages filled from the Studio's dm block wherever the push sent none, so a
+     * batch pushed as the Studio writes it (dm.message, dm.connect, dm.email_subject, dm.email_body) keeps them.
+     * Pushed messages win; WhatsApp reuses the LinkedIn DM, as the content kit does. The dm block itself is kept.
+     *
+     * @param  array<string, mixed>  $post
+     * @return array<string, mixed>
+     */
+    public static function fromStudio(array $post): array
+    {
+        $dm = array_filter((array) ($post['dm'] ?? []), fn (mixed $v): bool => is_string($v) && trim($v) !== '');
+        if ($dm === []) {
+            return $post;
+        }
+        $messages = array_filter((array) ($post['messages'] ?? []), fn (mixed $v): bool => is_string($v) && trim($v) !== '');
+        foreach (self::STUDIO_DM as $from => $channel) {
+            if (! isset($messages[$channel]) && isset($dm[$from])) {
+                $messages[$channel] = $dm[$from];
+            }
+        }
+        if (! isset($messages['whatsapp']) && isset($dm['message'])) {
+            $messages['whatsapp'] = $dm['message'];
+        }
+        $post['messages'] = $messages;
+
+        return $post;
+    }
+
     /**
      * Every channel's message as it will be sent: the review owner's edit, else the
      * pushed text, else a plain default built from the resource. Empty when the post

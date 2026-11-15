@@ -18,6 +18,8 @@ use App\Models\Workspace;
 use App\Models\WorkspaceLabel;
 use App\Tantra\Review\Enums\EventKind;
 use App\Tantra\Review\Enums\ReviewStatus;
+use App\Tantra\Review\Jobs\SyncEngagementAssets;
+use App\Tantra\Review\Messages;
 use App\Tantra\Review\Models\Batch;
 use App\Tantra\Review\Models\ReviewItem;
 use App\Tantra\Review\Models\WorkspaceSettings;
@@ -73,6 +75,9 @@ final class ImportBatch
         }
 
         NotifyReviewers::afterImport($results);
+
+        // The DM, connection note, email and resource link become the CRM's Engagement defaults for each post.
+        SyncEngagementAssets::afterImport($owner, collect($results)->pluck('review_item_id')->all());
 
         return [
             'batches' => collect($batches)->map(fn (Batch $b): array => ['batch_id' => $b->id, 'workspace_id' => $b->workspace_id])->values()->all(),
@@ -225,7 +230,8 @@ final class ImportBatch
                 'placement' => $media['placement'] ?? null,
                 'tall' => (bool) ($media['tall'] ?? false),
             ],
-            'payload' => Arr::except($post, ['upload_tokens', 'resource_preview_paths']),
+            // The Studio's dm block becomes the follow-up messages when the push sent none (Messages::fromStudio).
+            'payload' => Arr::except(Messages::fromStudio($post), ['upload_tokens', 'resource_preview_paths']),
         ];
     }
 

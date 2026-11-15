@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tantra\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Tantra\Review\EngagementAsset;
 use App\Tantra\Review\Enums\ReviewStatus;
 use App\Tantra\Review\Messages;
 use App\Tantra\Review\Models\ReviewItem;
@@ -14,7 +15,8 @@ use Illuminate\Http\Request;
 /**
  * tantra: the follow-up messages of one post, for the workflows that send its
  * resource by email, WhatsApp, SMS or LinkedIn (the CRM's engagement follow-ups,
- * agents). Always the review owner's edited text when there is one.
+ * agents). Always the review owner's edited text when there is one. `asset` is the
+ * same post in the CRM's asset import shape (App\Tantra\Review\EngagementAsset).
  *
  * GET /api/tantra/messages/{engineBatchId}/{enginePostId}?first_name=Sam
  */
@@ -49,6 +51,8 @@ class MessagesController extends Controller
                 'text' => $m['text'],
                 'rendered' => $firstName !== '' || $postUrl !== null ? Messages::render($item, $key, $firstName, $postUrl) : null,
             ])->all(),
+            // The same post as the CRM's Engagement asset library reads it (a posts.json record).
+            'asset' => EngagementAsset::record($item, $postUrl),
         ]]);
     }
 }

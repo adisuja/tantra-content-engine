@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // tantra: the follow-up messages that send this post's resource (email, WhatsApp,
-// SMS, LinkedIn), each with click to copy. The review owner edits them here; the
+// SMS, LinkedIn) and the resource link, each with click to copy. The review owner edits them here; the
 // saved text is what every follow-up sends (App\Tantra\Review\Messages).
 import { IconCheck, IconCopy } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
@@ -32,6 +32,9 @@ const entries = computed(() =>
     })),
 );
 
+// The link people get: what the DM, the connection note and the email send.
+const resourceUrl = computed(() => props.item.resource?.url?.trim() || '');
+
 const drafts = reactive<Record<string, string>>({});
 const saving = ref<string | null>(null);
 const copied = ref<string | null>(null);
@@ -48,7 +51,7 @@ const dirty = (key: string): boolean =>
 const copy = async (key: string): Promise<void> => {
     if (
         await copyToClipboard(
-            drafts[key] ?? '',
+            key === 'resource_url' ? resourceUrl.value : (drafts[key] ?? ''),
             trans('tantra.review.messages.copied'),
         )
     ) {
@@ -78,7 +81,7 @@ const save = async (key: string, text: string | null): Promise<void> => {
 
 <template>
     <section
-        v-if="entries.length"
+        v-if="entries.length || resourceUrl"
         class="flex w-full flex-col gap-3 rounded-2xl border border-border bg-card p-4"
         data-testid="tantra-messages"
     >
@@ -95,6 +98,42 @@ const save = async (key: string, text: string | null): Promise<void> => {
                         : $t('tantra.review.messages.help_view')
                 }}
             </div>
+        </div>
+
+        <div
+            v-if="resourceUrl"
+            class="flex flex-col gap-1.5"
+            data-testid="tantra-message-resource_url"
+        >
+            <div class="flex items-center justify-between gap-2">
+                <div class="text-sm font-medium">
+                    {{ $t('tantra.review.messages.resource_link') }}
+                </div>
+                <Button
+                    size="sm"
+                    variant="ghost"
+                    class="h-8"
+                    @click="copy('resource_url')"
+                >
+                    <IconCheck
+                        v-if="copied === 'resource_url'"
+                        class="size-4"
+                    />
+                    <IconCopy v-else class="size-4" />
+                    {{
+                        copied === 'resource_url'
+                            ? $t('tantra.review.messages.copied_short')
+                            : $t('tantra.review.messages.copy')
+                    }}
+                </Button>
+            </div>
+            <a
+                :href="resourceUrl"
+                target="_blank"
+                rel="noopener"
+                class="text-sm break-all underline"
+                >{{ resourceUrl }}</a
+            >
         </div>
 
         <div
