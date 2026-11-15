@@ -26,7 +26,7 @@ beforeEach(function () {
     config([
         'tantra.engagement_channels.key' => 'chan-key',
         'tantra.engagement_channels.workspaces' => "ws_team={$this->adi->id}|{$this->ben->id},ws_other={$this->other->id}",
-        'tantra.engagement_channels.telegram_secret' => 'tg-secret',
+        'tantra.engagement_channels.telegram_secrets' => 'ws_team=hk_team0000000000:'.str_repeat('t', 43).',ws_other=hk_other000000000:'.str_repeat('o', 43),
         'tantra.engagement_channels.telegram_forward_url' => 'https://crm.test/hooks/engagement/telegram',
         'trypost.platforms.telegram.bot_token' => 'bot-token-tg',
         'trypost.platforms.telegram.bot_username' => 'TantraBot',
@@ -156,12 +156,35 @@ it('forwards a private bot chat to the one mapped workspace with a Telegram chan
     $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'shh-secret')->postJson(route('telegram.webhook'), $update)->assertNoContent();
 
     Http::assertSentCount(1);
-    Http::assertSent(fn (Request $r) => $r->url() === 'https://crm.test/hooks/engagement/telegram/ws_team'
-        && $r->header('X-Telegram-Bot-Api-Secret-Token')[0] === hash_hmac('sha256', 'ws_team', 'tg-secret')
-        && $r->header('X-Telegram-Bot-Api-Secret-Token')[0] !== hash_hmac('sha256', 'ws_other', 'tg-secret')
-        && $r->header('X-Telegram-Bot-Api-Secret-Token')[0] !== 'shh-secret'
-        && json_decode($r->body(), true) === $update);
-    expect(ForwardTelegramUpdate::signature('ws_team'))->not->toBe(ForwardTelegramUpdate::signature('ws_other'));
+    Http::assertSent(function (Request $r) use ($update): bool {
+        // Contract v2 (S-06): t=<unix>,kid=<id>,v1=HMAC-SHA256(workspace secret, "<t>.<workspace>.<body>").
+        preg_match('/^t=(\d+),kid=(hk_team0000000000),v1=([0-9a-f]{64})$/', $r->header('X-Tantra-Signature')[0] ?? '', $m);
+
+        return $r->url() === 'https://crm.test/hooks/engagement/telegram/ws_team'
+            && $m !== [] && abs(time() - (int) $m[1]) < 60
+            && hash_equals(hash_hmac('sha256', "{$m[1]}.ws_team.".$r->body(), str_repeat('t', 43)), $m[3])
+            && ! $r->hasHeader('X-Telegram-Bot-Api-Secret-Token')
+            && json_decode($r->body(), true) === $update;
+    });
+    expect(ForwardTelegramUpdate::signature('ws_team', '{}', 1000))->not->toBe(ForwardTelegramUpdate::signature('ws_other', '{}', 1000))
+        ->and(ForwardTelegramUpdate::signature('ws_team', '{}', 1000))->not->toBe(ForwardTelegramUpdate::signature('ws_team', '{"a":1}', 1000))
+        ->and(ForwardTelegramUpdate::signature('ws_unknown', '{}'))->toBeNull();
+});
+
+it('reads only well formed workspace secrets', function () {
+    config(['tantra.engagement_channels.telegram_secrets' => 'ws_okay=hk_abcdefgh12:'.str_repeat('s', 40).', bad, ws_short=hk_abcdefgh12:short, nows=hk_abcdefgh12:'.str_repeat('s', 40).',ws_kid=nokid:'.str_repeat('s', 40)]);
+
+    expect(array_keys(ForwardTelegramUpdate::secrets()))->toBe(['ws_okay']);
+});
+
+it('sends nothing for a workspace with no secret of its own', function () {
+    Http::fake();
+    config(['tantra.engagement_channels.telegram_secrets' => 'ws_other=hk_other000000000:'.str_repeat('o', 43)]);
+    $update = ['update_id' => 11, 'message' => ['message_id' => 1, 'chat' => ['id' => 42, 'type' => 'private'], 'from' => ['id' => 42], 'text' => '/start PROMPTS']];
+
+    $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'shh-secret')->postJson(route('telegram.webhook'), $update)->assertNoContent();
+
+    Http::assertNothingSent();
 });
 
 it('does not forward the connect flow, channel posts, a bad secret, or anything without the forward secret', function () {
@@ -171,7 +194,7 @@ it('does not forward the connect flow, channel posts, a bad secret, or anything 
     $send(['update_id' => 1, 'message' => ['chat' => ['id' => 42, 'type' => 'private'], 'text' => '/connect abc']]);
     $send(['update_id' => 2, 'channel_post' => ['chat' => ['id' => -1001, 'type' => 'channel'], 'text' => 'PROMPTS']]);
     $send(['update_id' => 3, 'message' => ['chat' => ['id' => 42, 'type' => 'private'], 'text' => 'PROMPTS']], 'wrong')->assertForbidden();
-    config(['tantra.engagement_channels.telegram_secret' => null]);
+    config(['tantra.engagement_channels.telegram_secrets' => '']);
     $send(['update_id' => 4, 'message' => ['chat' => ['id' => 42, 'type' => 'private'], 'text' => 'PROMPTS']]);
 
     Http::assertNothingSent();
