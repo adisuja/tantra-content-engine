@@ -1,6 +1,6 @@
 # Handoff: Content OS emails, digest, billing and CI (2026-11-14)
 
-Branches: `claude/content-os-emails` in tantra-content-engine, tantra-crm and tantra-ops. Nothing is merged or deployed. The Dodo keys are on the Engine server (see section 4).
+**Status 2026-11-15: merged, deployed and live.** Engine #9 merged as `81ba7052`, CRM #100 as `0debd9a`, ops #1 as `02fe7b8`. The Engine image for `81ba7052` was deployed with tantra-ops `deploy.sh`: the app is healthy, no migrations are pending, and `tantra:daily-digest` (minute 2) and `tantra:billing-tick` (minute 17) are on the hourly schedule. The Dodo webhook is registered and its secret is on the server (see section 4).
 
 ## 1. CI failures
 
@@ -69,7 +69,7 @@ Members can switch it off in Settings, Notifications (all 16 languages), or with
 ## 4. Billing: Content OS on Dodo
 
 - **Product:** `pdt_0Nrun85o9IVj9jlux7Nsf`, "Content OS", $199 a month, recurring (live mode). No existing product matched. A live checkout was created and checked: it shows Content OS and localises to INR for an Indian visitor.
-- **Webhook URL to register in Dodo:** `https://content.usetantra.com/tantra/billing/dodo/webhook`. It goes live after the Engine PR is deployed. Events: subscription.active, renewed, on_hold, past_due, failed, cancelled, expired, updated, plan_changed; payment.succeeded, payment.failed.
+- **Webhook URL to register in Dodo:** `https://content.usetantra.com/tantra/billing/dodo/webhook`, **registered** through the Dodo API on 2026-11-15 as endpoint `ep_3M7DYlzQ737FBgbnkXfAvL1n9Nm`. Its signing secret was piped from the Dodo API into the tantra-ops secret `DODO_WEBHOOK_SECRET` (never printed) and synced. Check: a request signed with it returned 200 `ignored_other_product`; unsigned and forged requests return 401. Events: subscription.active, renewed, on_hold, past_due, failed, cancelled, expired, updated, plan_changed; payment.succeeded, payment.failed.
 - **Env var names on the server** (`/opt/tantra/.env`): `DODO_PAYMENTS_API_KEY`, `DODO_WEBHOOK_SECRET` (both via sync-env, stored as tantra-ops secrets) and `DODO_ENV=live_mode` (via env-set). Optional: `DODO_CONTENT_OS_PRODUCT_ID` (defaults to the id above), `TANTRA_BILLING_ENFORCE` (default false), `TANTRA_BILLING_GRACE_DAYS` (default 10).
 - **Plan state** is stored per workspace in `tantra_workspace_plans`. The **grace period is 10 days**, with reminders on day 0, 3 and 7. **What a lapsed plan locks:** publishing only. Scheduled posts stay scheduled, and every post, draft, channel and number stays. Locking only happens once you set `TANTRA_BILLING_ENFORCE=true`.
 - **Testing:** the whole cycle (welcome, receipt, heads-up, dunning, pause, recovery, cancel, expiry, win-back, other products ignored, duplicates, forged, stale and unsigned requests) is covered in `ContentOsBillingTest` with real Standard Webhooks signatures. I did **not** run it against Dodo test mode: there is no test-mode key. Only the two live keys exist.
@@ -79,14 +79,16 @@ Members can switch it off in Settings, Notifications (all 16 languages), or with
 - 1 image, seedream 4.5 (backdrop and idea orb): **6.5 credits, about $0.03**, on the `kie-2` key (197.88 credits before, 191.38 after).
 - The diagram, motion and labels are drawn in `docs/emails/hero/compose.py`. Output: `public/tantra/email/content-os-hero.gif` (600x300, 868 KB) and `content-os-hero.png` (56 KB fallback).
 
-## 6. Open items and what I need from you
+## 6. Open items
 
-1. **Dodo webhook:** register the URL above in Dodo (Developer, Webhooks, Add endpoint) after deploy. Then copy that endpoint's signing secret into the tantra-ops secret `DODO_WEBHOOK_SECRET` and run "Sync secrets to server". Dodo gives each endpoint its own secret; the one in `dodo.env` belongs to an existing endpoint.
-2. **Dodo test mode:** if you want the cycle run against Dodo itself first, I need a test-mode API key.
-3. **Deploy go-ahead:** merge order is ops, CRM, then Engine (migrations run on deploy). Billing enforcement stays off until you set it.
-4. **Promotions tab:** 7 of the test emails went to Promotions. Fixes on your side: a DMARC policy for notify.usetantra.com, and replies going to a monitored address.
-5. **Win-back legal footer:** the win-back email is promotional. Give me a postal address for its footer (CAN-SPAM) before it is switched on.
-6. **Not done:** a Vue billing page inside the app. `/tantra/billing` is a plain server-rendered page with Start and Manage buttons.
+Done since the first version of this report: deploy, Dodo webhook registration, webhook secret sync.
+
+1. **Dodo test mode:** never run, because only live keys exist. The cycle is covered by `ContentOsBillingTest` with real signatures.
+2. **Promotions tab:** 7 of the test emails went to Promotions. `notify.usetantra.com` has no DMARC record of its own, and `usetantra.com` is `p=none`. usetantra.com DNS is not reachable with the Cloudflare token on this Mac (it covers the growthclub zones only).
+3. **Win-back legal footer:** the win-back email is promotional and needs a postal address in its footer (CAN-SPAM) before it is switched on.
+4. **Enforcement:** `TANTRA_BILLING_ENFORCE` is false, so a lapsed plan pauses nothing yet. Turn it on with tantra-ops `env-set.sh TANTRA_BILLING_ENFORCE true` once Adi says so.
+5. **Not done:** a Vue billing page inside the app. `/tantra/billing` is a plain server-rendered page with Start and Manage buttons.
+6. **Stale branches and quieter alerts:** the deletions and settings in section 1 are proposals, not applied.
 
 **Decisions I made for you**
 - Used `dodo.env`, not `dodo-enterprise.env`; it is the account with every Tantra product.
