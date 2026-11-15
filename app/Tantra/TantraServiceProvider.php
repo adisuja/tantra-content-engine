@@ -54,6 +54,7 @@ use App\Tantra\Console\ZernioConnectCommand;
 use App\Tantra\Embed\Embed;
 use App\Tantra\Gateway\AuthenticateTantraGateway;
 use App\Tantra\Http\Controllers\Web\ReviewPageController;
+use App\Tantra\Http\Middleware\EnsureCrmKey;
 use App\Tantra\Http\Middleware\EnsureOwnerToken;
 use App\Tantra\Http\Middleware\EnsureRunnerToken;
 use App\Tantra\Http\Middleware\EnsureTantraAdmin;
@@ -137,6 +138,7 @@ class TantraServiceProvider extends ServiceProvider
         $this->loadViewsFrom(__DIR__.'/views', 'tantra');
 
         $this->app->make(Router::class)->aliasMiddleware('tantra.owner-token', EnsureOwnerToken::class);
+        $this->app->make(Router::class)->aliasMiddleware('tantra.crm-key', EnsureCrmKey::class);
         $this->app->make(Router::class)->aliasMiddleware('tantra.admin', EnsureTantraAdmin::class);
         $this->app->make(Router::class)->aliasMiddleware('tantra.runner', EnsureRunnerToken::class);
         $this->app->make(Router::class)->aliasMiddleware('tantra.gateway', AuthenticateTantraGateway::class);
