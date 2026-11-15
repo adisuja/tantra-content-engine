@@ -6,6 +6,7 @@ use App\Tantra\Http\Controllers\Api\AgentRunnerController;
 use App\Tantra\Http\Controllers\Api\BatchController;
 use App\Tantra\Http\Controllers\Api\ChannelScheduleController;
 use App\Tantra\Http\Controllers\Api\CrmIdeasController;
+use App\Tantra\Http\Controllers\Api\CrmPostsController;
 use App\Tantra\Http\Controllers\Api\ContextController;
 use App\Tantra\Http\Controllers\Api\EngagementChannelsController;
 use App\Tantra\Http\Controllers\Api\IdeaController;
@@ -145,4 +146,5 @@ Route::middleware(['api', 'tantra.crm-key', 'throttle:tantra-engagement-channels
     ->name('tantra.api.crm.')
     ->group(function (): void {
         Route::post('/ideas', CrmIdeasController::class)->name('ideas');
+        Route::post('/posts', [CrmPostsController::class, 'index'])->name('posts');
     });
