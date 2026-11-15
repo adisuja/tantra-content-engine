@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useConnectChannelDialog } from '@/composables/useConnectChannelDialog';
 import { connectUrl } from '@/composables/useNetworkConnect';
+import { isEmbedded, openConnectWindow } from '@/lib/tantra/embed';
 import { store as storeBluesky } from '@/routes/app/social/bluesky';
 import { authorize as authorizeMastodon } from '@/routes/app/social/mastodon';
 import { Platform } from '@/types/platform';
@@ -112,6 +113,11 @@ const continueOAuth = (): void => {
               : {};
     const url = connectUrl(route.value, undefined, kind);
     if (!url) return;
+    // tantra: inside the CRM the sign in page runs in a popup (PRD 2026-11-15, 4.4).
+    if (isEmbedded()) {
+        if (openConnectWindow(url)) close();
+        return;
+    }
     leaving.value = true;
     // The server answers with the network's sign-in page (another site).
     router.visit(url, { onCancel: () => (leaving.value = false) });
@@ -136,6 +142,13 @@ const connectBluesky = (): void => {
 const mastodon = useForm({ instance: '' });
 
 const connectMastodon = (): void => {
+    // tantra: inside the CRM, Mastodon's form runs in the popup, where its
+    // server's sign in page can open top level (PRD 2026-11-15, 4.4).
+    if (isEmbedded()) {
+        const url = connectUrl(Platform.Mastodon);
+        if (url && openConnectWindow(url)) close();
+        return;
+    }
     mastodon
         .transform((data) => {
             const server = data.instance.trim().replace(/\/+$/, '');
