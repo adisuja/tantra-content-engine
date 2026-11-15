@@ -77,6 +77,10 @@ return [
         'price_label' => '$199 a month',
         'grace_days' => (int) env('TANTRA_BILLING_GRACE_DAYS', 10),
         'enforce' => (bool) env('TANTRA_BILLING_ENFORCE', false),
+        // The Tantra app owns billing (tantra-crm docs/crm/emails/BILLING_GO_LIVE_STEPS.md step 9): before publishing, ask
+        // GET {crm}/intake/engine/billing. Off by default; then the plan table here decides. Unreachable means allowed.
+        'from_crm' => (bool) env('TANTRA_BILLING_FROM_CRM', false),
+        'crm_timeout' => (int) env('TANTRA_BILLING_CRM_TIMEOUT', 3),
     ],
 
     'crm' => [
