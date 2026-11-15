@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\Repurpose;
 use App\Tantra\Gateway\GatewaySignature;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Testing\TestResponse;
@@ -66,7 +67,9 @@ test('refuses an unsigned, stale, forged or wrong body call', function () {
 test('the signed scopes decide what the call may do', function () {
     gatewayCall($this, 'POST', '/api/gateway/labels', ['name' => 'x', 'color' => '#ff0000'], scopes: 'content:read')->assertForbidden()->assertJsonPath('code', 'missing_scope');
     gatewayCall($this, 'GET', '/api/gateway/posts', scopes: 'content:write')->assertForbidden();
-    gatewayCall($this, 'POST', '/api/gateway/repurposes/00000000-0000-0000-0000-000000000000/activate', scopes: 'content:read,content:write')->assertForbidden()->assertJsonPath('code', 'missing_scope');
+    // A real repurpose: route model binding runs before the gateway middleware, so a made up id answers 404 first.
+    $repurpose = Repurpose::factory()->create(['workspace_id' => $this->workspace->id]);
+    gatewayCall($this, 'POST', "/api/gateway/repurposes/{$repurpose->id}/activate", scopes: 'content:read,content:write')->assertForbidden()->assertJsonPath('code', 'missing_scope');
 });
 
 test('a Tantra member with no linked engine account gets no access', function () {
