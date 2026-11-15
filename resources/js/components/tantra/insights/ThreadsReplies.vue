@@ -7,6 +7,7 @@ import { toast } from 'vue-sonner';
 
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { connectLinkClick } from '@/lib/tantra/embed';
 
 interface ThreadsReply {
     id: string;
@@ -140,7 +141,13 @@ onMounted(load);
             <p class="text-sm">
                 {{ $t('tantra.threads_replies.needs_reconnect') }}
             </p>
-            <Button v-if="reconnectUrl" as="a" :href="reconnectUrl" size="sm">
+            <Button
+                v-if="reconnectUrl"
+                as="a"
+                :href="reconnectUrl"
+                size="sm"
+                @click="connectLinkClick($event, reconnectUrl)"
+            >
                 {{ $t('tantra.threads_replies.reconnect') }}
             </Button>
         </div>

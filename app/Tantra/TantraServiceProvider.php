@@ -47,10 +47,12 @@ use App\Tantra\Console\TeamAccountCommand;
 use App\Tantra\Console\TeamAccountsCommand;
 use App\Tantra\Console\TrackLinksCommand;
 use App\Tantra\Console\ZernioConnectCommand;
+use App\Tantra\Embed\Embed;
 use App\Tantra\Http\Controllers\Web\ReviewPageController;
 use App\Tantra\Http\Middleware\EnsureOwnerToken;
 use App\Tantra\Http\Middleware\EnsureRunnerToken;
 use App\Tantra\Http\Middleware\EnsureTantraAdmin;
+use App\Tantra\Http\Middleware\FrameAncestors;
 use App\Tantra\Http\Middleware\LandOnReview;
 use App\Tantra\Ideas\IdeaMeta;
 use App\Tantra\Links\TrackPieceLinks;
@@ -133,6 +135,8 @@ class TantraServiceProvider extends ServiceProvider
         $kernel = $this->app->make(HttpKernel::class);
         if ($kernel instanceof FoundationHttpKernel) {
             $kernel->appendMiddlewareToGroup('web', LandOnReview::class);
+            // Only the Engine and the Tantra CRM may frame its pages (PRD 2026-11-15, 4.7).
+            $kernel->prependMiddlewareToGroup('web', FrameAncestors::class);
         }
         $this->loadRoutesFrom(__DIR__.'/Http/routes-api.php');
         $this->loadRoutesFrom(__DIR__.'/Http/routes-web.php');
@@ -210,6 +214,9 @@ class TantraServiceProvider extends ServiceProvider
         Appliers::register('repost', RepostApplier::class);
         Appliers::register('repurpose', RepostApplier::class);
         Appliers::register('rebrand', RebrandApplier::class);
+
+        // The CRM origins embedded mode may talk to (PRD 2026-11-15, 4.3); none while TANTRA_EMBED is off.
+        Inertia::share('tantraEmbedParents', fn (): array => Embed::enabled() ? Embed::parents() : []);
 
         // Studio ops in the sidebar for admins only (PRD 25.4).
         Inertia::share('tantraAdmin', fn (): bool => Admin::is(Auth::user()));

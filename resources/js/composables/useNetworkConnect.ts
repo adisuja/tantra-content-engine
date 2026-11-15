@@ -2,6 +2,7 @@ import { router } from '@inertiajs/vue3';
 import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 
 import { useConnectChannelDialog } from '@/composables/useConnectChannelDialog';
+import { isEmbedded, openConnectWindow } from '@/lib/tantra/embed';
 import { connect as blueskyConnect } from '@/routes/app/social/bluesky';
 import { connect as discordConnect } from '@/routes/app/social/discord';
 import { connect as facebookConnect } from '@/routes/app/social/facebook';
@@ -77,6 +78,11 @@ export const useNetworkConnect = (
         const url = connectUrl(platform, reconnectId);
 
         if (url) {
+            // tantra: inside the CRM a network's sign in page runs in a popup (PRD 2026-11-15, 4.4).
+            if (isEmbedded()) {
+                openConnectWindow(url);
+                return;
+            }
             router.visit(url);
         }
     };

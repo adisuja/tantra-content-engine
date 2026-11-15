@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { connectLinkClick } from '@/lib/tantra/embed';
 import type { TimezoneOption } from '@/types/posting-schedule';
 
 interface Member {
@@ -172,6 +173,10 @@ const send = async (url: string, body: Record<string, unknown>) => {
                         v-if="!me.checklist[step] && STEP_LINKS[step]"
                         :href="STEP_LINKS[step]"
                         class="text-xs underline"
+                        @click="
+                            step === 'linkedin' &&
+                            connectLinkClick($event, STEP_LINKS[step]!)
+                        "
                         >{{ $t('tantra.team.checklist.do_it') }}</a
                     >
                 </div>

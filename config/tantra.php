@@ -170,4 +170,14 @@ return [
         'team_emails' => array_values(array_filter(array_map(fn (string $email): string => strtolower(trim($email)), explode(',', (string) env('TANTRA_TEAM_EMAILS', 'team@growthclubpro.com'))))),
     ],
 
+    // The Engine inside the Tantra CRM's Content tab (PRD 2026-11-15). Off
+    // until TANTRA_EMBED=true: GET tantra/embed and POST tantra/embed/session
+    // answer 404 until then. The parents are the origins allowed to frame the
+    // Engine and to hand it a Clerk session token (comma separated), and the
+    // frame-ancestors header lists them. App\Tantra\Embed.
+    'embed' => [
+        'enabled' => (bool) env('TANTRA_EMBED', false),
+        'parents' => array_values(array_filter(array_map(fn (string $origin): string => rtrim(trim($origin), '/'), explode(',', (string) env('TANTRA_EMBED_PARENTS', ''))))),
+    ],
+
 ];

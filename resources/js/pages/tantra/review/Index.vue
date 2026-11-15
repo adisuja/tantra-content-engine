@@ -12,10 +12,12 @@ import {
 import { trans } from 'laravel-vue-i18n';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
+import EmbedCreateMenu from '@/components/tantra/embed/EmbedCreateMenu.vue';
 import ReviewCard from '@/components/tantra/review/ReviewCard.vue';
 import type { ReviewItemRow } from '@/components/tantra/review/types';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { connectLinkClick, embedded } from '@/lib/tantra/embed';
 
 type Tab = 'review' | 'scheduled' | 'published';
 
@@ -184,6 +186,10 @@ const reconnectLine = (r: Reconnect): string => {
         <div
             class="mx-auto flex min-h-full w-full max-w-[1760px] min-w-0 flex-col gap-4 px-3 pt-4 pb-12 md:px-6 md:pt-6"
         >
+            <!-- tantra: inside the CRM the sidebar's New menu lives here (PRD 2026-11-15, 3.3). -->
+            <div v-if="embedded" class="-mb-2 flex justify-end">
+                <EmbedCreateMenu />
+            </div>
             <nav
                 class="flex items-center gap-1 self-center rounded-full border border-border bg-card p-1"
                 :aria-label="$t('tantra.review.title')"
@@ -232,9 +238,16 @@ const reconnectLine = (r: Reconnect): string => {
                 <IconPlugConnectedX class="size-4" />
                 <span class="min-w-0 flex-1">{{ reconnectLine(r) }}</span>
                 <Button size="sm" as-child>
-                    <a :href="`/tantra/reconnect/${r.id}`">{{
-                        $t('tantra.review.reconnect.action')
-                    }}</a>
+                    <a
+                        :href="`/tantra/reconnect/${r.id}`"
+                        @click="
+                            connectLinkClick(
+                                $event,
+                                `/tantra/reconnect/${r.id}`,
+                            )
+                        "
+                        >{{ $t('tantra.review.reconnect.action') }}</a
+                    >
                 </Button>
             </section>
 

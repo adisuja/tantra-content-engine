@@ -1,0 +1,329 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Models\User;
+use App\Models\Workspace;
+use App\Tantra\Embed\Embed;
+use Firebase\JWT\JWT;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
+use Inertia\Testing\AssertableInertia as Assert;
+
+// tantra: the Engine inside the Tantra CRM's Content tab (PRD 2026-11-15, V2).
+
+const EMBED_ISSUER = 'https://clerk.usetantra.com';
+const EMBED_KID = 'ins_embed_test_key';
+const EMBED_CRM = 'https://crm.usetantra.com';
+
+/**
+ * @return array{private: string, jwks: array<string, mixed>}
+ */
+function embedClerkKey(): array
+{
+    static $key = null;
+    if ($key !== null) {
+        return $key;
+    }
+
+    $resource = openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]);
+    openssl_pkey_export($resource, $private);
+    $details = openssl_pkey_get_details($resource);
+    $b64 = fn (string $bin): string => rtrim(strtr(base64_encode($bin), '+/', '-_'), '=');
+
+    return $key = [
+        'private' => $private,
+        'jwks' => ['keys' => [[
+            'use' => 'sig', 'kty' => 'RSA', 'kid' => EMBED_KID, 'alg' => 'RS256',
+            'n' => $b64($details['rsa']['n']), 'e' => $b64($details['rsa']['e']),
+        ]]],
+    ];
+}
+
+/**
+ * A CRM session token: azp is the CRM, no email claim (the CRM's default token).
+ *
+ * @param  array<string, mixed>  $claims
+ */
+function embedToken(string $sub, array $claims = []): string
+{
+    return JWT::encode([
+        'iss' => EMBED_ISSUER,
+        'sub' => $sub,
+        'azp' => EMBED_CRM,
+        'sid' => 'sess_'.$sub,
+        'iat' => time() - 10,
+        'nbf' => time() - 10,
+        'exp' => time() + 60,
+        ...$claims,
+    ], embedClerkKey()['private'], 'RS256', EMBED_KID);
+}
+
+function embedUser(string $email, string $clerkId): User
+{
+    $user = User::factory()->create(['email' => $email]);
+    $user->forceFill(['clerk_user_id' => $clerkId])->save();
+
+    return $user->refresh();
+}
+
+beforeEach(function () {
+    Cache::flush();
+    config([
+        'tantra.embed.enabled' => true,
+        'tantra.embed.parents' => [EMBED_CRM, 'http://localhost:5173'],
+        // The standalone Clerk sign in stays off, as in production.
+        'tantra.clerk.enabled' => false,
+        'tantra.clerk.frontend_api' => EMBED_ISSUER,
+        'tantra.clerk.authorized_parties' => ['https://content.usetantra.com', EMBED_CRM],
+        'tantra.clerk.secret_key' => null,
+        'tantra.clerk.team_emails' => ['team@growthclubpro.com'],
+    ]);
+    Http::fake([
+        EMBED_ISSUER.'/.well-known/jwks.json' => Http::response(embedClerkKey()['jwks']),
+    ]);
+});
+
+describe('embed session', function () {
+    it('signs in the CRM user with a valid token', function () {
+        $priya = embedUser('priya@usetantra.com', 'user_priya');
+
+        $this->postJson('/tantra/embed/session', ['token' => embedToken('user_priya')])
+            ->assertOk()
+            ->assertExactJson(['ok' => true, 'email' => 'priya@usetantra.com']);
+
+        $this->assertAuthenticatedAs($priya);
+    });
+
+    it('signs in by verified email when the token carries it', function () {
+        $priya = User::factory()->create(['email' => 'priya@usetantra.com']);
+
+        $this->postJson('/tantra/embed/session', ['token' => embedToken('user_priya', ['email_verified' => true, 'email' => 'priya@usetantra.com'])])
+            ->assertOk();
+
+        $this->assertAuthenticatedAs($priya);
+        expect($priya->refresh()->clerk_user_id)->toBe('user_priya');
+    });
+
+    it('refuses a token made for another site', function () {
+        embedUser('priya@usetantra.com', 'user_priya');
+
+        $this->postJson('/tantra/embed/session', ['token' => embedToken('user_priya', ['azp' => 'https://evil.example.com'])])
+            ->assertStatus(401)
+            ->assertExactJson(['code' => 'token_invalid']);
+
+        $this->assertGuest();
+    });
+
+    it('refuses an expired token', function () {
+        embedUser('priya@usetantra.com', 'user_priya');
+
+        $this->postJson('/tantra/embed/session', ['token' => embedToken('user_priya', ['exp' => time() - 120, 'iat' => time() - 200, 'nbf' => time() - 200])])
+            ->assertStatus(401)
+            ->assertExactJson(['code' => 'token_invalid']);
+
+        $this->assertGuest();
+    });
+
+    it('refuses a missing or junk token', function () {
+        $this->postJson('/tantra/embed/session', [])->assertStatus(401)->assertExactJson(['code' => 'token_invalid']);
+        $this->postJson('/tantra/embed/session', ['token' => 'not-a-token'])->assertStatus(401);
+
+        $this->assertGuest();
+    });
+
+    it('answers no access for a CRM user with no Engine login', function () {
+        $this->postJson('/tantra/embed/session', ['token' => embedToken('user_stranger', ['email_verified' => true, 'email' => 'stranger@example.com'])])
+            ->assertForbidden()
+            ->assertExactJson(['code' => 'no_access']);
+
+        $this->assertGuest();
+        expect(User::query()->where('email', 'stranger@example.com')->exists())->toBeFalse();
+    });
+
+    it('keeps the session when the same person opens Content again', function () {
+        $priya = embedUser('priya@usetantra.com', 'user_priya');
+
+        $this->actingAs($priya)
+            ->postJson('/tantra/embed/session', ['token' => embedToken('user_priya')])
+            ->assertOk();
+
+        $this->assertAuthenticatedAs($priya);
+    });
+
+    it('swaps to the new CRM user when another person was signed in', function () {
+        $adi = embedUser('adi@usetantra.com', 'user_adi');
+        $priya = embedUser('priya@usetantra.com', 'user_priya');
+
+        $this->actingAs($adi)
+            ->postJson('/tantra/embed/session', ['token' => embedToken('user_priya')])
+            ->assertOk()
+            ->assertJson(['email' => 'priya@usetantra.com']);
+
+        $this->assertAuthenticatedAs($priya);
+    });
+
+    it('ends the previous session before answering no access', function () {
+        $adi = embedUser('adi@usetantra.com', 'user_adi');
+
+        $this->actingAs($adi)
+            ->postJson('/tantra/embed/session', ['token' => embedToken('user_stranger')])
+            ->assertForbidden()
+            ->assertExactJson(['code' => 'no_access']);
+
+        $this->assertGuest();
+    });
+
+    it('does not cycle the previous person\'s remember token', function () {
+        $adi = embedUser('adi@usetantra.com', 'user_adi');
+        $adi->forceFill(['remember_token' => 'adi-other-devices'])->save();
+        embedUser('priya@usetantra.com', 'user_priya');
+
+        $this->actingAs($adi)
+            ->postJson('/tantra/embed/session', ['token' => embedToken('user_priya')])
+            ->assertOk();
+
+        expect($adi->refresh()->remember_token)->toBe('adi-other-devices');
+    });
+
+    it('changes nothing for a bad token while someone is signed in', function () {
+        $adi = embedUser('adi@usetantra.com', 'user_adi');
+
+        $this->actingAs($adi)
+            ->postJson('/tantra/embed/session', ['token' => embedToken('user_priya', ['azp' => 'https://evil.example.com'])])
+            ->assertStatus(401);
+
+        $this->assertAuthenticatedAs($adi);
+    });
+
+    it('is not there while the switch is off', function () {
+        config(['tantra.embed.enabled' => false]);
+        embedUser('priya@usetantra.com', 'user_priya');
+
+        $this->postJson('/tantra/embed/session', ['token' => embedToken('user_priya')])->assertNotFound();
+        $this->get('/tantra/embed?to=/tantra/review')->assertNotFound();
+
+        $this->assertGuest();
+    });
+
+    it('leaves the standalone Clerk sign in off', function () {
+        $this->get('/login')->assertOk()->assertInertia(fn (Assert $page) => $page->component('auth/Login'));
+        $this->post('/auth/clerk/session', ['token' => embedToken('user_priya')])->assertNotFound();
+    });
+});
+
+describe('embed boot page', function () {
+    it('renders for a guest with the parents and the page to open', function () {
+        $response = $this->get('/tantra/embed?to='.urlencode('/schedule?tab=approvals'))->assertOk();
+
+        $html = $response->getContent();
+        expect($html)->toContain("var to = '\/schedule?tab=approvals'")
+            ->and($html)->toContain('crm.usetantra.com')
+            ->and($html)->toContain('localhost:5173')
+            ->and($html)->toContain('tantra:ready')
+            ->and($html)->toContain('\/tantra\/embed\/session')
+            ->and($html)->not->toContain('—')
+            ->and($html)->not->toContain('–');
+    });
+
+    it('falls back to Insights for any path off this site', function (string $to) {
+        $html = $this->get('/tantra/embed?to='.urlencode($to))->assertOk()->getContent();
+
+        expect($html)->toContain("var to = '\/tantra\/insights'");
+    })->with([
+        'protocol relative' => '//evil.com',
+        'absolute' => 'https://evil.com',
+        'backslash' => '/\\evil.com',
+        'scheme inside' => '/x?u=javascript://alert(1)',
+        'no slash' => 'evil.com',
+        'tab' => "/\t/evil.com",
+        'newline' => "/\n/evil.com",
+        'too long' => '/'.str_repeat('a', 2000),
+        'empty' => '',
+    ]);
+
+    it('checks paths the same way in code', function () {
+        expect(Embed::safePath('/tantra/review'))->toBe('/tantra/review')
+            ->and(Embed::safePath('/schedule?tab=approvals'))->toBe('/schedule?tab=approvals')
+            ->and(Embed::safePath(['/x']))->toBe('/tantra/insights')
+            ->and(Embed::safePath(null))->toBe('/tantra/insights')
+            ->and(Embed::safePath('/'.str_repeat('a', 1999)))->toHaveLength(2000);
+    });
+
+    it('keeps only well formed parent origins', function () {
+        config(['tantra.embed.parents' => ['https://crm.usetantra.com/', 'https://x.com; script-src *', 'javascript:alert(1)', 'HTTP://LOCALHOST:5173']]);
+
+        expect(Embed::parents())->toBe(['https://crm.usetantra.com', 'http://localhost:5173']);
+    });
+});
+
+describe('frame-ancestors header', function () {
+    it('lets only the Engine and the CRM frame its pages', function () {
+        $this->get('/login')->assertOk()
+            ->assertHeader('Content-Security-Policy', "frame-ancestors 'self' https://crm.usetantra.com http://localhost:5173");
+    });
+
+    it('allows only the Engine itself when no parent is set', function () {
+        config(['tantra.embed.parents' => []]);
+
+        $this->get('/login')->assertHeader('Content-Security-Policy', "frame-ancestors 'self'");
+    });
+
+    it('sends the header on signed in Inertia pages and the boot page', function () {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->get('/settings/profile')
+            ->assertHeader('Content-Security-Policy', "frame-ancestors 'self' https://crm.usetantra.com http://localhost:5173");
+        $this->get('/tantra/embed')
+            ->assertHeader('Content-Security-Policy', "frame-ancestors 'self' https://crm.usetantra.com http://localhost:5173");
+    });
+
+    it('never overwrites a response\'s own policy', function () {
+        $user = User::factory()->create();
+        $workspace = Workspace::factory()->create(['account_id' => $user->account_id, 'user_id' => $user->id]);
+        $workspace->members()->attach($user->id, membershipPivot('admin'));
+        $user->update(['current_workspace_id' => $workspace->id]);
+        subscribeAccount($user->fresh()->account);
+        Http::fake([
+            EMBED_ISSUER.'/.well-known/jwks.json' => Http::response(embedClerkKey()['jwks']),
+            '*' => Http::response(str_repeat('A', 200), 200, ['Content-Type' => 'image/png']),
+        ]);
+
+        $this->actingAs($user->fresh())->get(route('app.favicon', 'example.com'))
+            ->assertOk()
+            ->assertHeader('Content-Security-Policy', "script-src 'none'");
+    });
+
+    it('shares the parents with the pages only while the switch is on', function () {
+        $this->get('/login')->assertInertia(fn (Assert $page) => $page
+            ->where('tantraEmbedParents', [EMBED_CRM, 'http://localhost:5173']));
+
+        config(['tantra.embed.enabled' => false]);
+        $this->get('/login')->assertInertia(fn (Assert $page) => $page->where('tantraEmbedParents', []));
+    });
+});
+
+describe('connect popup contract', function () {
+    // The popup (resources/js/lib/tantra/embed.ts) stays open on these pages
+    // and only reports tantra:connected from the connected channel's page.
+    // Every callback failure lands on accounts/ConnectFinish (failConnection,
+    // ConnectSafetyNet), covered in tests/Feature/Social/*ControllerTest.php.
+    it('waits on every connect step and outcome page that exists', function () {
+        $source = (string) file_get_contents(resource_path('js/lib/tantra/embed.ts'));
+        preg_match('/export const CONNECT_STEPS = \[(.*?)\];/s', $source, $match);
+        preg_match_all("/'([^']+)'/", $match[1] ?? '', $components);
+
+        expect($components[1])->toBe(['accounts/ConnectFinish', 'tantra/connect/Prepare', 'accounts/MastodonConnect', 'accounts/BlueskyConnect']);
+        foreach ($components[1] as $component) {
+            expect(resource_path("js/pages/{$component}.vue"))->toBeFile();
+        }
+    });
+
+    it('sends every connect failure to the outcome page the popup waits on', function () {
+        $source = (string) file_get_contents(app_path('Http/Controllers/Auth/SocialController.php'));
+
+        expect($source)->toContain("Inertia::render('accounts/ConnectFinish'")
+            ->and($source)->toMatch("/function failConnection.*?redirect\(\)->route\('app\.social\.connect\.show'/s")
+            ->and((string) file_get_contents(app_path('Tantra/Channels/ConnectSafetyNet.php')))->toContain("redirect()->route('app.social.connect.show'");
+    });
+});

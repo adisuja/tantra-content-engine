@@ -11,6 +11,7 @@ import {
     IconMcp,
     IconPlugConnected,
     IconSignature,
+    IconSwitchHorizontal,
     IconTag,
     IconUser,
     IconUsers,
@@ -20,6 +21,7 @@ import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
+import { isEmbedded } from '@/lib/tantra/embed';
 import { members } from '@/routes/app';
 import { index as apiKeys } from '@/routes/app/api-keys';
 import { index as billing } from '@/routes/app/billing';
@@ -210,6 +212,34 @@ export const useSettingsNavigation = () => {
                     },
                 ],
             });
+        }
+
+        // tantra: inside the Tantra CRM (PRD 2026-11-15, 4.6) personal settings
+        // and billing stay with the CRM account, and the workspace switcher
+        // (in the hidden sidebar user menu) becomes a Workspaces item.
+        if (isEmbedded()) {
+            const embeddedGroups = groups
+                .filter((group) => group.key !== 'personal')
+                .map((group) =>
+                    group.key === 'workspace'
+                        ? {
+                              ...group,
+                              items: [
+                                  ...group.items.filter(
+                                      (navItem) => navItem.name !== 'billing',
+                                  ),
+                                  {
+                                      name: 'workspaces',
+                                      title: 'Workspaces',
+                                      href: '/workspaces',
+                                      icon: IconSwitchHorizontal,
+                                  },
+                              ],
+                          }
+                        : group,
+                );
+
+            return embeddedGroups.filter((group) => group.items.length > 0);
         }
 
         return groups.filter((group) => group.items.length > 0);

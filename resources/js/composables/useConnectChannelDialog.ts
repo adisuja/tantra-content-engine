@@ -1,5 +1,7 @@
 import { readonly, shallowRef } from 'vue';
 
+import { routeConnectToChannels } from '@/lib/tantra/embed';
+
 export type ConnectChannelStep =
     | 'grid'
     | 'details'
@@ -25,6 +27,8 @@ let nextId = 0;
 const state = shallowRef<ConnectChannelState | null>(null);
 
 const open = (): void => {
+    // tantra: inside the CRM, connections only happen on Content > Channels (PRD 2026-11-15, 4.5).
+    if (routeConnectToChannels({})) return;
     state.value = {
         id: ++nextId,
         flow: 'connect',
@@ -37,6 +41,7 @@ const openAt = (
     step: Exclude<ConnectChannelStep, 'grid' | 'details'>,
     reconnectId?: string,
 ): void => {
+    if (routeConnectToChannels({ step, reconnect: reconnectId })) return; // tantra
     state.value = {
         id: ++nextId,
         flow: 'connect',
@@ -78,6 +83,7 @@ const showDetails = (platform: string): void => {
 // tantra: a logo in the grid opens that network's connect panel; from
 // anywhere else (sidebar, inline grid) the dialog opens straight at it.
 const showNetwork = (platform: string, fromGrid = true): void => {
+    if (routeConnectToChannels({ network: platform })) return; // tantra
     state.value =
         state.value && fromGrid
             ? {

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { Head, usePage } from '@inertiajs/vue3';
+import { Head, router, usePage } from '@inertiajs/vue3';
 import { IconPlus } from '@tabler/icons-vue';
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+import { toast } from 'vue-sonner';
 
 import ChannelListItem from '@/components/channels/ChannelListItem.vue';
 import DisconnectChannelDialog from '@/components/channels/DisconnectChannelDialog.vue';
@@ -11,6 +12,7 @@ import { orderChannels } from '@/composables/useChannelOrder';
 import { useConnectChannelDialog } from '@/composables/useConnectChannelDialog';
 import { useNetworkConnect } from '@/composables/useNetworkConnect';
 import SettingsLayout from '@/layouts/SettingsLayout.vue';
+import { CHANNELS_PATH, isEmbedded } from '@/lib/tantra/embed';
 import { Platform } from '@/types/platform';
 import type {
     AvailablePlatform,
@@ -32,6 +34,7 @@ const platforms = computed<AvailablePlatform[]>(
 const {
     open: openConnectDialog,
     openAt,
+    openGoal,
     showNetwork,
 } = useConnectChannelDialog();
 const { startConnect, instagramMethods } = useNetworkConnect(platforms);
@@ -52,6 +55,68 @@ const reconnectChannel = (channel: ConnectedAccount): void =>
 
 const disconnectChannel = (channel: ConnectedAccount): void =>
     disconnectDialog.value?.open(channel);
+
+// tantra: inside the Tantra CRM every connection happens here (PRD 2026-11-15,
+// 4.4 and 4.5). Another page sends ?connect=1 with what it wanted to open,
+// and the connect popup comes back with ?connected=<channel id>.
+const CONNECT_STEPS = [
+    'instagram',
+    'instagram-facebook',
+    'telegram',
+    'network',
+] as const;
+type EmbedStep = (typeof CONNECT_STEPS)[number];
+
+onMounted(() => {
+    if (!isEmbedded()) {
+        return;
+    }
+    const query = new URLSearchParams(window.location.search);
+    const connected = query.get('connected');
+    if (query.get('connect') !== '1' && !connected) {
+        return;
+    }
+
+    const network = query.get('network');
+    const step = query.get('step');
+    const reconnect = query.get('reconnect');
+    const valid = (value: string | null): value is string =>
+        value !== null && /^[a-z0-9_-]{1,40}$/i.test(value);
+
+    // Drop the request from the address first, so a reload or the CRM's
+    // copy of the URL does not open it again.
+    router.replace({
+        url: CHANNELS_PATH,
+        preserveState: true,
+        preserveScroll: true,
+    });
+
+    if (
+        connected &&
+        valid(connected) &&
+        props.connectedChannels.some(
+            (channel) => String(channel.id) === connected,
+        )
+    ) {
+        toast.success('Channel connected.');
+        // The posting times step, as the connect flash opens it today.
+        if (query.get('created') === '1') {
+            openGoal(connected);
+        }
+
+        return;
+    }
+    if (valid(network)) {
+        showNetwork(network, false);
+    } else if (
+        valid(step) &&
+        (CONNECT_STEPS as readonly string[]).includes(step)
+    ) {
+        openAt(step as EmbedStep, valid(reconnect) ? reconnect : undefined);
+    } else {
+        openConnectDialog();
+    }
+});
 </script>
 
 <template>
