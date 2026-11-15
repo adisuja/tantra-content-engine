@@ -91,7 +91,13 @@ onMounted(() => {
         preserveScroll: true,
     });
 
-    if (connected && valid(connected)) {
+    if (
+        connected &&
+        valid(connected) &&
+        props.connectedChannels.some(
+            (channel) => String(channel.id) === connected,
+        )
+    ) {
         toast.success('Channel connected.');
         // The posting times step, as the connect flash opens it today.
         if (query.get('created') === '1') {

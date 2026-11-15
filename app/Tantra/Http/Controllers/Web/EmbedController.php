@@ -66,6 +66,12 @@ class EmbedController extends Controller
             ['user' => $user, 'email' => $email] = ClerkLogin::resolve($claims);
         } catch (RuntimeException $e) {
             Log::warning('tantra.embed: sign in failed', ['reason' => $e->getMessage()]);
+            // Never leave the previous person's session in place when we cannot tell who this is.
+            if (Auth::guard('web')->check()) {
+                Auth::guard('web')->logoutCurrentDevice();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+            }
 
             return response()->json(['code' => 'server'], 503);
         }
@@ -91,7 +97,8 @@ class EmbedController extends Controller
         // 5. Sign in, unless already signed in as this person.
         if (! $guard->check()) {
             $request->session()->regenerate();
-            $guard->login($user, remember: true);
+            // No remember cookie: every Content mount proves who is signed in again.
+            $guard->login($user, remember: false);
         }
 
         // 6. The boot page now opens the page it was given.

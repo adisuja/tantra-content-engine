@@ -104,7 +104,17 @@
                 });
             });
 
+            // Ask until the CRM answers: its listener may attach after this frame loads.
+            var asks = 0;
             ready();
+            var asking = window.setInterval(function () {
+                asks += 1;
+                if (busy || asks >= 14) {
+                    window.clearInterval(asking);
+                    return;
+                }
+                ready();
+            }, 1000);
         })();
     </script>
 </body>
