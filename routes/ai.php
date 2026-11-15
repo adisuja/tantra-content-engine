@@ -18,5 +18,5 @@ Mcp::web('/mcp/trypost', TryPostServer::class)
 
 // tantra: Tantra Chat uses the same tools as the person chatting (App\Tantra\Chat\AuthenticateTantraChat).
 Mcp::web('/mcp/tantra-chat', TryPostServer::class)
-    ->middleware(['throttle:120,1', AuthenticateTantraChat::class])
+    ->middleware([AuthenticateTantraChat::class])
     ->name('mcp.tantra-chat');

@@ -5,18 +5,22 @@ declare(strict_types=1);
 namespace App\Tantra\Chat;
 
 /**
- * tantra: verifies a Tantra Chat token (cs_<HS256 JWT>), minted by the CRM and the chat Worker with the shared
- * TANTRA_CHAT_SIGNING_SECRET. Returns the verified email, or null for anything forged, expired or malformed.
+ * tantra: verifies a Tantra Chat engine token: cs_<HS256 JWT> minted only by the chat Worker (chat-api.usetantra.com)
+ * with TANTRA_CHAT_CONTENT_SECRET, a secret the CRM does not hold. Issuer tantra-chat, audience tantra-content,
+ * lifetime at most five minutes. Returns the Clerk user id (sub), or null for anything else, including the CRM's own
+ * chat tokens (other issuer, audience and secret).
  */
 final class ChatToken
 {
-    private const ISSUER = 'tantra-crm';
+    private const ISSUER = 'tantra-chat';
 
-    private const AUDIENCE = 'tantra-chat';
+    private const AUDIENCE = 'tantra-content';
+
+    private const MAX_LIFETIME = 300;
 
     private const LEEWAY = 10;
 
-    public static function email(string $raw, string $secret): ?string
+    public static function clerkUserId(string $raw, string $secret): ?string
     {
         if (strlen($secret) < 32 || ! str_starts_with($raw, 'cs_')) {
             return null;
@@ -38,24 +42,21 @@ final class ChatToken
         if (! is_array($claims)) {
             return null;
         }
+        if (($claims['iss'] ?? null) !== self::ISSUER || ($claims['aud'] ?? null) !== self::AUDIENCE) {
+            return null;
+        }
         $now = time();
-        $aud = $claims['aud'] ?? null;
-        $audOk = $aud === self::AUDIENCE || (is_array($aud) && in_array(self::AUDIENCE, $aud, true));
-        if (($claims['iss'] ?? null) !== self::ISSUER || ! $audOk) {
+        $iat = $claims['iat'] ?? null;
+        $exp = $claims['exp'] ?? null;
+        if (! is_int($iat) || ! is_int($exp) || $exp - $iat > self::MAX_LIFETIME || $now > $exp + self::LEEWAY || $iat > $now + self::LEEWAY) {
             return null;
         }
-        if (! is_int($claims['exp'] ?? null) || $now > $claims['exp'] + self::LEEWAY) {
-            return null;
-        }
-        if (isset($claims['nbf']) && (! is_int($claims['nbf']) || $now < $claims['nbf'] - self::LEEWAY)) {
-            return null;
-        }
-        $email = $claims['em'] ?? null;
-        if (! is_string($email) || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $sub = $claims['sub'] ?? null;
+        if (! is_string($sub) || preg_match('/^user_[A-Za-z0-9]{10,64}$/', $sub) !== 1) {
             return null;
         }
 
-        return mb_strtolower(trim($email));
+        return $sub;
     }
 
     private static function b64(string $s): ?string
