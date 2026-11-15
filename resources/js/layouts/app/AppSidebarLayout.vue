@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/sidebar';
 import { SIDEBAR_COOKIE_NAME } from '@/components/ui/sidebar/utils';
 import { useBelowBreakpoint } from '@/composables/useBreakpoint';
+import { embedded } from '@/lib/tantra/embed';
 import { index as postsIndex } from '@/routes/app/posts';
 
 type Props = {
@@ -63,14 +64,22 @@ watch(isCompactViewport, (isCompact) => {
 
 <template>
     <SidebarProvider v-model:open="sidebarOpen" class="bg-sidebar">
+        <!-- tantra: inside the Tantra CRM the CRM draws the sidebar and the
+             rounded panel; the frame is all content (PRD 2026-11-15, 4.6).
+             Settings keep their own section list. -->
         <slot name="sidebar">
-            <AppSidebar />
+            <AppSidebar v-if="!embedded" />
         </slot>
         <SidebarInset
-            class="min-w-0 overflow-hidden max-md:bg-sidebar md:my-2 md:me-2 md:rounded-xl md:border md:border-border md:bg-card"
+            :class="
+                embedded
+                    ? 'min-w-0 overflow-hidden bg-card'
+                    : 'min-w-0 overflow-hidden max-md:bg-sidebar md:my-2 md:me-2 md:rounded-xl md:border md:border-border md:bg-card'
+            "
             data-testid="app-content-shell"
         >
             <div
+                v-if="!embedded"
                 class="flex h-14 shrink-0 items-center gap-2 px-4 md:hidden"
                 data-testid="app-mobile-bar"
             >
@@ -86,8 +95,23 @@ watch(isCompactViewport, (isCompact) => {
                     <AppLogo class="text-[19px]" />
                 </Link>
             </div>
+            <!-- tantra: a narrow frame still reaches the settings section list. -->
             <div
-                class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-card max-md:mx-2 max-md:rounded-t-xl max-md:border max-md:border-b-0 max-md:border-border"
+                v-else-if="$slots['sidebar']"
+                class="flex h-12 shrink-0 items-center px-3 md:hidden"
+                data-testid="app-embed-settings-bar"
+            >
+                <SidebarTrigger
+                    class="size-9 [&_svg]:size-5"
+                    data-testid="app-sidebar-trigger"
+                />
+            </div>
+            <div
+                :class="
+                    embedded
+                        ? 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-card'
+                        : 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-card max-md:mx-2 max-md:rounded-t-xl max-md:border max-md:border-b-0 max-md:border-border'
+                "
             >
                 <AppHeader v-if="$slots['header'] || $slots['header-actions']">
                     <template v-if="$slots['header']" #left>

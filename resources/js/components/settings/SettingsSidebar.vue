@@ -20,6 +20,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useActiveUrl } from '@/composables/useActiveUrl';
 import { useSettingsNavigation } from '@/composables/useSettingsNavigation';
+import { embedded } from '@/lib/tantra/embed';
 
 const groups = useSettingsNavigation();
 const { urlIsActive } = useActiveUrl();
@@ -30,7 +31,9 @@ const exactMatchItems = ['general', 'profile', 'account'];
 
 <template>
     <Sidebar collapsible="icon" data-testid="settings-sidebar">
-        <SidebarHeader class="px-6 pt-6 pb-0 group-data-[collapsible=icon]:px-2.5 group-data-[collapsible=icon]:pt-4">
+        <!-- tantra: inside the Tantra CRM its tabs lead out of Settings, and
+             the account menu and sign out live in the CRM (PRD 2026-11-15, 4.6). -->
+        <SidebarHeader v-if="!embedded" class="px-6 pt-6 pb-0 group-data-[collapsible=icon]:px-2.5 group-data-[collapsible=icon]:pt-4">
             <Tooltip>
                 <TooltipTrigger as-child>
                     <Link
@@ -91,7 +94,7 @@ const exactMatchItems = ['general', 'profile', 'account'];
                 </SidebarMenu>
             </SidebarGroup>
         </SidebarContent>
-        <SidebarFooter class="gap-0 p-0">
+        <SidebarFooter v-if="!embedded" class="gap-0 p-0">
             <SidebarUserMenu />
         </SidebarFooter>
     </Sidebar>

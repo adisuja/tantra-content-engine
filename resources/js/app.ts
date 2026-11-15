@@ -12,6 +12,13 @@ import { bootLocale, i18nConfig, syncLocale, textDirection } from '@/language';
 import { syncContentTypeMediaRules } from '@/lib/contentTypeMediaRules';
 import { trackInAppPushes } from '@/lib/inAppHistory';
 import {
+    isConnectWindow,
+    isEmbedded,
+    setEmbedParents,
+    startConnectWindow,
+    startEmbedBridge,
+} from '@/lib/tantra/embed';
+import {
     capturePageview,
     initializePostHog,
     syncPostHogContext,
@@ -90,6 +97,21 @@ createInertiaApp({
 
                 mounted = true;
                 app.mount(el);
+
+                // tantra: inside the Tantra CRM's Content tab (PRD 2026-11-15).
+                if (isEmbedded()) {
+                    setEmbedParents(props.initialPage.props.tantraEmbedParents);
+                    router.on('navigate', (event) =>
+                        setEmbedParents(
+                            event.detail.page.props.tantraEmbedParents,
+                        ),
+                    );
+                    startEmbedBridge(props.initialPage);
+                }
+                // tantra: the connect popup opened from the Content tab reports back and closes.
+                if (isConnectWindow()) {
+                    startConnectWindow(props.initialPage);
+                }
             },
         }).use(plugin);
     },
