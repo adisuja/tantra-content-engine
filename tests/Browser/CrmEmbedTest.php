@@ -166,7 +166,7 @@ function expectBridgeUp(mixed $page): void
         (() => {
             const w = window.fwin();
             const read = (fn) => { try { return fn(); } catch (e) { return 'error: ' + e.message; } };
-            const dataPage = read(() => w.document.querySelector('[data-page]')?.getAttribute('data-page') || w.document.querySelector('script[data-page]')?.textContent || null);
+            const dataPage = read(() => w.document.querySelector('script[data-page]')?.textContent || w.document.querySelector('[data-page]')?.getAttribute('data-page') || null);
             return {
                 navigated: window.got('tantra:navigate').length > 0,
                 origin: location.origin,
@@ -174,7 +174,9 @@ function expectBridgeUp(mixed $page): void
                 stored: read(() => w.sessionStorage.getItem('tantra.parent')),
                 ancestor: read(() => w.location.ancestorOrigins[0] ?? null),
                 statePage: read(() => JSON.stringify(w.history.state?.page?.props?.tantraEmbedParents ?? null)),
-                dataPage: read(() => dataPage ? JSON.stringify(JSON.parse(dataPage).props?.tantraEmbedParents ?? null) : null),
+                dataPage: read(() => dataPage ? JSON.stringify(JSON.parse(dataPage).props?.tantraEmbedParents ?? 'missing') : null),
+                propKeys: read(() => dataPage ? Object.keys(JSON.parse(dataPage).props || {}).join(',') : null),
+                stateKeys: read(() => Object.keys(w.history.state || {}).join(',')),
                 messages: JSON.stringify(window.messages).slice(0, 600),
             };
         })()
