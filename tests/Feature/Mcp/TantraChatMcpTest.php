@@ -61,6 +61,8 @@ test('an engine token for a linked Clerk user uses the tools as that person in t
 
     $call = tantraChatMcp($this, $token, Method::ToolsCall->value, ['name' => 'get-workspace-tool', 'arguments' => (object) []])->assertOk();
     expect(json_encode($call->json('result')))->toContain((string) $this->workspace->id);
+
+    tantraChatMcp($this, $token, Method::ToolsCall->value, ['name' => 'list-posts-tool', 'arguments' => (object) []], headers: ['X-Tantra-Workspace' => (string) $this->workspace->id])->assertOk();
 });
 
 test('the route is off until the secret is set', function () {
@@ -114,3 +116,11 @@ test('an account without an active subscription is refused like the API', functi
 test('the existing MCP route still refuses chat tokens', function () {
     tantraChatMcp($this, tantraChatToken(), Method::ToolsList->value, route: 'mcp.trypost')->assertUnauthorized();
 });
+
+test('tool calls other than reading the workspace need the pinned workspace', function () {
+    tantraChatMcp($this, tantraChatToken(), Method::ToolsCall->value, ['name' => 'list-posts-tool', 'arguments' => (object) []])->assertStatus(409);
+});
+
+test('API key and webhook tools are refused on the chat route', function (string $tool) {
+    tantraChatMcp($this, tantraChatToken(), Method::ToolsCall->value, ['name' => $tool, 'arguments' => (object) []], headers: ['X-Tantra-Workspace' => (string) $this->workspace->id])->assertForbidden();
+})->with(['create-api-key-tool', 'list-api-keys-tool', 'get-webhook-tool', 'rotate-webhook-secret-tool', 'replay-webhook-log-tool']);

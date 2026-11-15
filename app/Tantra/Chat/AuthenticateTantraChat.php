@@ -24,6 +24,9 @@ final class AuthenticateTantraChat
 {
     public const PER_MINUTE = 120;
 
+    /** Developer setup that returns long-lived secrets: never available to the chat, whatever the client asks. */
+    public const BLOCKED_TOOL = '/(^|-)(api-key|api-keys|webhook|webhooks|webhook-secret)(-|$)|webhook-log/';
+
     public function handle(Request $request, Closure $next): Response
     {
         $secret = (string) config('tantra_chat.content_secret');
@@ -52,9 +55,18 @@ final class AuthenticateTantraChat
         if ($workspace === null || ! $user->can('view', $workspace)) {
             return response()->json(['message' => 'No workspace selected in the content engine.'], Response::HTTP_FORBIDDEN);
         }
+        $method = $request->json('method');
+        $tool = (string) $request->json('params.name', '');
+        if ($method === 'tools/call' && preg_match(self::BLOCKED_TOOL, $tool) === 1) {
+            return response()->json(['message' => 'API keys and webhooks are not available in the chat.'], Response::HTTP_FORBIDDEN);
+        }
+        // Every tool call except the one that reads the workspace must name the workspace the chat pinned.
         $pinned = $request->header('X-Tantra-Workspace');
+        if ($method === 'tools/call' && $tool !== 'get-workspace-tool' && blank($pinned)) {
+            return response()->json(['message' => 'The chat must pin a content engine workspace before acting.'], Response::HTTP_CONFLICT);
+        }
         if (filled($pinned) && $pinned !== (string) $workspace->id) {
-            return response()->json(['message' => 'Your content engine workspace changed since this chat started. Start a new chat to use the new one.'], Response::HTTP_CONFLICT);
+            return response()->json(['message' => 'Your content engine workspace changed during this chat message. Send the message again to use the new one.'], Response::HTTP_CONFLICT);
         }
         if (! config('trypost.self_hosted') && ! $workspace->account?->hasAppAccess()) {
             return response()->json(['message' => 'Active subscription required.'], Response::HTTP_PAYMENT_REQUIRED);
