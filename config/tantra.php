@@ -182,4 +182,19 @@ return [
         'parents' => array_values(array_filter(array_map(fn (string $origin): string => rtrim(trim($origin), '/'), explode(',', (string) env('TANTRA_EMBED_PARENTS', ''))))),
     ],
 
+    // Engagement channels (tantra-crm docs/crm/ENGAGEMENT_CHANNELS_CONTRACT.md): the CRM fetches each team's connected
+    // accounts server to server, and gets the Telegram bot's private-chat updates. Shared key, compared in constant time.
+    'engagement_channels' => [
+        'key' => env('ENGINE_CHANNELS_KEY'),
+        // CRM workspace id => Engine workspace ids, mapped explicitly: "ws_abc=uuid1|uuid2,ws_def=uuid3". Unmapped => empty list.
+        'workspaces' => env('ENGINE_CHANNELS_WORKSPACES', ''),
+        'per_minute' => (int) env('ENGINE_CHANNELS_PER_MINUTE', 60),
+        // The Tantra Worker (crm-api), not the app at crm.usetantra.com, which serves no hooks.
+        'telegram_forward_url' => env('TELEGRAM_ENGAGEMENT_URL', 'https://crm-api.usetantra.com/hooks/engagement/telegram'),
+        // Contract v2 (S-06): one secret per CRM workspace, made in Tantra (POST /api/engagement/hook-secrets/rotate shows
+        // it once) and pasted here as "ws_abc=hk_kid1:secret1,ws_def=hk_kid2:secret2". A workspace with no entry gets
+        // nothing forwarded, so this stays inert until its secret is set.
+        'telegram_secrets' => env('TELEGRAM_ENGAGEMENT_SECRETS', ''),
+    ],
+
 ];

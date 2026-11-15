@@ -6,6 +6,7 @@ use App\Tantra\Http\Controllers\Api\AgentRunnerController;
 use App\Tantra\Http\Controllers\Api\BatchController;
 use App\Tantra\Http\Controllers\Api\ChannelScheduleController;
 use App\Tantra\Http\Controllers\Api\ContextController;
+use App\Tantra\Http\Controllers\Api\EngagementChannelsController;
 use App\Tantra\Http\Controllers\Api\IdeaController;
 use App\Tantra\Http\Controllers\Api\MessagesController;
 use App\Tantra\Http\Controllers\Api\ProfileController;
@@ -129,3 +130,9 @@ Route::middleware(['api', 'throttle:120,1'])
 Route::middleware(['api', 'throttle:30,1'])
     ->get('tantra/health', HealthController::class)
     ->name('tantra.health');
+
+// tantra: the Tantra CRM fetches each team's connected accounts for Engagement (ENGAGEMENT_CHANNELS_CONTRACT.md).
+// Server to server: no session or user token, a shared key (checked in the controller) and its own rate limit.
+Route::middleware(['api', 'throttle:tantra-engagement-channels'])
+    ->post('api/tantra/engagement/channels', EngagementChannelsController::class)
+    ->name('tantra.api.engagement.channels');
