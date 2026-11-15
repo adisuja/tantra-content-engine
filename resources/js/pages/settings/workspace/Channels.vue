@@ -2,7 +2,6 @@
 import { Head, router, usePage } from '@inertiajs/vue3';
 import { IconPlus } from '@tabler/icons-vue';
 import { computed, onMounted, ref } from 'vue';
-import { toast } from 'vue-sonner';
 
 import ChannelListItem from '@/components/channels/ChannelListItem.vue';
 import DisconnectChannelDialog from '@/components/channels/DisconnectChannelDialog.vue';
@@ -34,7 +33,6 @@ const platforms = computed<AvailablePlatform[]>(
 const {
     open: openConnectDialog,
     openAt,
-    openGoal,
     showNetwork,
 } = useConnectChannelDialog();
 const { startConnect, instagramMethods } = useNetworkConnect(platforms);
@@ -83,27 +81,39 @@ onMounted(() => {
     const valid = (value: string | null): value is string =>
         value !== null && /^[a-z0-9_-]{1,40}$/i.test(value);
 
+    const known = (id: string): boolean =>
+        valid(id) &&
+        props.connectedChannels.some((channel) => String(channel.id) === id);
+    const isConnected = connected !== null && known(connected);
+
     // Drop the request from the address first, so a reload or the CRM's
-    // copy of the URL does not open it again.
+    // copy of the URL does not open it again. A connection the popup made
+    // arrives as the same flash a standalone connection lands with, so the
+    // connect dialog says so and opens the posting times step for every new
+    // channel, in turn.
     router.replace({
         url: CHANNELS_PATH,
         preserveState: true,
         preserveScroll: true,
+        ...(isConnected
+            ? {
+                  flash: {
+                      connectedChannel: {
+                          accountId: connected,
+                          created: query.get('created') === '1',
+                      },
+                      connectedChannels: [
+                          ...(query.get('created') === '1' ? [connected] : []),
+                          ...(query.get('new') ?? '')
+                              .split(',')
+                              .filter((id) => id !== connected && known(id)),
+                      ],
+                  },
+              }
+            : {}),
     });
 
-    if (
-        connected &&
-        valid(connected) &&
-        props.connectedChannels.some(
-            (channel) => String(channel.id) === connected,
-        )
-    ) {
-        toast.success('Channel connected.');
-        // The posting times step, as the connect flash opens it today.
-        if (query.get('created') === '1') {
-            openGoal(connected);
-        }
-
+    if (isConnected) {
         return;
     }
     if (valid(network)) {

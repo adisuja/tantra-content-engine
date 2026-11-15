@@ -60,3 +60,28 @@ it('sends events that have no email of their own only through the CRM', function
     Notify::send($this->ben, 'rebrand_ready', ['subject' => 'Your rebrand is ready']);
     Http::assertSent(fn ($r) => $r['message']['subject'] === 'Your rebrand is ready');
 });
+
+it('never sends its fallback copy for an email the main app owns or switched off', function () {
+    config(['tantra.crm.intake_key' => 'k', 'tantra.crm.url' => 'https://crm.test']);
+    Illuminate\Support\Facades\Cache::flush();
+    Http::fake(['crm.test/intake/engine/mail-flags' => Http::response(['flags' => ['manual-task-due' => 'app', 'media-missing' => 'off', 'reconnect-channel' => 'engine'],
+        'events' => ['manual-task-due' => 'engine.manual_task_due', 'media-missing' => 'engine.media_missing', 'reconnect-channel' => 'engine.reconnect_channel']])]);
+
+    (new SendToCrm('id-2', 'engine.manual_task_due', $this->ben->id, [], new ManualTaskDue('t1', 'x_post', 'EA1', 'Post this'), null, null, null))->failed(new RuntimeException('HTTP 500'));
+    (new SendToCrm('id-3', 'engine.media_missing', $this->ben->id, [], new ManualTaskDue('t1', 'x_post', 'EA1', 'Post this'), null, null, null))->failed(new RuntimeException('HTTP 500'));
+    Mail::assertNothingQueued();
+
+    (new SendToCrm('id-4', 'engine.reconnect_channel', $this->ben->id, [], new ManualTaskDue('t1', 'x_post', 'EA1', 'Post this'), null, null, null))->failed(new RuntimeException('HTTP 500'));
+    Mail::assertQueued(ManualTaskDue::class);
+});
+
+it('keeps the last flags it read when the main app cannot be reached, and owns everything if it never could', function () {
+    config(['tantra.crm.intake_key' => 'k', 'tantra.crm.url' => 'https://crm.test']);
+    Illuminate\Support\Facades\Cache::flush();
+    Http::fake(['crm.test/intake/engine/mail-flags' => Http::response([], 500)]);
+    expect(App\Tantra\Notify\CrmMailFlags::engineOwns('engine.manual_task_due'))->toBeTrue();
+
+    Illuminate\Support\Facades\Cache::forever('tantra:crm-mail-flags:last', ['flags' => ['manual-task-due' => 'app'], 'events' => ['manual-task-due' => 'engine.manual_task_due']]);
+    Illuminate\Support\Facades\Cache::forget('tantra:crm-mail-flags');
+    expect(App\Tantra\Notify\CrmMailFlags::engineOwns('engine.manual_task_due'))->toBeFalse();
+});

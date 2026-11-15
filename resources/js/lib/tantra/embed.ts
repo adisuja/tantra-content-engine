@@ -83,8 +83,8 @@ export const postToParent = (message: EmbedMessage): void => {
 
 /**
  * A path on this site only: starts with "/", not "//", no backslash, no
- * scheme, no control character, at most 2,000 characters. Same rule as the
- * server (App\Tantra\Embed\Embed::safePath) and the CRM.
+ * control character, resolves to this site, at most 2,000 characters. Same
+ * rule as the server (App\Tantra\Embed\Embed::safePath).
  */
 export const safePath = (path: unknown): string | null => {
     if (
@@ -94,9 +94,18 @@ export const safePath = (path: unknown): string | null => {
         !path.startsWith('/') ||
         path.startsWith('//') ||
         path.includes('\\') ||
-        path.includes('://') ||
         /[\u0000-\u001F\u007F]/.test(path)
     ) {
+        return null;
+    }
+    // A scheme or host only counts where it changes where the path goes,
+    // not inside a query value such as ?next=https://example.com.
+    try {
+        const base = 'https://engine.invalid';
+        if (new URL(path, base).origin !== base) {
+            return null;
+        }
+    } catch {
         return null;
     }
 
@@ -189,85 +198,298 @@ export const startEmbedBridge = (initialPage: Page): void => {
 };
 
 // ---- Connect flows in a popup (PRD 4.4) -------------------------------------
+//
+// A network's sign in pages may send Cross-Origin-Opener-Policy. That severs
+// the popup from this frame: popup.closed reads true while the person is
+// still signing in, and the popup has no window.opener to post to. So the
+// popup never depends on its opener. It opens on a same-origin bootstrap page
+// (/tantra/connect-window) that marks the tab with a nonce in sessionStorage
+// (per tab, survives the round trip through the network) and window.name,
+// then goes on to the connect page. When the flow ends the popup reports on a
+// same-origin BroadcastChannel and a localStorage `storage` event, and posts
+// to its opener too while it still has one. The frame and the popup are on
+// the same site as the Tantra app, so they share one storage partition.
 
-let pollTimer: number | undefined;
-let removeListener: (() => void) | undefined;
+/** BroadcastChannel name, localStorage key and sessionStorage marker. */
+export const CONNECT_KEY = 'tantra.connect';
+export const CONNECT_WINDOW_PATH = '/tantra/connect-window';
+const CONNECT_NONCE = /^[A-Za-z0-9_-]{16,64}$/;
+const CHANNEL_ID = /^[0-9a-f-]{36}$/i;
+/** Popup looked closed but the person may still be in it: wait this long at most. */
+export const CLOSED_GRACE_MS = 2 * 60 * 1000;
+/** Stop listening for a result after this long. */
+export const CONNECT_WAIT_LIMIT_MS = 15 * 60 * 1000;
 
-const finishConnect = (account: string | null, created: boolean): void => {
-    if (!account) {
+export const CONNECT_LEFT_TEXT =
+    'The sign in window closed before a channel was connected.';
+export const CONNECT_CLOSED_TEXT =
+    'No channel connected yet. If the sign in window is still open, finish there.';
+
+export type ConnectReport =
+    | {
+          v: 1;
+          type: 'tantra:connected';
+          nonce: string;
+          account: string;
+          created: boolean;
+          channels: string[];
+      }
+    | { v: 1; type: 'tantra:connect-left'; nonce: string };
+
+/** A report from the popup this frame opened (same nonce), else null. */
+export const readConnectReport = (
+    data: unknown,
+    nonce: string,
+): ConnectReport | null => {
+    const report = data as {
+        v?: unknown;
+        type?: unknown;
+        nonce?: unknown;
+        account?: unknown;
+        created?: unknown;
+        channels?: unknown;
+    } | null;
+    if (!report || report.v !== 1 || report.nonce !== nonce) {
+        return null;
+    }
+    if (report.type === 'tantra:connect-left') {
+        return { v: 1, type: 'tantra:connect-left', nonce };
+    }
+    if (
+        report.type !== 'tantra:connected' ||
+        typeof report.account !== 'string' ||
+        !CHANNEL_ID.test(report.account)
+    ) {
+        return null;
+    }
+
+    return {
+        v: 1,
+        type: 'tantra:connected',
+        nonce,
+        account: report.account,
+        created: report.created === true,
+        channels: Array.isArray(report.channels)
+            ? report.channels
+                  .filter(
+                      (id): id is string =>
+                          typeof id === 'string' && CHANNEL_ID.test(id),
+                  )
+                  .slice(0, 20)
+            : [],
+    };
+};
+
+const finishConnect = (report: ConnectReport): void => {
+    if (report.type !== 'tantra:connected') {
         router.reload();
+        toast.info(CONNECT_LEFT_TEXT, { id: 'tantra-connect-closed' });
 
         return;
     }
-    const query = new URLSearchParams({ connected: account });
-    if (created) {
+    const query = new URLSearchParams({ connected: report.account });
+    if (report.created) {
         query.set('created', '1');
     }
-    router.visit(`${CHANNELS_PATH}?${query.toString()}`);
+    const more = report.channels.filter((id) => id !== report.account);
+    if (more.length > 0) {
+        query.set('new', more.join(','));
+    }
+    const channelsUrl = `${CHANNELS_PATH}?${query.toString()}`;
+    // A late report (a severed popup) never takes the person off the page
+    // they moved on to: it says so and offers the Channels tab.
+    if (window.location.pathname !== CHANNELS_PATH) {
+        toast.success('Channel connected.', {
+            id: 'tantra-connect-late',
+            action: {
+                label: 'Open Channels',
+                onClick: () => router.visit(channelsUrl),
+            },
+        });
+
+        return;
+    }
+    router.visit(channelsUrl);
+};
+
+export const createConnectNonce = (): string => {
+    const bytes = crypto.getRandomValues(new Uint8Array(24));
+
+    return btoa(String.fromCharCode(...bytes))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+};
+
+/** The bootstrap page that marks the popup, then opens `url`. */
+export const connectWindowUrl = (url: string, nonce: string): string =>
+    `${CONNECT_WINDOW_PATH}?${new URLSearchParams({ nonce, to: url }).toString()}`;
+
+let stopWaiting: (() => void) | undefined;
+
+/**
+ * Waits for the popup marked with `nonce` to report. `popup.closed` alone is
+ * not a cancel (a severed popup reads closed too): it counts once this frame
+ * has the person's attention again (focus, a click or a key), or after
+ * CLOSED_GRACE_MS. Then the frame reloads, which shows any channel the server
+ * already has, and keeps listening until CONNECT_WAIT_LIMIT_MS in case the
+ * popup was only severed and reports later.
+ */
+const waitForConnect = (popup: Window | null, nonce: string): void => {
+    stopWaiting?.();
+
+    let done = false;
+    let closedSeen = false;
+    let closedHandled = false;
+    let pollTimer = 0;
+    let graceTimer = 0;
+    let limitTimer = 0;
+    const channel =
+        'BroadcastChannel' in window ? new BroadcastChannel(CONNECT_KEY) : null;
+    const attention = ['focus', 'pointerdown', 'keydown'] as const;
+    // Assigned below, once closedForReal exists.
+    let onAttention: () => void = () => undefined;
+
+    const stop = (): void => {
+        if (done) {
+            return;
+        }
+        done = true;
+        window.clearInterval(pollTimer);
+        window.clearTimeout(graceTimer);
+        window.clearTimeout(limitTimer);
+        window.removeEventListener('message', onMessage);
+        window.removeEventListener('storage', onStorage);
+        attention.forEach((name) =>
+            window.removeEventListener(name, onAttention, true),
+        );
+        channel?.close();
+        if (stopWaiting === stop) {
+            stopWaiting = undefined;
+        }
+    };
+
+    const deliver = (data: unknown): void => {
+        const report = readConnectReport(data, nonce);
+        if (done || !report) {
+            return;
+        }
+        stop();
+        finishConnect(report);
+    };
+
+    const onMessage = (event: MessageEvent): void => {
+        if (event.origin === window.location.origin) {
+            deliver(event.data);
+        }
+    };
+
+    const onStorage = (event: StorageEvent): void => {
+        if (event.key !== CONNECT_KEY || !event.newValue) {
+            return;
+        }
+        try {
+            deliver(JSON.parse(event.newValue));
+        } catch {
+            // Not a report.
+        }
+    };
+
+    const closedForReal = (): void => {
+        if (done || closedHandled) {
+            return;
+        }
+        closedHandled = true;
+        window.clearTimeout(graceTimer);
+        attention.forEach((name) =>
+            window.removeEventListener(name, onAttention, true),
+        );
+        router.reload();
+        toast.info(CONNECT_CLOSED_TEXT, { id: 'tantra-connect-closed' });
+    };
+
+    onAttention = (): void => {
+        if (closedSeen) {
+            closedForReal();
+        }
+    };
+
+    window.addEventListener('message', onMessage);
+    window.addEventListener('storage', onStorage);
+    if (channel) {
+        channel.onmessage = (event: MessageEvent) => deliver(event.data);
+    }
+
+    if (popup) {
+        pollTimer = window.setInterval(() => {
+            let closed = false;
+            try {
+                closed = popup.closed;
+            } catch {
+                closed = true;
+            }
+            if (!closed || done) {
+                return;
+            }
+            closedSeen = true;
+            window.clearInterval(pollTimer);
+            if (document.hasFocus()) {
+                closedForReal();
+
+                return;
+            }
+            attention.forEach((name) =>
+                window.addEventListener(name, onAttention, true),
+            );
+            graceTimer = window.setTimeout(closedForReal, CLOSED_GRACE_MS);
+        }, 1000);
+    }
+
+    limitTimer = window.setTimeout(stop, CONNECT_WAIT_LIMIT_MS);
+
+    stopWaiting = stop;
 };
 
 /**
  * Opens a connect page in a popup (embedded mode). When the popup lands on
- * the connected channel it posts tantra:connected and closes; the frame then
- * shows the Channels tab with the new channel. If the popup is blocked, a
- * toast offers the same page in a new tab.
+ * the connected channel it reports and closes; the frame then shows the
+ * Channels tab with the new channels. If the popup is blocked, a toast
+ * offers the same flow in a new tab, which reports back the same way.
  */
 export const openConnectWindow = (url: string): Window | null => {
-    const popup = window.open(url, CONNECT_WINDOW, 'width=600,height=760');
+    const nonce = createConnectNonce();
+    const popup = window.open(
+        connectWindowUrl(url, nonce),
+        CONNECT_WINDOW,
+        'width=600,height=760',
+    );
 
     if (!popup) {
         toast.warning('Your browser blocked the sign in window.', {
             id: 'tantra-connect-blocked',
             action: {
                 label: 'Continue in a new tab',
-                onClick: () => window.open(url, '_blank', 'noopener'),
+                onClick: () => {
+                    const tabNonce = createConnectNonce();
+                    window.open(
+                        connectWindowUrl(url, tabNonce),
+                        '_blank',
+                        'noopener',
+                    );
+                    waitForConnect(null, tabNonce);
+                },
             },
         });
 
         return null;
     }
 
-    popup.focus();
-    window.clearInterval(pollTimer);
-    removeListener?.();
-
-    let done = false;
-    const stop = (): void => {
-        done = true;
-        window.clearInterval(pollTimer);
-        removeListener?.();
-        removeListener = undefined;
-    };
-
-    const onMessage = (event: MessageEvent): void => {
-        if (event.origin !== window.location.origin || event.source !== popup) {
-            return;
-        }
-        const data = event.data as {
-            v?: unknown;
-            type?: unknown;
-            account?: unknown;
-            created?: unknown;
-        };
-        if (!data || data.v !== 1 || data.type !== 'tantra:connected' || done) {
-            return;
-        }
-        stop();
-        finishConnect(
-            typeof data.account === 'string' ? data.account : null,
-            data.created === true,
-        );
-    };
-    window.addEventListener('message', onMessage);
-    removeListener = () => window.removeEventListener('message', onMessage);
-
-    // Closed without a message (cancelled, or a page this side cannot read).
-    pollTimer = window.setInterval(() => {
-        if (popup.closed && !done) {
-            stop();
-            router.reload();
-        }
-    }, 1000);
+    try {
+        popup.focus();
+    } catch {
+        // Severed already: nothing to focus.
+    }
+    waitForConnect(popup, nonce);
 
     return popup;
 };
@@ -296,20 +518,47 @@ export const CONNECT_STEPS = [
 
 const CHANNEL_URL = /^\/channels\/([0-9a-f-]{36})\/publish(?:[/?#]|$)/i;
 
-export const isConnectWindow = (): boolean =>
-    typeof window !== 'undefined' &&
-    Boolean(window.opener) &&
-    window.name === CONNECT_WINDOW;
+/**
+ * The nonce the bootstrap page marked this tab with, else null. Read from
+ * sessionStorage first (kept through a COOP swap), then window.name.
+ */
+export const connectWindowNonce = (): string | null => {
+    if (typeof window === 'undefined' || isEmbedded()) {
+        return null;
+    }
+    try {
+        const stored = window.sessionStorage.getItem(CONNECT_KEY);
+        if (stored && CONNECT_NONCE.test(stored)) {
+            return stored;
+        }
+    } catch {
+        // Storage blocked: fall through.
+    }
+    const prefix = `${CONNECT_WINDOW}:`;
+    const named = window.name.startsWith(prefix)
+        ? window.name.slice(prefix.length)
+        : '';
+
+    return CONNECT_NONCE.test(named) ? named : null;
+};
+
+export const isConnectWindow = (): boolean => connectWindowNonce() !== null;
 
 export type ConnectOutcome =
     | { kind: 'wait' }
-    | { kind: 'connected'; account: string; created: boolean }
+    | {
+          kind: 'connected';
+          account: string;
+          created: boolean;
+          channels: string[];
+      }
     | { kind: 'left' };
 
 /**
  * What a page in the popup means. A connection step or its outcome page
  * (including every failure reason): wait. The connected channel's page,
- * known by the connectedChannel flash or /channels/{id}/publish: connected.
+ * known by the connectedChannel flash or /channels/{id}/publish: connected,
+ * with every channel the connection created (connectedChannels flash).
  * Anything else (the person went back, or signed out): left the flow.
  */
 export const connectOutcome = (
@@ -323,27 +572,79 @@ export const connectOutcome = (
     const fromUrl = new URL(url, window.location.origin).pathname.match(
         CHANNEL_URL,
     )?.[1];
-    const connected = (
-        flash as
-            | { connectedChannel?: { accountId?: unknown; created?: unknown } }
-            | undefined
-    )?.connectedChannel;
+    const flashed = flash as
+        | {
+              connectedChannel?: { accountId?: unknown; created?: unknown };
+              connectedChannels?: unknown;
+          }
+        | undefined;
+    const connected = flashed?.connectedChannel;
     const fromFlash =
         typeof connected?.accountId === 'string' &&
-        /^[0-9a-f-]{36}$/i.test(connected.accountId)
+        CHANNEL_ID.test(connected.accountId)
             ? connected.accountId
             : undefined;
     const account = fromFlash ?? fromUrl;
     if (!account) {
         return { kind: 'left' };
     }
+    const channels = Array.isArray(flashed?.connectedChannels)
+        ? flashed.connectedChannels.filter(
+              (id): id is string =>
+                  typeof id === 'string' && CHANNEL_ID.test(id),
+          )
+        : [];
 
-    return { kind: 'connected', account, created: connected?.created === true };
+    return {
+        kind: 'connected',
+        account,
+        created: connected?.created === true,
+        channels,
+    };
+};
+
+/** Sends the report on every path the frame listens on. */
+const sendConnectReport = (report: ConnectReport): void => {
+    if ('BroadcastChannel' in window) {
+        const channel = new BroadcastChannel(CONNECT_KEY);
+        channel.postMessage(report);
+        window.setTimeout(() => channel.close(), 1000);
+    }
+    try {
+        window.localStorage.setItem(
+            CONNECT_KEY,
+            JSON.stringify({ ...report, sentAt: Date.now() }),
+        );
+        window.localStorage.removeItem(CONNECT_KEY);
+    } catch {
+        // Storage blocked: the BroadcastChannel carried it.
+    }
+    try {
+        window.opener?.postMessage(report, window.location.origin);
+    } catch {
+        // Severed or gone: the paths above carried it.
+    }
+};
+
+/** After a COOP swap the popup may not close itself: say it is safe to. */
+const showCloseNotice = (connected: boolean): void => {
+    if (document.querySelector('[data-testid="connect-window-done"]')) {
+        return;
+    }
+    const notice = document.createElement('div');
+    notice.dataset.testid = 'connect-window-done';
+    notice.setAttribute('role', 'status');
+    notice.style.cssText =
+        'position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:24px;background:#ffffff;color:#1f1f1e;font:500 16px/1.5 system-ui,sans-serif;text-align:center;';
+    notice.textContent = connected
+        ? 'Connected. You can close this window.'
+        : 'You can close this window.';
+    document.body.appendChild(notice);
 };
 
 let connectReported = false;
 
-const reportConnected = (page: Page): void => {
+const reportConnected = (page: Page, nonce: string): void => {
     if (connectReported) {
         return;
     }
@@ -353,35 +654,50 @@ const reportConnected = (page: Page): void => {
     }
     connectReported = true;
 
-    // Only a real connected channel is reported; leaving the flow just
-    // closes, and the frame reloads when it sees the popup closed.
-    if (outcome.kind === 'connected') {
-        try {
-            window.opener?.postMessage(
-                {
-                    v: 1,
-                    type: 'tantra:connected',
-                    account: outcome.account,
-                    created: outcome.created,
-                },
-                window.location.origin,
-            );
-        } catch {
-            // The opener went away: the frame polls for the closed popup.
-        }
+    sendConnectReport(
+        outcome.kind === 'connected'
+            ? {
+                  v: 1,
+                  type: 'tantra:connected',
+                  nonce,
+                  account: outcome.account,
+                  created: outcome.created,
+                  channels: outcome.channels,
+              }
+            : { v: 1, type: 'tantra:connect-left', nonce },
+    );
+
+    // This tab is an ordinary Engine tab from here on.
+    try {
+        window.sessionStorage.removeItem(CONNECT_KEY);
+    } catch {
+        // Storage blocked.
     }
-    window.close();
+    if (window.name.startsWith(`${CONNECT_WINDOW}:`)) {
+        window.name = '';
+    }
+
+    // A moment first, so the report leaves before the window goes.
+    window.setTimeout(() => {
+        window.close();
+        window.setTimeout(() => {
+            if (!window.closed) {
+                showCloseNotice(outcome.kind === 'connected');
+            }
+        }, 300);
+    }, 150);
 };
 
 /** The connect popup (opened by openConnectWindow): report back and close. */
 export const startConnectWindow = (initialPage: Page): void => {
-    if (!isConnectWindow()) {
+    const nonce = connectWindowNonce();
+    if (nonce === null) {
         return;
     }
 
-    router.on('navigate', (event) => reportConnected(event.detail.page));
-    router.on('success', (event) => reportConnected(event.detail.page));
-    reportConnected(initialPage);
+    router.on('navigate', (event) => reportConnected(event.detail.page, nonce));
+    router.on('success', (event) => reportConnected(event.detail.page, nonce));
+    reportConnected(initialPage, nonce);
 };
 
 // ---- Connections only on Content > Channels (PRD 4.5) -----------------------

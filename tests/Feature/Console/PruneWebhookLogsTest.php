@@ -26,6 +26,8 @@ test('deletes webhook logs older than 7 days', function () {
 });
 
 test('keeps logs exactly 7 days old', function () {
+    // The database keeps whole seconds, so a moving clock could put the stored time just under the cutoff.
+    $this->freezeSecond();
     $webhook = Webhook::factory()->create();
 
     $borderline = WebhookLog::factory()->create([

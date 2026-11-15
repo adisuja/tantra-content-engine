@@ -19,6 +19,9 @@ class Embed
 
     public const MAX_PATH = 2000;
 
+    /** The connect popup's nonce (resources/js/lib/tantra/embed.ts createConnectNonce). */
+    public const CONNECT_NONCE = '/^[A-Za-z0-9_-]{16,64}$/';
+
     public static function enabled(): bool
     {
         return (bool) config('tantra.embed.enabled');
@@ -47,6 +50,7 @@ class Embed
      * Where the boot page goes once signed in: a path on this site only.
      * Anything else (another host, a scheme, a backslash, a control
      * character, too long) falls back to Insights. Blocks open redirects.
+     * The connect popup's bootstrap page uses the same rule.
      */
     public static function safePath(mixed $path, string $fallback = self::DEFAULT_PATH): string
     {
@@ -56,7 +60,14 @@ class Embed
         if (! str_starts_with($path, '/') || str_starts_with($path, '//')) {
             return $fallback;
         }
-        if (str_contains($path, '\\') || str_contains($path, '://') || preg_match('/[\x00-\x1F\x7F]/', $path) === 1) {
+        if (str_contains($path, '\\') || preg_match('/[\x00-\x1F\x7F]/', $path) === 1) {
+            return $fallback;
+        }
+
+        // A scheme or host only counts where it changes where the path goes,
+        // not inside a query value such as ?next=https://example.com.
+        $parts = parse_url('https://engine.invalid'.$path);
+        if ($parts === false || ($parts['host'] ?? null) !== 'engine.invalid' || isset($parts['port']) || isset($parts['user'])) {
             return $fallback;
         }
 
