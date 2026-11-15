@@ -5,11 +5,15 @@ declare(strict_types=1);
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Tantra\Embed\Embed;
 use Firebase\JWT\JWT;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Events\RouteMatched;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 // tantra: the Engine inside the Tantra CRM's Content tab (PRD 2026-11-15, 4.3
 // and 4.4), driven in a real browser. A tiny parent page stands in for the
@@ -242,6 +246,12 @@ beforeEach(function () {
         BROWSER_EMBED_ISSUER.'/.well-known/jwks.json' => Http::response(browserEmbedKey()['jwks']),
     ]);
     serveEmbedParents();
+
+    // Inertia forgets shared props once a request ends (for long running
+    // servers), and the browser server keeps one app for the whole test, so
+    // the share TantraServiceProvider made at boot is gone after the first
+    // request. Share it again on every request, as a fresh boot would.
+    Event::listen(RouteMatched::class, fn () => Inertia::share('tantraEmbedParents', fn (): array => Embed::enabled() ? Embed::parents() : []));
 });
 
 describe('layout', function () {
