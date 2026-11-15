@@ -94,7 +94,7 @@ it('sends unsent rows to Tantra with the server key, once, and keeps them on a s
     // Rows made in the same second have no order; pin the first one earlier so the send order is fixed.
     DB::table('tantra_ai_usages')->where('task', 'content.assist')->update(['created_at' => now()->subMinute()]);
 
-    Http::fakeSequence('crm.example.test/*')->push(['recorded' => true], 201)->push(['error' => 'busy'], 503);
+    Http::fakeSequence('crm.example.test/*')->push(['recorded' => true], 201)->push(['error' => 'busy'], 503)->push(['error' => 'task must be one of'], 422);
     $this->artisan('tantra:report-ai-usage')->assertSuccessful();
 
     Http::assertSent(fn (Request $r) => $r->url() === 'https://crm.example.test/api/ai/usage' && $r->hasHeader('Authorization', 'Bearer ck_test_key')
@@ -103,7 +103,6 @@ it('sends unsent rows to Tantra with the server key, once, and keeps them on a s
         ->and(DB::table('tantra_ai_usages')->whereNull('reported_at')->value('task'))->toBe('content.shorten');
 
     // The next run sends what was left; a 4xx closes the row with its reason.
-    Http::fake(['crm.example.test/*' => Http::response(['error' => 'task must be one of'], 422)]);
     $this->artisan('tantra:report-ai-usage')->assertSuccessful();
     expect(DB::table('tantra_ai_usages')->whereNull('reported_at')->count())->toBe(0)
         ->and(DB::table('tantra_ai_usages')->where('task', 'content.shorten')->value('report_error'))->toContain('422');
