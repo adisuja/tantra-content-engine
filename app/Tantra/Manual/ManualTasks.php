@@ -6,6 +6,8 @@ namespace App\Tantra\Manual;
 
 use App\Models\SocialAccount;
 use App\Models\User;
+use App\Tantra\Mail\Kit;
+use App\Tantra\Mail\PostCard;
 use App\Tantra\Notify\Notify;
 use App\Tantra\Review\Actions\ImportBatch;
 use App\Tantra\Review\Actions\ReviewActions;
@@ -144,7 +146,9 @@ final class ManualTasks
             ->each(function (ManualTask $task) use (&$due): void {
                 $task->forceFill(['status' => 'due', 'notified_at' => now()])->save();
                 if ($task->owner !== null) {
-                    Notify::send($task->owner, 'manual_task_due', ['task_id' => $task->id, 'kind' => $task->kind, 'post' => (string) $task->item?->engine_post_id, 'due_at' => $task->due_at?->toIso8601String()], new ManualTaskDue($task->id, $task->kind, (string) $task->item?->engine_post_id, $task->text), null, url('/tantra/tasks'), 'Open the task');
+                    // text, network and due_label go with the event so the main app can render the same email on its kit (R3, 15 Nov).
+                    Notify::send($task->owner, 'manual_task_due', ['task_id' => $task->id, 'kind' => $task->kind, 'post' => (string) $task->item?->engine_post_id, 'due_at' => $task->due_at?->toIso8601String(),
+                        'text' => mb_substr(trim((string) $task->text), 0, 600), 'network' => Kit::networkOf($task->item?->platform), 'due_label' => $task->due_at ? PostCard::when($task->due_at, $task->owner->timezone) : 'now', 'url' => url('/tantra/tasks')], new ManualTaskDue($task->id, $task->kind, (string) $task->item?->engine_post_id, $task->text), null, url('/tantra/tasks'), 'Open the task');
                 }
                 $due++;
             });

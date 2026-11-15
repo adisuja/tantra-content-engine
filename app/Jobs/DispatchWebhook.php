@@ -11,13 +11,13 @@ use App\Models\Webhook;
 use App\Models\WebhookLog;
 use App\Services\Http\SafeHttpFetcher;
 use App\Services\WebhookService;
+use App\Tantra\Notify\DirectMail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Throwable;
@@ -159,7 +159,8 @@ class DispatchWebhook implements ShouldQueue
             $owner = $this->webhook->workspace?->account?->owner;
 
             if ($owner?->email) {
-                Mail::to($owner)->send(new WebhookPausedMail($this->webhook));
+                // tantra: the main app sends this email on its kit once it owns it (R3); until then exactly as before.
+                DirectMail::send($owner, new WebhookPausedMail($this->webhook));
             }
         }
     }

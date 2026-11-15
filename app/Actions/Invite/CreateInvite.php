@@ -10,7 +10,7 @@ use App\Mail\WorkspaceInvite as WorkspaceInviteMail;
 use App\Models\Invite;
 use App\Models\Workspace;
 use App\Services\PostHogService;
-use Illuminate\Support\Facades\Mail;
+use App\Tantra\Notify\DirectMail;
 
 class CreateInvite
 {
@@ -27,9 +27,8 @@ class CreateInvite
             'workspaces' => [$workspace->id],
         ]);
 
-        Mail::to($invite->email)
-            ->locale($inviter->preferredLocale())
-            ->send(new WorkspaceInviteMail($invite));
+        // tantra: the main app sends this email on its kit once it owns it (R3); until then exactly as before.
+        DirectMail::send($invite->email, new WorkspaceInviteMail($invite), $inviter->preferredLocale(), $workspace->name);
 
         rescue(function () use ($workspace, $invite, $inviter): void {
             CaptureAccountEvent::dispatchIf(
