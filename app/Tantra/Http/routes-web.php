@@ -15,6 +15,7 @@ use App\Tantra\Http\Controllers\Web\ClerkSessionController;
 use App\Tantra\Http\Controllers\Web\ConnectorController;
 use App\Tantra\Http\Controllers\Web\DeveloperAppsController;
 use App\Tantra\Http\Controllers\Web\DigestUnsubscribeController;
+use App\Tantra\Http\Controllers\Web\EngagementController;
 use App\Tantra\Http\Controllers\Web\FormatsController;
 use App\Tantra\Http\Controllers\Web\IdeaReviewController;
 use App\Tantra\Http\Controllers\Web\InsightsController;
@@ -119,6 +120,38 @@ Route::middleware(['web', 'auth'])
 Route::middleware(['web', 'auth', EnsureAccountReady::class, EnsureHasWorkspace::class])
     ->get('tantra/insights', [InsightsController::class, 'index'])
     ->name('tantra.insights');
+
+// tantra: the Engagement tab (PRD Engagement, phase 4): a view and editor on the Tantra CRM, which runs the follow-ups.
+// The JSON routes relay to the CRM with the server's key; Approve and start needs an owner-level user and confirm=true.
+Route::middleware(['web', 'auth'])
+    ->prefix('tantra/engagement')
+    ->name('tantra.engagement.')
+    ->group(function (): void {
+        Route::prefix('api')->name('api.')->middleware('throttle:240,1')->group(function (): void {
+            $id = '[A-Za-z0-9_-]{1,64}';
+            Route::get('/sources', [EngagementController::class, 'sources'])->name('sources');
+            Route::get('/sources/{source}', [EngagementController::class, 'source'])->where('source', $id)->name('source');
+            Route::post('/sources/{source}/enable', [EngagementController::class, 'enable'])->where('source', $id)->name('enable');
+            Route::post('/sources/{source}/poll', [EngagementController::class, 'poll'])->where('source', $id)->name('poll');
+            Route::get('/sources/{source}/backlog', [EngagementController::class, 'backlog'])->where('source', $id)->name('backlog');
+            Route::get('/sources/{source}/preview', [EngagementController::class, 'preview'])->where('source', $id)->name('preview');
+            Route::post('/sources/{source}/approve', [EngagementController::class, 'approve'])->where('source', $id)->name('approve');
+            Route::get('/quotas', [EngagementController::class, 'quotas'])->name('quotas');
+            Route::get('/people', [EngagementController::class, 'people'])->name('people');
+            Route::get('/people/timeline', [EngagementController::class, 'timeline'])->name('timeline');
+            Route::post('/people/team', [EngagementController::class, 'team'])->name('team');
+            Route::get('/pipeline', [EngagementController::class, 'pipeline'])->name('pipeline');
+            Route::post('/pipeline/{deal}/move', [EngagementController::class, 'move'])->where('deal', $id)->name('move');
+            Route::get('/sequence-board', [EngagementController::class, 'sequenceBoard'])->name('sequence-board');
+            Route::post('/sequences', [EngagementController::class, 'createSequence'])->name('sequences.store');
+            Route::get('/sequences/{sequence}', [EngagementController::class, 'sequence'])->where('sequence', $id)->name('sequences.show');
+            Route::patch('/sequences/{sequence}', [EngagementController::class, 'updateSequence'])->where('sequence', $id)->name('sequences.update');
+        });
+        Route::get('/{tab?}', [EngagementController::class, 'page'])
+            ->where('tab', implode('|', EngagementController::TABS))
+            ->middleware([EnsureAccountReady::class, EnsureHasWorkspace::class])
+            ->name('index');
+    });
 
 // tantra: reconnect a LinkedIn channel from the reminder (PRD M3).
 Route::middleware(['web', 'auth'])

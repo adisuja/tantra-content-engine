@@ -84,6 +84,12 @@ return [
         'intake_key' => env('TANTRA_CRM_INTAKE_KEY'),
         // The CRM's /api/trk key: tracked short links and the traffic report. Server side only, never sent to the browser.
         'api_key' => env('TANTRA_CRM_API_KEY'),
+        // The Engagement tab (PRD Engagement, phase 4): a view and editor on the CRM's /api/engagement routes, which run
+        // the follow-ups. Same key as above, server side only. The main Account's workspaces map to the key's CRM workspace.
+        'engagement' => [
+            'enabled' => (bool) env('TANTRA_CRM_ENGAGEMENT', true),
+            'timeout' => (int) env('TANTRA_CRM_ENGAGEMENT_TIMEOUT', 20),
+        ],
         // Every link in content becomes a CRM short link for its piece and person (card 29 context, 2026-11-14).
         'links' => [
             'enabled' => (bool) env('TANTRA_CRM_LINKS', true),
