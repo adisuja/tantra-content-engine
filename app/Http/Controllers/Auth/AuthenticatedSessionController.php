@@ -10,20 +10,27 @@ use App\Jobs\PostHog\SyncUser;
 use App\Models\Invite;
 use App\Services\PostHogService;
 use App\Tantra\Auth\ClerkLogin;
+use App\Tantra\Embed\Embed;
 use App\Tantra\Http\Controllers\Web\ClerkSessionController;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class AuthenticatedSessionController extends Controller
 {
     /**
      * Display the login view.
      */
-    public function create(Request $request): Response
+    public function create(Request $request): Response|SymfonyResponse
     {
+        // tantra C-10: the Tantra sign in is the only login (TANTRA_EMBED_STANDALONE_REDIRECT).
+        if ($to = Embed::loginRedirect($request)) {
+            return Inertia::location($to);
+        }
+
         // tantra: the usetantra.com login (Clerk); ?password=1 keeps this form.
         if (ClerkLogin::enabled() && ! $request->boolean('password')) {
             return ClerkSessionController::page($request);

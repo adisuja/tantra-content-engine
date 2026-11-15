@@ -190,6 +190,10 @@ return [
         // standalone app. OAuth, sign in, set password and signed links are never rewritten.
         'email_links' => (bool) env('TANTRA_EMBED_EMAIL_LINKS', false),
         'shell_url' => rtrim((string) env('TANTRA_EMBED_SHELL_URL', 'https://crm.usetantra.com/content'), '/'),
+        // C-10: the standalone sign in page sends people to Tantra's Content tab, so the Tantra sign in is the only
+        // login. Never inside the Tantra frame, never for ?password=1, and never when the person was on their way to a
+        // standalone path (OAuth, connect, set password). Callbacks, webhooks and public pages are not touched.
+        'standalone_redirect' => (bool) env('TANTRA_EMBED_STANDALONE_REDIRECT', false),
     ],
 
 ];
