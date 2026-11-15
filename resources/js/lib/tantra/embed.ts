@@ -283,50 +283,92 @@ export const connectLinkClick = (event: MouseEvent, url: string): void => {
 
 // ---- The popup side ---------------------------------------------------------
 
-// Steps inside the popup that are not the end of the connection.
-const CONNECT_STEPS = [
+// Pages the popup waits on: the steps of a connection, and its outcome page.
+// Every callback failure (ConnectFailures, ConnectSafetyNet) lands on
+// accounts/ConnectFinish with its named reason and next step, so the popup
+// stays open there for the person to read it.
+export const CONNECT_STEPS = [
     'accounts/ConnectFinish',
     'tantra/connect/Prepare',
     'accounts/MastodonConnect',
     'accounts/BlueskyConnect',
 ];
 
-const CHANNEL_URL = /^\/channels\/([0-9a-f-]{36})\/publish/i;
+const CHANNEL_URL = /^\/channels\/([0-9a-f-]{36})\/publish(?:[/?#]|$)/i;
 
 export const isConnectWindow = (): boolean =>
     typeof window !== 'undefined' &&
     Boolean(window.opener) &&
     window.name === CONNECT_WINDOW;
 
+export type ConnectOutcome =
+    | { kind: 'wait' }
+    | { kind: 'connected'; account: string; created: boolean }
+    | { kind: 'left' };
+
+/**
+ * What a page in the popup means. A connection step or its outcome page
+ * (including every failure reason): wait. The connected channel's page,
+ * known by the connectedChannel flash or /channels/{id}/publish: connected.
+ * Anything else (the person went back, or signed out): left the flow.
+ */
+export const connectOutcome = (
+    component: string,
+    url: string,
+    flash: unknown,
+): ConnectOutcome => {
+    if (CONNECT_STEPS.includes(component)) {
+        return { kind: 'wait' };
+    }
+    const fromUrl = new URL(url, window.location.origin).pathname.match(
+        CHANNEL_URL,
+    )?.[1];
+    const connected = (
+        flash as
+            | { connectedChannel?: { accountId?: unknown; created?: unknown } }
+            | undefined
+    )?.connectedChannel;
+    const fromFlash =
+        typeof connected?.accountId === 'string' &&
+        /^[0-9a-f-]{36}$/i.test(connected.accountId)
+            ? connected.accountId
+            : undefined;
+    const account = fromFlash ?? fromUrl;
+    if (!account) {
+        return { kind: 'left' };
+    }
+
+    return { kind: 'connected', account, created: connected?.created === true };
+};
+
 let connectReported = false;
 
 const reportConnected = (page: Page): void => {
-    if (connectReported || CONNECT_STEPS.includes(page.component)) {
+    if (connectReported) {
+        return;
+    }
+    const outcome = connectOutcome(page.component, page.url, page.flash);
+    if (outcome.kind === 'wait') {
         return;
     }
     connectReported = true;
 
-    const flash = (
-        page.flash as
-            | { connectedChannel?: { accountId?: string; created?: boolean } }
-            | undefined
-    )?.connectedChannel;
-    const fromUrl = new URL(page.url, window.location.origin).pathname.match(
-        CHANNEL_URL,
-    )?.[1];
-
-    try {
-        window.opener?.postMessage(
-            {
-                v: 1,
-                type: 'tantra:connected',
-                account: flash?.accountId ?? fromUrl ?? null,
-                created: flash?.created === true,
-            },
-            window.location.origin,
-        );
-    } catch {
-        // The opener went away: the frame polls for the closed popup.
+    // Only a real connected channel is reported; leaving the flow just
+    // closes, and the frame reloads when it sees the popup closed.
+    if (outcome.kind === 'connected') {
+        try {
+            window.opener?.postMessage(
+                {
+                    v: 1,
+                    type: 'tantra:connected',
+                    account: outcome.account,
+                    created: outcome.created,
+                },
+                window.location.origin,
+            );
+        } catch {
+            // The opener went away: the frame polls for the closed popup.
+        }
     }
     window.close();
 };

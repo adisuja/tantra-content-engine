@@ -302,3 +302,28 @@ describe('frame-ancestors header', function () {
         $this->get('/login')->assertInertia(fn (Assert $page) => $page->where('tantraEmbedParents', []));
     });
 });
+
+describe('connect popup contract', function () {
+    // The popup (resources/js/lib/tantra/embed.ts) stays open on these pages
+    // and only reports tantra:connected from the connected channel's page.
+    // Every callback failure lands on accounts/ConnectFinish (failConnection,
+    // ConnectSafetyNet), covered in tests/Feature/Social/*ControllerTest.php.
+    it('waits on every connect step and outcome page that exists', function () {
+        $source = (string) file_get_contents(resource_path('js/lib/tantra/embed.ts'));
+        preg_match('/export const CONNECT_STEPS = \[(.*?)\];/s', $source, $match);
+        preg_match_all("/'([^']+)'/", $match[1] ?? '', $components);
+
+        expect($components[1])->toBe(['accounts/ConnectFinish', 'tantra/connect/Prepare', 'accounts/MastodonConnect', 'accounts/BlueskyConnect']);
+        foreach ($components[1] as $component) {
+            expect(resource_path("js/pages/{$component}.vue"))->toBeFile();
+        }
+    });
+
+    it('sends every connect failure to the outcome page the popup waits on', function () {
+        $source = (string) file_get_contents(app_path('Http/Controllers/Auth/SocialController.php'));
+
+        expect($source)->toContain("Inertia::render('accounts/ConnectFinish'")
+            ->and($source)->toMatch("/function failConnection.*?redirect\(\)->route\('app\.social\.connect\.show'/s")
+            ->and((string) file_get_contents(app_path('Tantra/Channels/ConnectSafetyNet.php')))->toContain("redirect()->route('app.social.connect.show'");
+    });
+});
