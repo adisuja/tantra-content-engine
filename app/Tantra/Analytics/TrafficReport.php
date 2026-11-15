@@ -206,7 +206,7 @@ final class TrafficReport
                     ];
                 });
         } catch (Throwable $e) {
-            return [...$base, 'status' => 'error', 'message' => 'The Tantra CRM report did not answer: '.$e->getMessage()];
+            return [...$base, 'status' => 'error', 'message' => 'The Tantra report did not answer: '.$e->getMessage()];
         }
 
         $byAsset = collect((array) ($data['asset']['rows'] ?? []))->keyBy('asset');
@@ -337,14 +337,14 @@ final class TrafficReport
     {
         if ($perPerson) {
             return [
-                'visits' => 'Visits show per person and for the team. The CRM does not split them per piece yet.',
-                'leads' => 'Leads show per person and for the team. The CRM does not tie a lead to one piece yet.',
+                'visits' => 'Visits show per person and for the team. Tantra does not split them per piece yet.',
+                'leads' => 'Leads show per person and for the team. Tantra does not tie a lead to one piece yet.',
             ];
         }
 
         return [
-            'visits' => 'The CRM counts visits per campaign and platform. It does not split them per person or piece yet, so visits show for the team and per platform only.',
-            'leads' => 'The CRM does not tie a new lead to the link that brought it yet. Registrations and bookings are the conversions it does tie to each link.',
+            'visits' => 'Tantra counts visits per campaign and platform. It does not split them per person or piece yet, so visits show for the team and per platform only.',
+            'leads' => 'Tantra does not tie a new lead to the link that brought it yet. Registrations and bookings are the conversions it does tie to each link.',
         ];
     }
 
