@@ -39,6 +39,25 @@ class EmbedController extends Controller
         ]);
     }
 
+    /**
+     * The connect popup's first page (PRD 2026-11-15, 4.4). It marks this
+     * tab as the popup with the frame's nonce (sessionStorage and
+     * window.name, never window.opener, which a network's
+     * Cross-Origin-Opener-Policy can cut), then opens the connect page.
+     */
+    public function connectWindow(Request $request): View
+    {
+        abort_unless(Embed::enabled(), 404);
+
+        $nonce = $request->query('nonce');
+        abort_unless(is_string($nonce) && preg_match(Embed::CONNECT_NONCE, $nonce) === 1, 404);
+
+        return view('tantra::connect-window', [
+            'nonce' => $nonce,
+            'to' => Embed::safePath($request->query('to'), '/settings/workspace/channels'),
+        ]);
+    }
+
     public function session(Request $request): JsonResponse
     {
         abort_unless(Embed::enabled(), 404);
@@ -56,6 +75,7 @@ class EmbedController extends Controller
 
             return response()->json(['code' => 'token_invalid'], 401);
         } catch (RuntimeException $e) {
+            // ClerkUnavailable: the signing keys could not be read (a Clerk outage).
             Log::warning('tantra.embed: token check failed', ['reason' => $e->getMessage()]);
 
             return response()->json(['code' => 'server'], 503);
@@ -85,10 +105,13 @@ class EmbedController extends Controller
             $request->session()->regenerateToken();
         }
 
-        // 4. A CRM user with no Engine login.
+        // 4. A CRM user with no Engine login. Without CLERK_SECRET_KEY the
+        // email stays unknown, which is a setup gap, not a "no access".
         if ($user === null) {
-            if ($email === null) {
+            if ($email === null && blank(config('tantra.clerk.secret_key'))) {
                 Log::warning('tantra.embed: no verified email for the Clerk user; set CLERK_SECRET_KEY or add email to the session token', ['sub' => $claims['sub']]);
+
+                return response()->json(['code' => 'server'], 503);
             }
 
             return response()->json(['code' => 'no_access'], 403);

@@ -36,7 +36,18 @@ class ClerkLogin
     public static function resolve(array $claims): array
     {
         $clerkId = (string) $claims['sub'];
-        $email = self::verifiedEmail($claims);
+        try {
+            $email = self::verifiedEmail($claims);
+        } catch (ClerkUnavailable $e) {
+            // Clerk did not answer: a person already linked still signs in;
+            // anyone else must try again, never be told "no access".
+            $linked = User::query()->where('clerk_user_id', $clerkId)->first();
+            if ($linked !== null) {
+                return ['user' => $linked, 'email' => null];
+            }
+
+            throw $e;
+        }
 
         if ($email !== null && TeamAccess::isTeamEmail($email)) {
             return ['user' => TeamAccess::grant($email, clerkId: $clerkId), 'email' => $email];
@@ -103,6 +114,8 @@ class ClerkLogin
      * Clerk's Backend API (CLERK_SECRET_KEY).
      *
      * @param  array<string, mixed>  $claims
+     *
+     * @throws ClerkUnavailable when the Backend API times out or fails (5xx, 429)
      */
     public static function verifiedEmail(array $claims): ?string
     {
@@ -139,8 +152,11 @@ class ClerkLogin
         try {
             $response = Http::timeout(8)->withToken($secret)->acceptJson()
                 ->get(config('tantra.clerk.api_url').'/users/'.rawurlencode($clerkId));
-        } catch (Throwable) {
-            return null;
+        } catch (Throwable $e) {
+            throw new ClerkUnavailable('Clerk\'s Backend API did not answer: '.$e->getMessage(), previous: $e);
+        }
+        if ($response->serverError() || $response->status() === 429) {
+            throw new ClerkUnavailable('Clerk\'s Backend API answered '.$response->status().'.');
         }
         if (! $response->successful()) {
             return null;

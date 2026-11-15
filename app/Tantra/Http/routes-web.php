@@ -224,6 +224,9 @@ Route::middleware(['web'])
 Route::middleware(['web', 'throttle:60,1'])
     ->post('tantra/embed/session', [EmbedController::class, 'session'])
     ->name('tantra.embed.session');
+Route::middleware(['web'])
+    ->get('tantra/connect-window', [EmbedController::class, 'connectWindow'])
+    ->name('tantra.embed.connect-window');
 
 // tantra: live lookups for the composer's format settings (YouTube playlists, Pinterest board sections).
 Route::middleware(['web', 'auth', EnsureAccountReady::class, EnsureHasWorkspace::class, 'throttle:30,1'])
