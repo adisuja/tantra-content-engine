@@ -9,6 +9,7 @@ use App\Tantra\Http\Controllers\Api\CrmIdeasController;
 use App\Tantra\Http\Controllers\Api\CrmPostActionsController;
 use App\Tantra\Http\Controllers\Api\CrmPublishController;
 use App\Tantra\Http\Controllers\Api\CrmPostsController;
+use App\Tantra\Http\Controllers\Api\CrmRepurposeController;
 use App\Tantra\Http\Controllers\Api\ContextController;
 use App\Tantra\Http\Controllers\Api\EngagementChannelsController;
 use App\Tantra\Http\Controllers\Api\IdeaController;
@@ -153,4 +154,7 @@ Route::middleware(['api', 'tantra.crm-key', 'throttle:tantra-engagement-channels
         Route::post('/posts/approval', [CrmPostActionsController::class, 'approval'])->name('posts.approval');
         Route::post('/publish/channels', [CrmPublishController::class, 'channels'])->name('publish.channels');
         Route::post('/publish', [CrmPublishController::class, 'publish'])->name('publish');
+        Route::post('/repurpose/sources', [CrmRepurposeController::class, 'sources'])->name('repurpose.sources');
+        Route::post('/repurpose/targets', [CrmRepurposeController::class, 'targets'])->name('repurpose.targets');
+        Route::post('/repurpose/start', [CrmRepurposeController::class, 'start'])->name('repurpose.start');
     });
