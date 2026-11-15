@@ -7,6 +7,7 @@ use App\Tantra\Http\Controllers\Api\BatchController;
 use App\Tantra\Http\Controllers\Api\ChannelScheduleController;
 use App\Tantra\Http\Controllers\Api\CrmIdeasController;
 use App\Tantra\Http\Controllers\Api\CrmPostActionsController;
+use App\Tantra\Http\Controllers\Api\CrmPublishController;
 use App\Tantra\Http\Controllers\Api\CrmPostsController;
 use App\Tantra\Http\Controllers\Api\ContextController;
 use App\Tantra\Http\Controllers\Api\EngagementChannelsController;
@@ -150,4 +151,6 @@ Route::middleware(['api', 'tantra.crm-key', 'throttle:tantra-engagement-channels
         Route::post('/posts', [CrmPostsController::class, 'index'])->name('posts');
         Route::post('/posts/update', [CrmPostActionsController::class, 'update'])->name('posts.update');
         Route::post('/posts/approval', [CrmPostActionsController::class, 'approval'])->name('posts.approval');
+        Route::post('/publish/channels', [CrmPublishController::class, 'channels'])->name('publish.channels');
+        Route::post('/publish', [CrmPublishController::class, 'publish'])->name('publish');
     });
