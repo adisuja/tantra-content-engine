@@ -35,6 +35,7 @@ use App\Tantra\Console\CreateOwnerCommand;
 use App\Tantra\Console\DailyDigestCommand;
 use App\Tantra\Console\EngagementBackfillCommand;
 use App\Tantra\Console\GiveawayRepliesCommand;
+use App\Tantra\Console\GatewayKeyUsageCommand;
 use App\Tantra\Console\HealthCommand;
 use App\Tantra\Console\HeartbeatCommand;
 use App\Tantra\Console\InviteTeammateCommand;
@@ -42,6 +43,7 @@ use App\Tantra\Console\LinkedInSyncCommand;
 use App\Tantra\Console\ManualTasksCommand;
 use App\Tantra\Console\MapProfileCommand;
 use App\Tantra\Console\ReconnectRemindersCommand;
+use App\Tantra\Console\RoutesJsonCommand;
 use App\Tantra\Console\RepurposeCadenceCommand;
 use App\Tantra\Console\RoadmapKeyCommand;
 use App\Tantra\Console\SyncChannelsCommand;
@@ -276,7 +278,7 @@ class TantraServiceProvider extends ServiceProvider
         });
 
         if ($this->app->runningInConsole()) {
-            $this->commands([AiConnectorCommand::class, CheckConnectorsCommand::class, CollectMetricsCommand::class, CreateOwnerCommand::class, DailyDigestCommand::class, BillingTickCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class, TeamAccountsCommand::class, TeamAccountCommand::class, ClerkUnlinkCommand::class, LinkedInSyncCommand::class, AgentJobsCommand::class, RepurposeCadenceCommand::class, GiveawayRepliesCommand::class, EngagementBackfillCommand::class, HealthCommand::class, HeartbeatCommand::class, ReconnectRemindersCommand::class, SyncChannelsCommand::class, RoadmapKeyCommand::class, TrackLinksCommand::class, ReportAiUsageCommand::class]);
+            $this->commands([AiConnectorCommand::class, CheckConnectorsCommand::class, CollectMetricsCommand::class, CreateOwnerCommand::class, DailyDigestCommand::class, BillingTickCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class, TeamAccountsCommand::class, TeamAccountCommand::class, ClerkUnlinkCommand::class, LinkedInSyncCommand::class, AgentJobsCommand::class, RepurposeCadenceCommand::class, GiveawayRepliesCommand::class, EngagementBackfillCommand::class, HealthCommand::class, HeartbeatCommand::class, ReconnectRemindersCommand::class, SyncChannelsCommand::class, RoadmapKeyCommand::class, TrackLinksCommand::class, ReportAiUsageCommand::class, GatewayKeyUsageCommand::class, RoutesJsonCommand::class]);
         }
 
         if ($this->app->environment('production') && config('tantra.lean_workers.enabled')) {
