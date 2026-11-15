@@ -151,13 +151,14 @@ final class EngagementChannels
     }
 
     /**
-     * Refresh a token that has expired or expires within 15 minutes, before it is handed out: the CRM never
-     * refreshes, so the stored refresh token is never rotated behind the Engine's back. A failure is logged with
+     * Refresh a token before it is handed out when the Engine itself would (SocialAccount::needsProactiveTokenRefresh:
+     * expired, or expiring soon on platforms that extend the token), so a single use refresh token is never rotated
+     * early. The CRM never refreshes, so the stored refresh token is never rotated behind the Engine's back. A failure is logged with
      * the account id and the error class only.
      */
     private static function freshen(SocialAccount $account): void
     {
-        if (! $account->platform->hasTokenRefreshFlow() || ! ($account->is_token_expired || $account->is_token_expiring_soon)) {
+        if (! $account->platform->hasTokenRefreshFlow() || ! $account->needsProactiveTokenRefresh()) {
             return;
         }
         try {

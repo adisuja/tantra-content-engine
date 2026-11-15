@@ -141,7 +141,7 @@ it('rate limits the endpoint', function () {
     channels($this, ['workspace' => 'ws_team'])->assertTooManyRequests();
 });
 
-it('forwards a private bot chat to each mapped workspace with a Telegram channel, signed for that workspace', function () {
+it('forwards a private bot chat to the one mapped workspace with a Telegram channel, with that workspace\'s secret', function () {
     Http::fake(['crm.test/*' => Http::response(['ok' => true])]);
     $update = ['update_id' => 7, 'message' => ['message_id' => 1, 'chat' => ['id' => 42, 'type' => 'private'], 'from' => ['id' => 42], 'text' => '/start PROMPTS']];
 
@@ -149,9 +149,9 @@ it('forwards a private bot chat to each mapped workspace with a Telegram channel
 
     Http::assertSentCount(1);
     Http::assertSent(fn (Request $r) => $r->url() === 'https://crm.test/hooks/engagement/telegram/ws_team'
-        && $r->header('X-Tantra-Signature')[0] === hash_hmac('sha256', 'ws_team', 'tg-secret')
-        && $r->header('X-Tantra-Signature')[0] !== hash_hmac('sha256', 'ws_other', 'tg-secret')
-        && ! $r->hasHeader('X-Telegram-Bot-Api-Secret-Token')
+        && $r->header('X-Telegram-Bot-Api-Secret-Token')[0] === hash_hmac('sha256', 'ws_team', 'tg-secret')
+        && $r->header('X-Telegram-Bot-Api-Secret-Token')[0] !== hash_hmac('sha256', 'ws_other', 'tg-secret')
+        && $r->header('X-Telegram-Bot-Api-Secret-Token')[0] !== 'shh-secret'
         && json_decode($r->body(), true) === $update);
     expect(ForwardTelegramUpdate::signature('ws_team'))->not->toBe(ForwardTelegramUpdate::signature('ws_other'));
 });
@@ -167,4 +167,26 @@ it('does not forward the connect flow, channel posts, a bad secret, or anything 
     $send(['update_id' => 4, 'message' => ['chat' => ['id' => 42, 'type' => 'private'], 'text' => 'PROMPTS']]);
 
     Http::assertNothingSent();
+});
+
+it('never copies a private chat to every team while more than one has a Telegram channel', function () {
+    Http::fake();
+    SocialAccount::factory()->create([
+        'workspace_id' => $this->other->id, 'platform' => Platform::Telegram, 'platform_user_id' => '-1002', 'access_token' => '',
+        'meta' => ['chat_id' => '-1002'], 'status' => Status::Connected,
+    ]);
+    $update = ['update_id' => 8, 'message' => ['message_id' => 1, 'chat' => ['id' => 42, 'type' => 'private'], 'from' => ['id' => 42], 'text' => '/start PROMPTS']];
+
+    $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'shh-secret')->postJson(route('telegram.webhook'), $update)->assertNoContent();
+
+    Http::assertNothingSent();
+});
+
+it('still answers Telegram when the forward fails', function () {
+    Http::fake(['crm.test/*' => Http::response(null, 500)]);
+    $update = ['update_id' => 9, 'message' => ['message_id' => 1, 'chat' => ['id' => 42, 'type' => 'private'], 'from' => ['id' => 42], 'text' => '/start PROMPTS']];
+
+    $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'shh-secret')->postJson(route('telegram.webhook'), $update)->assertNoContent();
+
+    Http::assertSentCount(1);
 });

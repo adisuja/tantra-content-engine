@@ -12,13 +12,16 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 /**
  * tantra: hands a Telegram update from a private chat with the Engine's bot (someone who started it, or sent a
- * keyword) to the Tantra CRM's Engagement, unchanged, once per mapped CRM workspace that has a Telegram channel.
- * Each copy is signed for its workspace: X-Tantra-Signature = HMAC-SHA256 of the CRM workspace id, keyed with
- * TELEGRAM_ENGAGEMENT_SECRET, so one workspace's signature cannot carry updates into another. The CRM takes no bot
+ * keyword) to the Tantra CRM's Engagement, unchanged (ENGAGEMENT_CHANNELS_CONTRACT.md section 2). The bot is shared,
+ * and nothing in a private chat says which team it is for, so the update goes on only while exactly one mapped CRM
+ * workspace has a Telegram channel; with more than one it is held back (and logged) rather than copied to every
+ * team. The copy carries X-Telegram-Bot-Api-Secret-Token = HMAC-SHA256 of the CRM workspace id, keyed with
+ * TELEGRAM_ENGAGEMENT_SECRET, so one workspace's secret cannot carry updates into another. The CRM takes no bot
  * webhook directly.
  */
 final class ForwardTelegramUpdate implements ShouldQueue
@@ -55,12 +58,27 @@ final class ForwardTelegramUpdate implements ShouldQueue
             return;
         }
 
+        if (blank(config('tantra.engagement_channels.telegram_forward_url'))) {
+            return;
+        }
+
+        $targets = [];
         foreach (EngagementChannels::workspaceMap() as $crm => $engineIds) {
             $hasTelegram = SocialAccount::query()->whereIn('workspace_id', $engineIds)
                 ->where('platform', Platform::Telegram->value)->where('status', Status::Connected->value)->exists();
             if ($hasTelegram) {
-                self::dispatch($crm, $body);
+                $targets[] = $crm;
             }
+        }
+
+        // One shared bot: a private chat names no team, so never copy someone's DM to every team.
+        if (count($targets) > 1) {
+            Log::warning('Engagement channels: Telegram update held back, more than one workspace has a Telegram channel', ['update_id' => data_get($update, 'update_id'), 'workspaces' => count($targets)]);
+
+            return;
+        }
+        if ($targets !== []) {
+            self::dispatch($targets[0], $body);
         }
     }
 
@@ -68,7 +86,7 @@ final class ForwardTelegramUpdate implements ShouldQueue
     {
         $url = rtrim((string) config('tantra.engagement_channels.telegram_forward_url'), '/').'/'.rawurlencode($this->crmWorkspace);
         $response = Http::timeout(15)
-            ->withHeaders(['X-Tantra-Signature' => self::signature($this->crmWorkspace), 'X-Tantra-Workspace' => $this->crmWorkspace])
+            ->withHeaders(['X-Telegram-Bot-Api-Secret-Token' => self::signature($this->crmWorkspace), 'X-Tantra-Workspace' => $this->crmWorkspace])
             ->withBody($this->body, 'application/json')
             ->post($url);
 
