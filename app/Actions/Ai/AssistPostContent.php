@@ -36,6 +36,7 @@ final class AssistPostContent
             new PostWritingAssistant($mode, $currentContent, $user->locale, $platform, $previousContent, $limit),
             $mode->requiresPrompt() ? trim((string) $prompt) : 'Revise the existing caption as instructed.',
             $workspace->account_id,
+            task: 'content.assist',
         );
 
         $text = trim((string) $response);

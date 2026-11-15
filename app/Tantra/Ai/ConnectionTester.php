@@ -40,6 +40,7 @@ final class ConnectionTester
                     model: $connector->effectiveModel(),
                     timeout: $connector->isSubscription() ? TantraAi::CLI_TIMEOUT : 45,
                 ));
+                AiUsage::record('content.ping', $connector->account_id, $connector->provider, $connector->effectiveModel(), $answer);
                 $message = 'Connected. '.$connector->catalog()['label'].' answered: '.Str::limit(trim((string) ($answer['status'] ?? $answer)), 40);
             }
         } catch (Throwable $e) {

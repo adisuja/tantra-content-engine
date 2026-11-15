@@ -21,6 +21,7 @@ final class GenerateMediaAltText
             'Write the alt text for this image.',
             $user->account_id,
             [Image::fromStorage($asset->path)],
+            task: 'content.alt_text',
         );
 
         return mb_substr(trim((string) $response), 0, PostMediaRules::ALT_TEXT_MAX_LENGTH);

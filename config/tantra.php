@@ -84,6 +84,8 @@ return [
         'intake_key' => env('TANTRA_CRM_INTAKE_KEY'),
         // The CRM's /api/trk key: tracked short links and the traffic report. Server side only, never sent to the browser.
         'api_key' => env('TANTRA_CRM_API_KEY'),
+        // Every AI call is sent to the CRM's AI cost ledger (A-05b, tantra:report-ai-usage). Same key as above.
+        'ai_usage' => (bool) env('TANTRA_CRM_AI_USAGE', true),
         // The Engagement tab (PRD Engagement, phase 4): a view and editor on the CRM's /api/engagement routes, which run
         // the follow-ups. Same key as above, server side only. The main Account's workspaces map to the key's CRM workspace.
         'engagement' => [

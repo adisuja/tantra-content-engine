@@ -18,7 +18,7 @@ class GenerateIdea
     public static function execute(User $user, string $business, string $audience, ?string $notes): ?array
     {
         // tantra: runs on the Account's AI connector (Connectors tab).
-        $response = TantraAi::prompt(new IdeaGenerator($user->locale, $business, $audience, $notes), 'Suggest one content idea.', $user->account_id);
+        $response = TantraAi::prompt(new IdeaGenerator($user->locale, $business, $audience, $notes), 'Suggest one content idea.', $user->account_id, task: 'content.idea');
 
         $title = Str::substr(trim((string) data_get($response, 'title')), 0, 255);
 
