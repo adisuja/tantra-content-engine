@@ -31,6 +31,8 @@ final class CrmMailFlags
         return Cache::remember(self::CACHE, 60, function (): array {
             try {
                 $response = Http::timeout(5)->acceptJson()->withToken((string) config('tantra.crm.intake_key'))
+                    // Tells the main app which emails this Engine can hand over as events (its cutover plan reads it).
+                    ->withHeaders(['X-Tantra-Engine-Emits' => implode(',', CoreEvents::EMITS)])
                     ->get(rtrim((string) config('tantra.crm.url'), '/').'/intake/engine/mail-flags');
                 if ($response->successful() && is_array($response->json('flags'))) {
                     $answer = ['flags' => (array) $response->json('flags'), 'events' => (array) ($response->json('events') ?? [])];

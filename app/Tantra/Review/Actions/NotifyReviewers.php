@@ -78,7 +78,9 @@ final class NotifyReviewers
                 ->values();
 
             if ($quoting->isNotEmpty()) {
-                Notify::send($adi, 'numbers_to_sign_off', ['batch' => (string) $batchId, 'count' => count($quoting->all())], new NumbersToSignOff((string) $batchId, (string) $workspace?->name, $quoting->all()), (string) $workspace?->name, url('/tantra/review'), 'Sign off');
+                // The quotes go with the event so the main app can render the same email on its kit (R3, 15 Nov).
+                $quotes = $quoting->flatMap(fn (array $p): array => array_map(fn (string $n): array => ['number' => $n, 'context' => (string) $p['short']], $p['numbers']))->take(12)->values()->all();
+                Notify::send($adi, 'numbers_to_sign_off', ['batch' => (string) $batchId, 'count' => count($quotes), 'posts' => $quoting->count(), 'quotes' => $quotes, 'workspace' => (string) $workspace?->name, 'url' => url('/tantra/review')], new NumbersToSignOff((string) $batchId, (string) $workspace?->name, $quoting->all()), (string) $workspace?->name, url('/tantra/review'), 'Sign off');
             }
         }
     }

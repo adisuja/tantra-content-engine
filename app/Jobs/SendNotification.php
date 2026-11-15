@@ -11,11 +11,11 @@ use App\Mail\PostApproved;
 use App\Mail\PostRejected;
 use App\Models\Post;
 use App\Models\User;
+use App\Tantra\Notify\DirectMail;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Throwable;
 
 class SendNotification implements ShouldQueue
@@ -42,7 +42,8 @@ class SendNotification implements ShouldQueue
             return;
         }
 
-        Mail::to($this->user)->send($this->mailable);
+        // tantra: the main app sends this email on its kit once it owns it (R3); until then exactly as before.
+        DirectMail::send($this->user, $this->mailable);
     }
 
     /**

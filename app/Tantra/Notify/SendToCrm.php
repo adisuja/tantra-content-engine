@@ -39,11 +39,13 @@ final class SendToCrm implements ShouldQueue
         public readonly ?string $workspace,
         public readonly ?string $ctaUrl,
         public readonly ?string $ctaLabel,
+        /** An invite to someone without an account: the address the event is for when there is no user (R3). */
+        public readonly ?string $toEmail = null,
     ) {}
 
     public function handle(): void
     {
-        $user = User::query()->find($this->userId);
+        $user = $this->recipient();
         if ($user === null) {
             return;
         }
@@ -56,13 +58,29 @@ final class SendToCrm implements ShouldQueue
         }
     }
 
+    /** The user the event is for, or an unsaved stand in carrying only the address when it was sent to an email (an invite). */
+    private function recipient(): ?User
+    {
+        if ($this->userId !== '') {
+            return User::query()->find($this->userId);
+        }
+        if (blank($this->toEmail)) {
+            return null;
+        }
+        $user = new User;
+        $user->forceFill(['email' => (string) $this->toEmail, 'name' => null]);
+        $user->id = null;
+
+        return $user;
+    }
+
     public function failed(Throwable $e): void
     {
         // The main app owns this email (or it is off): the Engine's fallback must not send a second copy.
         if (! CrmMailFlags::engineOwns($this->event)) {
             return;
         }
-        $user = User::query()->find($this->userId);
+        $user = $this->recipient();
         if ($user !== null && $this->mail !== null) {
             Mail::to($user)->send($this->mail);
         }
@@ -92,7 +110,8 @@ final class SendToCrm implements ShouldQueue
             'event' => $this->event,
             'occurred_at' => now()->toIso8601String(),
             'recipient' => [
-                'user_id' => $user->id, 'email' => $user->email, 'name' => $user->name,
+                // An invite to an address without an account has no user id: the address stands in for it.
+                'user_id' => $user->id ?? 'email:'.strtolower((string) $user->email), 'email' => $user->email, 'name' => $user->name,
                 // Phone numbers live in the CRM contact until the Engine has its own field.
                 'phone' => $user->getAttributes()['phone'] ?? null, 'whatsapp' => $user->getAttributes()['whatsapp'] ?? null,
                 'timezone' => $user->getAttributes()['timezone'] ?? null,

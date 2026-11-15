@@ -7,6 +7,7 @@ namespace App\Tantra\Ops;
 use App\Enums\Post\Status as PostStatus;
 use App\Models\Post;
 use App\Models\User;
+use App\Tantra\Mail\PostCard;
 use App\Tantra\Notify\Notify;
 use App\Tantra\Review\Models\WorkspaceSettings;
 use App\Tantra\Review\ReviewGate;
@@ -50,7 +51,9 @@ final class MediaCheck
             $ownerId = ReviewGate::reviewOwnerIdFor($post->workspace_id, $post->workspace?->account?->owner_id);
             $owner = $ownerId ? User::query()->find($ownerId) : null;
             if ($owner !== null) {
-                Notify::send($owner, 'media_missing', ['post_id' => $post->id, 'due_at' => $post->scheduled_at->toIso8601ZuluString()], new MediaMissing($post->id, $post->workspace?->name ?? '', $post->scheduled_at->toIso8601ZuluString(), mb_substr(trim((string) $post->content), 0, 90)), $post->workspace?->name);
+                // excerpt and due_label go with the event so the main app can render the same email on its kit (R3, 15 Nov).
+                Notify::send($owner, 'media_missing', ['post_id' => $post->id, 'due_at' => $post->scheduled_at->toIso8601ZuluString(),
+                    'excerpt' => mb_substr(trim((string) $post->content), 0, 90), 'due_label' => PostCard::when($post->scheduled_at, $owner->timezone), 'workspace' => (string) $post->workspace?->name], new MediaMissing($post->id, $post->workspace?->name ?? '', $post->scheduled_at->toIso8601ZuluString(), mb_substr(trim((string) $post->content), 0, 90)), $post->workspace?->name);
             }
         }
 
