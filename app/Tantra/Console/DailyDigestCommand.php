@@ -8,7 +8,9 @@ use App\Models\NotificationPreference;
 use App\Models\User;
 use App\Tantra\Digest\DailyDigest;
 use App\Tantra\Digest\DigestReport;
+use App\Tantra\Mail\PostCard;
 use App\Tantra\Notify\Notify;
+use App\Tantra\Review\Models\ReviewItem;
 use App\Tantra\Review\ReviewGate;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
@@ -58,7 +60,10 @@ class DailyDigestCommand extends Command
             );
             $this->line(($this->option('dry') ? 'would send' : 'send')." {$user->email}: ".$mail->envelope()->subject);
             if (! $this->option('dry')) {
-                Notify::send($user, 'daily_digest', array_diff_key($stats, ['item_ids' => true]), $mail, null, url('/tantra/review'), 'Open Tantra');
+                // The first 3 cards go with the event, so the main app's digest can show them (tantra-crm src/mail/digest.ts).
+                $posts = ReviewItem::query()->whereIn('id', array_slice($stats['item_ids'] ?? [], 0, 3))->with('workspace.account')->get()
+                    ->map(fn (ReviewItem $i): array => PostCard::fromReviewItem($i, $user->timezone))->values()->all();
+                Notify::send($user, 'daily_digest', array_diff_key($stats, ['item_ids' => true]) + ['posts' => $posts], $mail, null, url('/tantra/review'), 'Open Tantra');
                 $preference->forceFill(['daily_digest_sent_on' => $local->toDateString()])->save();
             }
             $sent++;
