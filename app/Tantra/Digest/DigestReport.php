@@ -136,7 +136,7 @@ final class DigestReport
         $clicks = $this->humanClicks();
         if ($clicks !== null && $clicks > 0) {
             return ['value' => Kit::compact($clicks), 'label' => $clicks === 1 ? 'person clicked from your posts to your site' : 'people clicked from your posts to your site',
-                'math' => 'Clicks on the tracked links in your posts, all time, counted by the Tantra CRM with bots removed.'];
+                'math' => 'Clicks on the tracked links in your posts, all time, counted by Tantra with bots removed.'];
         }
 
         $top = $this->topPost();

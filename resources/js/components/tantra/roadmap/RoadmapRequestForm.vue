@@ -20,7 +20,7 @@ const props = withDefaults(
         products: () => [
             { key: 'content-engine', label: 'Content Engine' },
             { key: 'tantra-app', label: 'Tantra app' },
-            { key: 'crm', label: 'Tantra CRM' },
+            { key: 'crm', label: 'Tantra pipeline and funnels' },
         ],
         defaultProduct: 'content-engine',
     },
