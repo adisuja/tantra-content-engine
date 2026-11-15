@@ -9,6 +9,7 @@ use App\Tantra\Auth\ClerkLogin;
 use App\Tantra\Auth\ClerkToken;
 use App\Tantra\Auth\InvalidClerkToken;
 use App\Tantra\Embed\Embed;
+use App\Tantra\Embed\Provision;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -85,6 +86,10 @@ class EmbedController extends Controller
         // 2. Who that Clerk user is in the Engine.
         try {
             ['user' => $user, 'email' => $email] = ClerkLogin::resolve($claims);
+            // 2b. A Tantra teammate with no Engine login yet gets one (S-12, behind TANTRA_EMBED_PROVISION).
+            if ($user === null && $email !== null) {
+                $user = Provision::forTeammate($email, (string) $claims['sub']);
+            }
         } catch (RuntimeException $e) {
             Log::warning('tantra.embed: sign in failed', ['reason' => $e->getMessage()]);
             // Never leave the previous person's session in place when we cannot tell who this is.
@@ -123,6 +128,32 @@ class EmbedController extends Controller
 
         // 6. The boot page now opens the page it was given.
         return response()->json(['ok' => true, 'email' => $user->email]);
+    }
+
+    /**
+     * The sign out page Tantra frames in a hidden frame when someone signs out of Tantra (S-12). It needs no
+     * token (Clerk has already signed out): it posts to signOut() with its own CSRF token, then tells the
+     * parent with tantra:signed-out. frame-ancestors keeps any other site from framing it.
+     */
+    public function signOutPage(Request $request): View
+    {
+        abort_unless(Embed::enabled(), 404);
+
+        return view('tantra::embed-signout', [
+            'parents' => Embed::parents(),
+            'signOutUrl' => route('tantra.embed.signout.post', absolute: false),
+        ]);
+    }
+
+    public function signOut(Request $request): JsonResponse
+    {
+        abort_unless(Embed::enabled(), 404);
+
+        if (Auth::guard('web')->check()) {
+            self::endSession($request);
+        }
+
+        return response()->json(['ok' => true]);
     }
 
     /**

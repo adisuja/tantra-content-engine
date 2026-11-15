@@ -151,6 +151,19 @@ class CrmTracking
         return (array) $this->ok($response, 'run the report')->json();
     }
 
+    /**
+     * GET /api/trk/reports/campaign/{id} (tantra-crm docs/crm/attribution/API_CONTENT_ENGINE.md): the campaign split by
+     * team member (the utm_content prefix), channel, platform and link, with unique visitors and leads per member.
+     *
+     * @return array<string, mixed>
+     */
+    public function campaignReport(string $from, string $to): array
+    {
+        $response = $this->http()->timeout(25)->get('/api/trk/reports/campaign/'.rawurlencode($this->campaignId()), ['from' => $from, 'to' => $to]);
+
+        return (array) $this->ok($response, 'read the campaign report')->json();
+    }
+
     private function addVocab(string $kind, string $value): void
     {
         $this->http()->post('/api/trk/vocab', ['kind' => $kind, 'value' => $value, 'label' => ucfirst($value), 'aliases' => []]);

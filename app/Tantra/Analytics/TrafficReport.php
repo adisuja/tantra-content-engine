@@ -201,10 +201,12 @@ final class TrafficReport
                         'channel' => $crm->query(['metrics' => self::CRM_METRICS, 'group_by' => ['channel'], 'filters' => $filters, 'range' => $range]),
                         'day' => $crm->query(['metrics' => self::CRM_METRICS, 'group_by' => ['day'], 'filters' => $filters, 'range' => $range]),
                         'links' => $crm->linkClicks(),
+                        // Visits and leads per person (C-04). Optional: without it they stay unknown, as before.
+                        'campaign' => rescue(fn (): array => $crm->campaignReport($range['from'], $range['to']), null, report: false),
                     ];
                 });
         } catch (Throwable $e) {
-            return [...$base, 'status' => 'error', 'message' => 'The Tantra CRM report did not answer: '.$e->getMessage()];
+            return [...$base, 'status' => 'error', 'message' => 'The Tantra report did not answer: '.$e->getMessage()];
         }
 
         $byAsset = collect((array) ($data['asset']['rows'] ?? []))->keyBy('asset');
@@ -218,6 +220,22 @@ final class TrafficReport
             $key = $assetMember[$assetId] ?? null;
             if ($key !== null && isset($membersOut[$key])) {
                 $membersOut[$key] = self::add($membersOut[$key], self::traffic($row), keepNull: ['visits', 'leads']);
+            }
+        }
+
+        // The campaign report splits unique visitors and leads by team member (the utm_content prefix of each link).
+        $campaign = is_array($data['campaign'] ?? null) ? $data['campaign'] : null;
+        if ($campaign !== null) {
+            foreach ((array) ($campaign['by_member'] ?? []) as $row) {
+                $key = (string) ($row['member'] ?? '');
+                if (isset($membersOut[$key])) {
+                    $membersOut[$key]['visits'] = self::n($row['unique_visitors'] ?? null);
+                    $membersOut[$key]['leads'] = self::n($row['leads'] ?? null);
+                }
+            }
+            foreach ($membersOut as $key => $row) {
+                $membersOut[$key]['visits'] ??= 0;
+                $membersOut[$key]['leads'] ??= 0;
             }
         }
 
@@ -263,7 +281,11 @@ final class TrafficReport
             'currency' => $data['asset']['currency'] ?? null, 'generated_at' => $data['asset']['generated_at'] ?? null,
             'members' => $membersOut,
             // Visits for the campaign: the day rows are campaign filtered (a visitor seen on two days counts twice).
-            'team' => ['visits' => collect((array) ($data['day']['rows'] ?? []))->sum(fn (array $r): int => (int) ($r['visitors'] ?? 0)), 'leads' => null],
+            'team' => $campaign !== null
+                // Unique visitors of the campaign (a visitor seen on two days counts once), and its leads.
+                ? ['visits' => self::n($campaign['totals']['unique_visitors'] ?? null), 'leads' => self::n($campaign['totals']['leads'] ?? null)]
+                : ['visits' => collect((array) ($data['day']['rows'] ?? []))->sum(fn (array $r): int => (int) ($r['visitors'] ?? 0)), 'leads' => null],
+            'not_split' => self::notSplit($campaign !== null),
             'series' => $series, 'platforms' => $platforms, 'profile_clicks' => $profileClicks,
             'pieces' => self::pieces($links, $byAsset->all())];
     }
@@ -311,11 +333,18 @@ final class TrafficReport
     }
 
     /** @return array<string, string> */
-    private static function notSplit(): array
+    private static function notSplit(bool $perPerson = false): array
     {
+        if ($perPerson) {
+            return [
+                'visits' => 'Visits show per person and for the team. Tantra does not split them per piece yet.',
+                'leads' => 'Leads show per person and for the team. Tantra does not tie a lead to one piece yet.',
+            ];
+        }
+
         return [
-            'visits' => 'The CRM counts visits per campaign and platform. It does not split them per person or piece yet, so visits show for the team and per platform only.',
-            'leads' => 'The CRM does not tie a new lead to the link that brought it yet. Registrations and bookings are the conversions it does tie to each link.',
+            'visits' => 'Tantra counts visits per campaign and platform. It does not split them per person or piece yet, so visits show for the team and per platform only.',
+            'leads' => 'Tantra does not tie a new lead to the link that brought it yet. Registrations and bookings are the conversions it does tie to each link.',
         ];
     }
 

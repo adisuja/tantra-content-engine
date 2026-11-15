@@ -128,8 +128,36 @@ const needsReauth = (component: string): boolean =>
 let bridgeStarted = false;
 let reauthSent = false;
 let lastPath: string | null = null;
+let lastBadge: number | null = null;
+
+/**
+ * The posts waiting for review (the shared tantraReview prop), for the badge
+ * on Tantra's sidebar Content item (S-12). Sent when the number changes.
+ */
+export const reviewWaiting = (page: Page): number | null => {
+    const review = (
+        page.props as { tantraReview?: { waiting?: unknown } | null }
+    ).tantraReview;
+    const waiting = review?.waiting;
+
+    return typeof waiting === 'number' &&
+        Number.isInteger(waiting) &&
+        waiting >= 0
+        ? Math.min(waiting, 9999)
+        : null;
+};
+
+const reportBadge = (page: Page): void => {
+    const waiting = reviewWaiting(page);
+    if (waiting === null || waiting === lastBadge) {
+        return;
+    }
+    lastBadge = waiting;
+    postToParent({ type: 'tantra:badge', review: waiting });
+};
 
 const reportPage = (page: Page): void => {
+    reportBadge(page);
     if (needsReauth(page.component)) {
         if (!reauthSent) {
             reauthSent = true;

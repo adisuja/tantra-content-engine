@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tantra\Notify;
 
 use App\Models\User;
+use App\Tantra\Embed\Embed;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -98,7 +99,8 @@ final class SendToCrm implements ShouldQueue
                 $subject = $this->mail->subject;
             }
             try {
-                $html = (string) $this->mail->render();
+                // Links open inside Tantra when TANTRA_EMBED_EMAIL_LINKS is on (S-12).
+                $html = Embed::shellLinks((string) $this->mail->render());
             } catch (Throwable) {
                 $html = null;
             }
@@ -123,7 +125,7 @@ final class SendToCrm implements ShouldQueue
                 'text' => (string) ($this->data['text'] ?? ($html !== null ? trim(preg_replace('/\s+/', ' ', strip_tags($html)) ?? '') : $subject)),
                 'html' => $html,
                 'cta_label' => $this->ctaLabel,
-                'cta_url' => $this->ctaUrl,
+                'cta_url' => Embed::shellLink($this->ctaUrl),
             ],
         ];
     }

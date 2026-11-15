@@ -180,6 +180,18 @@ return [
     'embed' => [
         'enabled' => (bool) env('TANTRA_EMBED', false),
         'parents' => array_values(array_filter(array_map(fn (string $origin): string => rtrim(trim($origin), '/'), explode(',', (string) env('TANTRA_EMBED_PARENTS', ''))))),
+        // Content phase 2 (One Tantra S-12). Each is off until set, so nothing changes on deploy.
+        // A Tantra teammate with no Engine login gets one on their first Content visit: created from the verified
+        // Clerk email and added to the Tantra team's Engine workspace, when that email is a member of the Tantra
+        // workspace the CRM key (TANTRA_CRM_API_KEY) belongs to. Workspace: an id or a name in the main Account.
+        'provision' => [
+            'enabled' => (bool) env('TANTRA_EMBED_PROVISION', false),
+            'workspace' => env('TANTRA_EMBED_PROVISION_WORKSPACE', 'Tantra'),
+        ],
+        // Links in Engine emails open inside Tantra (https://crm.usetantra.com/content?p=<path>) instead of the
+        // standalone app. OAuth, sign in, set password and signed links are never rewritten.
+        'email_links' => (bool) env('TANTRA_EMBED_EMAIL_LINKS', false),
+        'shell_url' => rtrim((string) env('TANTRA_EMBED_SHELL_URL', 'https://crm.usetantra.com/content'), '/'),
     ],
 
     // Engagement channels (tantra-crm docs/crm/ENGAGEMENT_CHANNELS_CONTRACT.md): the CRM fetches each team's connected
