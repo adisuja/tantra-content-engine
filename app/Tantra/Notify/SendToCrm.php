@@ -58,6 +58,10 @@ final class SendToCrm implements ShouldQueue
 
     public function failed(Throwable $e): void
     {
+        // The main app owns this email (or it is off): the Engine's fallback must not send a second copy.
+        if (! CrmMailFlags::engineOwns($this->event)) {
+            return;
+        }
         $user = User::query()->find($this->userId);
         if ($user !== null && $this->mail !== null) {
             Mail::to($user)->send($this->mail);

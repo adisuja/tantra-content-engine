@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tantra\Review\Actions;
 
 use App\Models\User;
+use App\Tantra\Mail\PostCard;
 use App\Tantra\Notify\Notify;
 use App\Tantra\Review\Mail\NumbersToSignOff;
 use App\Tantra\Review\Mail\ReviewReady;
@@ -42,7 +43,9 @@ final class NotifyReviewers
                 $earliest = $sorted->first()?->planned_date;
                 $week = $earliest ? CarbonImmutable::parse($earliest->toDateString())->startOfWeek()->format('j M') : now()->startOfWeek()->format('j M');
 
-                Notify::send($reviewer, 'review_ready', ['batch' => (string) $batchId, 'count' => $sorted->count(), 'week' => $week], new ReviewReady(
+                // The cards go with the event too, so the main app can render the same email on its kit (16 KB data limit: 6 cards).
+                $cards = $sorted->take(6)->map(fn (ReviewItem $i): array => PostCard::fromReviewItem($i, $reviewer->timezone))->values()->all();
+                Notify::send($reviewer, 'review_ready', ['batch' => (string) $batchId, 'count' => $sorted->count(), 'week' => $week, 'workspace' => (string) $workspace?->name, 'url' => url('/tantra/review/'.$batchId), 'posts' => $cards], new ReviewReady(
                     (string) $batchId,
                     (string) $workspace?->name,
                     $week,

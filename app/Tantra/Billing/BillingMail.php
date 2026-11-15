@@ -7,6 +7,7 @@ namespace App\Tantra\Billing;
 use App\Models\User;
 use App\Tantra\Mail\Kit;
 use App\Tantra\Mail\Letter;
+use App\Tantra\Notify\CrmMailFlags;
 use App\Tantra\Notify\Notify;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -39,7 +40,8 @@ class BillingMail extends Mailable implements ShouldQueue
         if ($owner !== null) {
             Notify::send($owner, 'billing_'.$kind, ['workspace' => $plan->workspace?->name, 'kind' => $kind], new self($kind, $plan->workspace_id, $context), $plan->workspace?->name);
         }
-        if (filled($plan->billing_email) && strcasecmp((string) $plan->billing_email, (string) $owner?->email) !== 0) {
+        // Once the main app owns billing emails it writes to the billing email itself (tantra-crm src/billing).
+        if (filled($plan->billing_email) && strcasecmp((string) $plan->billing_email, (string) $owner?->email) !== 0 && CrmMailFlags::engineOwns('engine.billing_'.$kind)) {
             Mail::to($plan->billing_email)->queue(new self($kind, $plan->workspace_id, $context));
         }
     }
