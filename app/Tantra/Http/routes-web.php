@@ -15,6 +15,7 @@ use App\Tantra\Http\Controllers\Web\ClerkSessionController;
 use App\Tantra\Http\Controllers\Web\ConnectorController;
 use App\Tantra\Http\Controllers\Web\DeveloperAppsController;
 use App\Tantra\Http\Controllers\Web\DigestUnsubscribeController;
+use App\Tantra\Http\Controllers\Web\EmbedController;
 use App\Tantra\Http\Controllers\Web\EngagementController;
 use App\Tantra\Http\Controllers\Web\FormatsController;
 use App\Tantra\Http\Controllers\Web\IdeaReviewController;
@@ -215,6 +216,14 @@ Route::middleware(['web', 'throttle:20,1'])
 Route::middleware(['web'])
     ->get('auth/clerk/no-access', [ClerkSessionController::class, 'noAccess'])
     ->name('tantra.clerk.no-access');
+
+// tantra: the Engine inside the Tantra CRM's Content tab, behind TANTRA_EMBED (PRD 2026-11-15).
+Route::middleware(['web'])
+    ->get('tantra/embed', [EmbedController::class, 'boot'])
+    ->name('tantra.embed');
+Route::middleware(['web', 'throttle:60,1'])
+    ->post('tantra/embed/session', [EmbedController::class, 'session'])
+    ->name('tantra.embed.session');
 
 // tantra: live lookups for the composer's format settings (YouTube playlists, Pinterest board sections).
 Route::middleware(['web', 'auth', EnsureAccountReady::class, EnsureHasWorkspace::class, 'throttle:30,1'])
