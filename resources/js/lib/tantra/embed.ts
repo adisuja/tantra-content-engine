@@ -10,7 +10,11 @@ import { router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import { toast } from 'vue-sonner';
 
+import { applyTheme, parentTheme } from '@/preferences';
+
 export const PARENT_KEY = 'tantra.parent';
+/** Per tab: the theme Tantra last sent, read before the first paint by app.blade.php when framed. */
+export const THEME_KEY = 'tantra.parentTheme';
 export const CONNECT_WINDOW = 'tantra-connect';
 export const CHANNELS_PATH = '/settings/workspace/channels';
 const MAX_PATH = 2000;
@@ -185,6 +189,23 @@ const reportPage = (page: Page): void => {
 };
 
 /**
+ * tantra C-15: Tantra's theme (light or dark) for this frame. Applied at once, kept for the rest of the tab in
+ * sessionStorage so the next page paints in it, and never saved to the user's own theme.
+ */
+export const followParentTheme = (theme: unknown): void => {
+    if (theme !== 'light' && theme !== 'dark') {
+        return;
+    }
+    parentTheme.value = theme;
+    try {
+        sessionStorage.setItem(THEME_KEY, theme);
+    } catch {
+        // Storage blocked: this page still follows.
+    }
+    applyTheme(theme);
+};
+
+/**
  * Embedded only, once: tab clicks in the CRM (tantra:go) visit the page,
  * and every Inertia navigation tells the CRM where the frame is.
  */
@@ -193,6 +214,12 @@ export const startEmbedBridge = (initialPage: Page): void => {
         return;
     }
     bridgeStarted = true;
+
+    try {
+        followParentTheme(sessionStorage.getItem(THEME_KEY));
+    } catch {
+        // Storage blocked: wait for Tantra's message.
+    }
 
     window.addEventListener('message', (event: MessageEvent) => {
         if (event.source !== window.parent) {
@@ -206,7 +233,13 @@ export const startEmbedBridge = (initialPage: Page): void => {
             v?: unknown;
             type?: unknown;
             path?: unknown;
+            theme?: unknown;
         };
+        if (data && data.v === 1 && data.type === 'tantra:theme') {
+            followParentTheme(data.theme);
+
+            return;
+        }
         if (!data || data.v !== 1 || data.type !== 'tantra:go') {
             return;
         }

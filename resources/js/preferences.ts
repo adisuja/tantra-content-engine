@@ -37,11 +37,19 @@ export const orderedWeekdays = (): number[] =>
     Array.from({ length: 7 }, (_, index) => (index + weekStartIndex()) % 7);
 
 /**
+ * tantra C-15: the theme Tantra (the parent frame) shows, set by the embed bridge from a `tantra:theme` message.
+ * While set it wins over the user's saved theme; it is never saved to the user.
+ */
+export const parentTheme = ref<'light' | 'dark' | null>(null);
+
+/**
  * Put the `dark` class on <html> for the theme. "system" is resolved against the
  * OS here too; the listener that follows later OS changes lives in the inline
  * script in app.blade.php and reads `data-theme`, so it needs no second copy.
  */
 export const applyTheme = (theme: Theme): void => {
+    // tantra C-15: inside Tantra's Content tab the frame follows Tantra's theme, not the saved one.
+    theme = parentTheme.value ?? theme;
     const root = document.documentElement;
     const dark =
         theme === 'dark' ||
