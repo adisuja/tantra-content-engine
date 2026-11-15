@@ -123,6 +123,39 @@ it('shows each person traffic from the CRM and social from their platforms, with
         && $r['range'] === ['from' => '2026-11-08', 'to' => '2026-11-14'] && $r->hasHeader('Authorization', 'Bearer k'));
 });
 
+it('reads visits and leads per person from the campaign report (C-04)', function () {
+    config(['tantra.crm.api_key' => 'k', 'tantra.crm.url' => 'https://crm.test']);
+    $reports = fakeReports(...);
+    Http::fake(function (Request $r) {
+        if (parse_url($r->url(), PHP_URL_PATH) === '/api/trk/reports/campaign/cmp_f427ef8e47514047be1d') {
+            return Http::response([
+                'totals' => ['unique_visitors' => 10, 'leads' => 3],
+                'by_member' => [['member' => 'ben', 'unique_visitors' => 6, 'leads' => 2], ['member' => 'adi', 'unique_visitors' => 4, 'leads' => 1], ['member' => 'nobody', 'unique_visitors' => 9, 'leads' => 9]],
+            ]);
+        }
+
+        return null;
+    });
+    $reports();
+
+    $this->actingAs($this->owner)->get('/tantra/insights?days=7&bucket=week')->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('traffic.crm.status', 'live')
+            ->where('traffic.members.0.traffic.visits', 4)
+            ->where('traffic.members.0.traffic.leads', 1)
+            ->where('traffic.members.1.traffic.visits', 6)
+            ->where('traffic.members.1.traffic.leads', 2)
+            ->where('traffic.totals.traffic.visits', 10)
+            ->where('traffic.totals.traffic.leads', 3)
+            // Per piece is still not split, so those stay unknown, never zero.
+            ->where('traffic.pieces.0.visits', null)
+            ->where('traffic.crm.not_split.visits', fn (string $m) => str_contains($m, 'per person'))
+        );
+
+    Http::assertSent(fn (Request $r) => str_ends_with(parse_url($r->url(), PHP_URL_PATH), '/api/trk/reports/campaign/cmp_f427ef8e47514047be1d')
+        && $r['from'] === '2026-11-08' && $r['to'] === '2026-11-14' && $r->hasHeader('Authorization', 'Bearer k'));
+});
+
 it('keeps social numbers and says why traffic is missing when the CRM key is not set', function () {
     config(['tantra.crm.api_key' => null]);
     Http::fake();
