@@ -16,6 +16,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 
 /**
  * tantra: once a day, at the digest hour in each person's own timezone, email
@@ -33,7 +34,7 @@ class DailyDigestCommand extends Command
         $hour = (int) config('tantra.digest.hour', 8);
         $ids = DB::table('user_workspace')->distinct()->pluck('user_id');
         $users = User::query()->whereIn('id', $ids)
-            ->when($this->option('user'), fn ($q, $who) => $q->where(fn ($w) => $w->where('id', $who)->orWhere('email', $who)))
+            ->when($this->option('user'), fn ($q, $who) => $q->where(fn ($w) => Str::isUuid((string) $who) ? $w->where('id', $who)->orWhere('email', $who) : $w->where('email', $who)))
             ->get();
         $sent = 0;
 
