@@ -101,8 +101,8 @@ it('gives tokens only when asked for a read or a send', function () {
         ->and($bots['instagram']['access_token'])->toBe('page-token');
 });
 
-it('refreshes an expiring token before handing it out, and logs no token when that fails', function () {
-    $this->bsky->update(['token_expires_at' => now()->addMinutes(5)]);
+it('refreshes an expired token before handing it out', function () {
+    $this->bsky->update(['token_expires_at' => now()->subMinute()]);
     $this->mock(ConnectionVerifier::class)->shouldReceive('refreshToken')->once()->andReturnUsing(function (SocialAccount $a): bool {
         $a->update(['access_token' => 'bsky-fresh', 'token_expires_at' => now()->addHours(2)]);
 
@@ -111,6 +111,14 @@ it('refreshes an expiring token before handing it out, and logs no token when th
 
     channels($this, ['workspace' => 'ws_team', 'platform' => 'bluesky', 'include_tokens' => true, 'purpose' => 'read'])
         ->assertOk()->assertJsonPath('accounts.0.access_token', 'bsky-fresh');
+});
+
+it('leaves a rotating token that is still valid alone, so its refresh token is not used early', function () {
+    $this->bsky->update(['token_expires_at' => now()->addMinutes(5)]);
+    $this->mock(ConnectionVerifier::class)->shouldNotReceive('refreshToken');
+
+    channels($this, ['workspace' => 'ws_team', 'platform' => 'bluesky', 'include_tokens' => true, 'purpose' => 'read'])
+        ->assertOk()->assertJsonPath('accounts.0.access_token', 'bsky-access');
 });
 
 it('never hands out a dead token when the refresh fails', function () {
