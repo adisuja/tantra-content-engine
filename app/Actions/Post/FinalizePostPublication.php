@@ -14,6 +14,7 @@ use App\Mail\PostPublishFailed;
 use App\Models\Post;
 use App\Models\User;
 use App\Services\PostHogService;
+use App\Tantra\Engagement\PublishedPost;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -73,6 +74,11 @@ class FinalizePostPublication
         $successful = data_get($outcome, 'successful');
 
         $this->notify($settled, $successful);
+
+        // tantra: a live post becomes a watched post in Tantra's Engagement (App\Tantra\Engagement\PublishedPost).
+        if ($successful) {
+            rescue(fn () => PublishedPost::send($settled));
+        }
 
         rescue(function () use ($settled, $successful): void {
             ($successful ? TrackPostPublished::class : TrackPostFailed::class)::dispatchIf(

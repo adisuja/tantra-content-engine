@@ -89,6 +89,8 @@ return [
         'engagement' => [
             'enabled' => (bool) env('TANTRA_CRM_ENGAGEMENT', true),
             'timeout' => (int) env('TANTRA_CRM_ENGAGEMENT_TIMEOUT', 20),
+            // Every published post is sent to Engagement as engine.post_published (One Tantra R1), to become a watched post.
+            'posts' => (bool) env('TANTRA_CRM_ENGAGEMENT_POSTS', true),
         ],
         // Every link in content becomes a CRM short link for its piece and person (card 29 context, 2026-11-14).
         'links' => [
