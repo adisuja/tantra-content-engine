@@ -81,6 +81,7 @@ use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Foundation\Exceptions\Handler as FoundationExceptionHandler;
 use Illuminate\Foundation\Http\Kernel as FoundationHttpKernel;
 use Illuminate\Http\Request;
+use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Broadcast;
@@ -152,6 +153,14 @@ class TantraServiceProvider extends ServiceProvider
             ->exists());
 
         // A published post with an approved team thread starts its boost run (PRD 10.5).
+        // Links in the Engine's own emails open inside Tantra when TANTRA_EMBED_EMAIL_LINKS is on (S-12).
+        Event::listen(MessageSending::class, function (MessageSending $event): void {
+            $html = $event->message->getHtmlBody();
+            if (is_string($html)) {
+                $event->message->html(Embed::shellLinks($html));
+            }
+        });
+
         Event::listen(PostStatusChanged::class, function (PostStatusChanged $event): void {
             if ($event->post->status === PostStatus::Published && Boost::enabled()) {
                 StartBoostRun::dispatch($event->post->id);

@@ -73,4 +73,61 @@ class Embed
 
         return $path;
     }
+
+    /**
+     * Paths that must open in the standalone app, never inside Tantra: OAuth and connect flows (every provider
+     * callback stays on this host), sign in and set password pages, signed links, the embed pages themselves,
+     * public previews, media and unsubscribe links.
+     */
+    private const STANDALONE = '#^/(auth|login|logout|register|forgot-password|reset-password|email|join|connect|accounts|social|oauth|tantra/embed|tantra/connect-window|tantra/reconnect|tantra/join|previewlink|p/|media|storage|unsubscribe|webhooks?|api/)#';
+
+    /**
+     * A link from an Engine email, opened inside Tantra (S-12): https://content.usetantra.com/schedule?x=1 becomes
+     * https://crm.usetantra.com/content?p=%2Fschedule%3Fx%3D1. Off (TANTRA_EMBED_EMAIL_LINKS) or for any other
+     * host, a standalone path, a signed link or a path that is not safe, the link is returned as it was.
+     */
+    public static function shellLink(?string $url): ?string
+    {
+        if ($url === null || ! self::enabled() || ! (bool) config('tantra.embed.email_links')) {
+            return $url;
+        }
+        $shell = (string) config('tantra.embed.shell_url');
+        $app = parse_url((string) config('app.url'));
+        $parts = parse_url($url);
+        if ($shell === '' || $parts === false || ! isset($parts['host'], $app['host']) || strcasecmp($parts['host'], $app['host']) !== 0) {
+            return $url;
+        }
+        if (isset($parts['port']) || isset($parts['user']) || ! in_array($parts['scheme'] ?? '', ['https', 'http'], true)) {
+            return $url;
+        }
+        $path = ($parts['path'] ?? '') === '' ? '/' : $parts['path'];
+        if ($path === '/' || preg_match(self::STANDALONE, $path) === 1) {
+            return $url;
+        }
+        parse_str($parts['query'] ?? '', $query);
+        if (array_key_exists('signature', $query) || array_key_exists('token', $query)) {
+            return $url;
+        }
+        $full = $path.(isset($parts['query']) ? '?'.$parts['query'] : '');
+        if (self::safePath($full, '') === '') {
+            return $url;
+        }
+
+        return $shell.'?p='.rawurlencode($full).(isset($parts['fragment']) ? '#'.$parts['fragment'] : '');
+    }
+
+    /** Every href in an email's HTML, through shellLink(). The rest of the HTML is left exactly as it was. */
+    public static function shellLinks(?string $html): ?string
+    {
+        if ($html === null || ! self::enabled() || ! (bool) config('tantra.embed.email_links')) {
+            return $html;
+        }
+
+        return preg_replace_callback('/\bhref=(["\'])(.*?)\1/i', function (array $m): string {
+            $url = html_entity_decode($m[2], ENT_QUOTES | ENT_HTML5);
+            $link = self::shellLink($url);
+
+            return $link === $url ? $m[0] : 'href='.$m[1].htmlspecialchars((string) $link, ENT_QUOTES | ENT_HTML5).$m[1];
+        }, $html) ?? $html;
+    }
 }

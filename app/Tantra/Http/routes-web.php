@@ -227,6 +227,13 @@ Route::middleware(['web', 'throttle:60,1'])
 Route::middleware(['web'])
     ->get('tantra/connect-window', [EmbedController::class, 'connectWindow'])
     ->name('tantra.embed.connect-window');
+// tantra: signing out of Tantra ends the Engine session too (S-12).
+Route::middleware(['web'])
+    ->get('tantra/embed/signout', [EmbedController::class, 'signOutPage'])
+    ->name('tantra.embed.signout');
+Route::middleware(['web', 'throttle:60,1'])
+    ->post('tantra/embed/signout', [EmbedController::class, 'signOut'])
+    ->name('tantra.embed.signout.post');
 
 // tantra: live lookups for the composer's format settings (YouTube playlists, Pinterest board sections).
 Route::middleware(['web', 'auth', EnsureAccountReady::class, EnsureHasWorkspace::class, 'throttle:30,1'])
