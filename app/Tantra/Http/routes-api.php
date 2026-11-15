@@ -5,6 +5,9 @@ declare(strict_types=1);
 use App\Tantra\Http\Controllers\Api\AgentRunnerController;
 use App\Tantra\Http\Controllers\Api\BatchController;
 use App\Tantra\Http\Controllers\Api\ChannelScheduleController;
+use App\Tantra\Http\Controllers\Api\CrmIdeasController;
+use App\Tantra\Http\Controllers\Api\CrmPostActionsController;
+use App\Tantra\Http\Controllers\Api\CrmPostsController;
 use App\Tantra\Http\Controllers\Api\ContextController;
 use App\Tantra\Http\Controllers\Api\EngagementChannelsController;
 use App\Tantra\Http\Controllers\Api\IdeaController;
@@ -136,3 +139,15 @@ Route::middleware(['api', 'throttle:30,1'])
 Route::middleware(['api', 'throttle:tantra-engagement-channels'])
     ->post('api/tantra/engagement/channels', EngagementChannelsController::class)
     ->name('tantra.api.engagement.channels');
+
+// tantra: the Tantra app's native Content screens read the Engine server to server (tantra-crm docs/crm/PRD_CONTENT_NATIVE.md,
+// docs/crm/engine-patches/p4-native-content/README.md). The shared key (EnsureCrmKey) and the engagement channels rate limit.
+Route::middleware(['api', 'tantra.crm-key', 'throttle:tantra-engagement-channels'])
+    ->prefix('api/tantra/engagement')
+    ->name('tantra.api.crm.')
+    ->group(function (): void {
+        Route::post('/ideas', CrmIdeasController::class)->name('ideas');
+        Route::post('/posts', [CrmPostsController::class, 'index'])->name('posts');
+        Route::post('/posts/update', [CrmPostActionsController::class, 'update'])->name('posts.update');
+        Route::post('/posts/approval', [CrmPostActionsController::class, 'approval'])->name('posts.approval');
+    });
