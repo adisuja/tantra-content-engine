@@ -11,18 +11,22 @@ use App\Tantra\Engagement\PublishedPost;
 use App\Tantra\Notify\SendToCrm;
 use App\Tantra\Review\Actions\ImportBatch;
 use App\Tantra\Review\Models\ReviewItem;
+use App\Tantra\Review\Models\WorkspaceSettings;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 
 // One Tantra R1: a published post becomes a watched post in Tantra's Engagement. Nothing is sent to any network.
 beforeEach(function () {
-    config(['tantra.crm.intake_key' => 'k', 'tantra.crm.url' => 'https://crm.test', 'tantra.crm.engagement.posts' => true]);
-    Mail::fake();
+    // The CRM is connected only after the batch is imported below: ImportBatch sends its own review_ready event, which
+    // is not what these tests are about and would be a stray request to the CRM.
+    config(['tantra.crm.intake_key' => null, 'tantra.crm.url' => 'https://crm.test', 'tantra.crm.engagement.posts' => true]);
     $result = createApiTestToken();
     $this->adi = $result['user'];
     $this->ws = Workspace::factory()->create(['account_id' => $this->adi->account_id, 'user_id' => $this->adi->id, 'name' => 'Tantra']);
     $this->account = SocialAccount::factory()->create(['workspace_id' => $this->ws->id, 'platform' => Platform::UnipileLinkedIn, 'platform_user_id' => 'acc_adi', 'display_name' => 'Adi Suja']);
+    // The batch below names the profile "adi": ImportBatch refuses a profile no workspace is mapped to (tantra:map-profile).
+    WorkspaceSettings::query()->updateOrCreate(['workspace_id' => $this->ws->id], ['brand_profile_key' => 'adi', 'review_owner_user_id' => $this->adi->id]);
 
     ImportBatch::execute($this->adi, ['engine_batch_id' => '9', 'posts' => [[
         'engine_post_id' => 'AG9', 'profile' => 'adi', 'platform' => 'linkedin', 'date' => '2026-11-24', 'time' => '08:30',
@@ -35,6 +39,9 @@ beforeEach(function () {
         'workspace_id' => $this->ws->id, 'social_account_id' => $this->account->id, 'platform' => Platform::UnipileLinkedIn, 'user_id' => $this->adi->id,
         'status' => PostStatus::Published, 'published_at' => now()->subHour(), 'platform_url' => 'https://www.linkedin.com/feed/update/urn:li:share:7400000000000000001/',
     ])->saveQuietly();
+    config(['tantra.crm.intake_key' => 'k']);
+    // From here on, any email is one the tests below caused.
+    Mail::fake();
 });
 
 it('sends engine.post_published for Engagement only, with the post, the Unipile account and the giveaway', function () {
