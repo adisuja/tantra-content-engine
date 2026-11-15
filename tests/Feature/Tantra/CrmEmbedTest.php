@@ -235,6 +235,7 @@ describe('embed session', function () {
     })->with([
         'server error' => fn () => Http::response('down', 500),
         'rate limited' => fn () => Http::response('slow down', 429),
+        'wrong secret key' => fn () => Http::response('unauthorized', 401),
         'timeout' => fn () => Http::failedConnection('timed out'),
     ]);
 
@@ -348,6 +349,8 @@ describe('embed boot page', function () {
             ->and(Embed::safePath('/schedule?tab=approvals'))->toBe('/schedule?tab=approvals')
             ->and(Embed::safePath('/connect/x/prepare?next=https://example.com'))->toBe('/connect/x/prepare?next=https://example.com')
             ->and(Embed::safePath('/x?u=javascript://alert(1)'))->toBe('/x?u=javascript://alert(1)')
+            ->and(Embed::safePath('/calendar/2026-11-15T10:00'))->toBe('/calendar/2026-11-15T10:00')
+            ->and(Embed::safePath('/a:80'))->toBe('/a:80')
             ->and(Embed::safePath(['/x']))->toBe('/tantra/insights')
             ->and(Embed::safePath(null))->toBe('/tantra/insights')
             ->and(Embed::safePath('/'.str_repeat('a', 1999)))->toHaveLength(2000);
@@ -370,6 +373,7 @@ describe('connect popup bootstrap page', function () {
             ->and($html)->toContain("var to = '\/connect\/linkedin\/prepare?kind=profile'")
             ->and($html)->toContain("sessionStorage.setItem('tantra.connect', nonce)")
             ->and($html)->toContain("window.name = 'tantra-connect:' + nonce")
+            ->and($html)->toContain('location.replace(to)')
             ->and($html)->not->toContain('opener')
             ->and($html)->not->toContain('—')
             ->and($html)->not->toContain('–');

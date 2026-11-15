@@ -152,10 +152,17 @@ function openEmbedFrame(string $to = '/settings/workspace/channels'): mixed
 
     expect($page->script("window.got('tantra:session')[0]"))->toMatchArray(['v' => 1, 'type' => 'tantra:session', 'ok' => true, 'email' => 'priya@usetantra.com']);
 
-    // The bridge is up once the frame reports where it is. On a failure the
-    // whole state prints, so the cause shows in the CI log.
+    return $page;
+}
+
+/**
+ * The bridge is up once the frame reports where it is. On a failure the
+ * whole state prints, so the cause shows in the CI log.
+ */
+function expectBridgeUp(mixed $page): void
+{
     waitForCondition($page, "window.got('tantra:navigate').length > 0");
-    expect($page->script(<<<'JS'
+    $state = $page->script(<<<'JS'
         (() => {
             const w = window.fwin();
             const read = (fn) => { try { return fn(); } catch (e) { return 'error: ' + e.message; } };
@@ -171,9 +178,10 @@ function openEmbedFrame(string $to = '/settings/workspace/channels'): mixed
                 messages: JSON.stringify(window.messages).slice(0, 600),
             };
         })()
-    JS))->toMatchArray(['navigated' => true]);
+    JS);
 
-    return $page;
+    expect(json_encode($state))->toContain('"navigated":true');
+
 }
 
 /**
@@ -251,6 +259,7 @@ describe('layout', function () {
         browserEmbedAdmin();
 
         $page = openEmbedFrame();
+        expectBridgeUp($page);
         waitForCondition($page, "window.frameHas('[data-testid=\"channels-connect\"]')");
 
         expect($page->script("window.frameHas('[data-testid=\"settings-back\"]')"))->toBeFalse()

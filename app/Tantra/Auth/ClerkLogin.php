@@ -115,7 +115,7 @@ class ClerkLogin
      *
      * @param  array<string, mixed>  $claims
      *
-     * @throws ClerkUnavailable when the Backend API times out or fails (5xx, 429)
+     * @throws ClerkUnavailable when the Backend API times out or fails (5xx, 429, or 401 and 403 for a wrong key)
      */
     public static function verifiedEmail(array $claims): ?string
     {
@@ -155,7 +155,8 @@ class ClerkLogin
         } catch (Throwable $e) {
             throw new ClerkUnavailable('Clerk\'s Backend API did not answer: '.$e->getMessage(), previous: $e);
         }
-        if ($response->serverError() || $response->status() === 429) {
+        // 401 or 403: a wrong CLERK_SECRET_KEY, a setup gap like a missing one.
+        if ($response->serverError() || in_array($response->status(), [401, 403, 429], true)) {
             throw new ClerkUnavailable('Clerk\'s Backend API answered '.$response->status().'.');
         }
         if (! $response->successful()) {

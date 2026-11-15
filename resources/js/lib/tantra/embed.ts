@@ -295,7 +295,21 @@ const finishConnect = (report: ConnectReport): void => {
     if (more.length > 0) {
         query.set('new', more.join(','));
     }
-    router.visit(`${CHANNELS_PATH}?${query.toString()}`);
+    const channelsUrl = `${CHANNELS_PATH}?${query.toString()}`;
+    // A late report (a severed popup) never takes the person off the page
+    // they moved on to: it says so and offers the Channels tab.
+    if (window.location.pathname !== CHANNELS_PATH) {
+        toast.success('Channel connected.', {
+            id: 'tantra-connect-late',
+            action: {
+                label: 'Open Channels',
+                onClick: () => router.visit(channelsUrl),
+            },
+        });
+
+        return;
+    }
+    router.visit(channelsUrl);
 };
 
 export const createConnectNonce = (): string => {
@@ -333,6 +347,8 @@ const waitForConnect = (popup: Window | null, nonce: string): void => {
     const channel =
         'BroadcastChannel' in window ? new BroadcastChannel(CONNECT_KEY) : null;
     const attention = ['focus', 'pointerdown', 'keydown'] as const;
+    // Assigned below, once closedForReal exists.
+    let onAttention: () => void = () => undefined;
 
     const stop = (): void => {
         if (done) {
@@ -392,11 +408,11 @@ const waitForConnect = (popup: Window | null, nonce: string): void => {
         toast.info(CONNECT_CLOSED_TEXT, { id: 'tantra-connect-closed' });
     };
 
-    function onAttention(): void {
+    onAttention = (): void => {
         if (closedSeen) {
             closedForReal();
         }
-    }
+    };
 
     window.addEventListener('message', onMessage);
     window.addEventListener('storage', onStorage);
@@ -429,13 +445,7 @@ const waitForConnect = (popup: Window | null, nonce: string): void => {
         }, 1000);
     }
 
-    limitTimer = window.setTimeout(() => {
-        const reload = !closedHandled;
-        stop();
-        if (reload) {
-            router.reload();
-        }
-    }, CONNECT_WAIT_LIMIT_MS);
+    limitTimer = window.setTimeout(stop, CONNECT_WAIT_LIMIT_MS);
 
     stopWaiting = stop;
 };
@@ -598,7 +608,7 @@ const sendConnectReport = (report: ConnectReport): void => {
     if ('BroadcastChannel' in window) {
         const channel = new BroadcastChannel(CONNECT_KEY);
         channel.postMessage(report);
-        channel.close();
+        window.setTimeout(() => channel.close(), 1000);
     }
     try {
         window.localStorage.setItem(
@@ -667,12 +677,15 @@ const reportConnected = (page: Page, nonce: string): void => {
         window.name = '';
     }
 
-    window.close();
+    // A moment first, so the report leaves before the window goes.
     window.setTimeout(() => {
-        if (!window.closed) {
-            showCloseNotice(outcome.kind === 'connected');
-        }
-    }, 300);
+        window.close();
+        window.setTimeout(() => {
+            if (!window.closed) {
+                showCloseNotice(outcome.kind === 'connected');
+            }
+        }, 300);
+    }, 150);
 };
 
 /** The connect popup (opened by openConnectWindow): report back and close. */

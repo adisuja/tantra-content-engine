@@ -66,8 +66,8 @@ class Embed
 
         // A scheme or host only counts where it changes where the path goes,
         // not inside a query value such as ?next=https://example.com.
-        $parts = parse_url($path);
-        if ($parts === false || isset($parts['scheme']) || isset($parts['host']) || isset($parts['port']) || isset($parts['user'])) {
+        $parts = parse_url('https://engine.invalid'.$path);
+        if ($parts === false || ($parts['host'] ?? null) !== 'engine.invalid' || isset($parts['port']) || isset($parts['user'])) {
             return $fallback;
         }
 

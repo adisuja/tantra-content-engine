@@ -24,13 +24,14 @@
 
             // sessionStorage is per tab and outlives the trip through the
             // network's pages (and a Cross-Origin-Opener-Policy swap);
-            // window.name is the second marker.
+            // window.name is the marker only when storage is blocked.
+            // window.name stays "tantra-connect" when storage works, so the
+            // next connect reuses this window instead of opening another.
             try {
                 window.sessionStorage.setItem('tantra.connect', nonce);
             } catch (e) {
-                // Storage blocked: window.name carries it.
+                window.name = 'tantra-connect:' + nonce;
             }
-            window.name = 'tantra-connect:' + nonce;
             window.location.replace(to);
         })();
     </script>
