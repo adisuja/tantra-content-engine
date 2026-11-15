@@ -15,6 +15,16 @@
             (function () {
                 var root = document.documentElement;
                 var media = window.matchMedia('(prefers-color-scheme: dark)');
+                // tantra C-15: framed inside Tantra, paint in the theme Tantra last sent (resources/js/lib/tantra/embed.ts).
+                try {
+                    if (window.self !== window.top) {
+                        var framed = window.sessionStorage.getItem('tantra.parentTheme');
+                        if (framed === 'light' || framed === 'dark') {
+                            root.dataset.theme = framed;
+                            root.classList.toggle('dark', framed === 'dark');
+                        }
+                    }
+                } catch (e) {}
                 var apply = function () {
                     if (root.dataset.theme === 'system') {
                         root.classList.toggle('dark', media.matches);
