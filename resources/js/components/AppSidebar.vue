@@ -7,6 +7,7 @@ import {
     IconFileText, // tantra:
     IconHandClick,
     IconLayoutGrid,
+    IconMessageCircleBolt, // tantra:
     IconPlus,
     IconRepeat, // tantra:
     IconRobot, // tantra:
@@ -139,6 +140,13 @@ const mainNavItems = computed<NavItem[]>(() => [
         href: tantraReview.value ? '/tantra/insights' : insights.url(),
         icon: IconTrendingUp,
         activePattern: tantraReview.value ? '/tantra/insights' : undefined,
+    },
+    // tantra: Engagement, a view and editor on the Tantra CRM's follow-ups (PRD Engagement, phase 4).
+    {
+        title: trans('tantra.engagement.nav'),
+        href: '/tantra/engagement',
+        icon: IconMessageCircleBolt,
+        activePattern: '/tantra/engagement',
     },
     ...(canManageRepurposes.value
         ? [
