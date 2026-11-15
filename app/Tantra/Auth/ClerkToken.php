@@ -27,6 +27,7 @@ class ClerkToken
      * @return array<string, mixed> The verified claims.
      *
      * @throws InvalidClerkToken
+     * @throws ClerkUnavailable when Clerk's signing keys cannot be read (an outage, not a bad token)
      */
     public static function verify(string $token): array
     {
@@ -109,7 +110,7 @@ class ClerkToken
                 return self::parse($cached);
             }
 
-            throw new InvalidClerkToken('Clerk\'s signing keys could not be read.');
+            throw new ClerkUnavailable('Clerk\'s signing keys could not be read.');
         }
 
         Cache::put($cacheKey, $set, self::JWKS_TTL);

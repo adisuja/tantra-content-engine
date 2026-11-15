@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Tantra\Embed\Embed;
 use Firebase\JWT\JWT;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -167,11 +168,113 @@ describe('embed session', function () {
         $adi = embedUser('adi@usetantra.com', 'user_adi');
 
         $this->actingAs($adi)
-            ->postJson('/tantra/embed/session', ['token' => embedToken('user_stranger')])
+            ->postJson('/tantra/embed/session', ['token' => embedToken('user_stranger', ['email_verified' => true, 'email' => 'stranger@example.com'])])
             ->assertForbidden()
             ->assertExactJson(['code' => 'no_access']);
 
         $this->assertGuest();
+    });
+
+    it('forgets the previous person\'s remember cookie before answering no access', function () {
+        $adi = embedUser('adi@usetantra.com', 'user_adi');
+        $recaller = Auth::guard('web')->getRecallerName();
+
+        $this->actingAs($adi)
+            ->withCookie($recaller, $adi->id.'|adi-remember|'.$adi->password)
+            ->postJson('/tantra/embed/session', ['token' => embedToken('user_stranger', ['email_verified' => true, 'email' => 'stranger@example.com'])])
+            ->assertForbidden()
+            ->assertCookieExpired($recaller);
+
+        $this->assertGuest();
+    });
+
+    it('starts a fresh session when it swaps, and keeps the session for the same person', function () {
+        $adi = embedUser('adi@usetantra.com', 'user_adi');
+        $priya = embedUser('priya@usetantra.com', 'user_priya');
+
+        $this->actingAs($adi)
+            ->withSession(['tantra_marker' => 'adi'])
+            ->postJson('/tantra/embed/session', ['token' => embedToken('user_adi')])
+            ->assertOk();
+        expect(session('tantra_marker'))->toBe('adi');
+        $before = app('session')->driver()->getId();
+
+        $this->postJson('/tantra/embed/session', ['token' => embedToken('user_priya')])->assertOk();
+
+        $this->assertAuthenticatedAs($priya);
+        expect(session('tantra_marker'))->toBeNull()
+            ->and(app('session')->driver()->getId())->not->toBe($before);
+    });
+
+    it('answers 503 server, not a bad token, when Clerk\'s signing keys are down', function () {
+        embedUser('priya@usetantra.com', 'user_priya');
+        // Another Frontend API, whose key set is down (the default fake stays for the real one).
+        config(['tantra.clerk.frontend_api' => 'https://clerk-down.example.com']);
+        Http::fake(['https://clerk-down.example.com/.well-known/jwks.json' => Http::response('down', 503)]);
+
+        $this->postJson('/tantra/embed/session', ['token' => embedToken('user_priya')])
+            ->assertStatus(503)
+            ->assertExactJson(['code' => 'server']);
+
+        $this->assertGuest();
+    });
+
+    it('answers 503 server, not no access, when Clerk\'s Backend API fails', function (mixed $answer) {
+        config(['tantra.clerk.secret_key' => 'sk_test_x']);
+        User::factory()->create(['email' => 'priya@usetantra.com']);
+        Http::fake([
+            EMBED_ISSUER.'/.well-known/jwks.json' => Http::response(embedClerkKey()['jwks']),
+            'https://api.clerk.com/v1/users/*' => $answer,
+        ]);
+
+        $this->postJson('/tantra/embed/session', ['token' => embedToken('user_priya')])
+            ->assertStatus(503)
+            ->assertExactJson(['code' => 'server']);
+
+        $this->assertGuest();
+    })->with([
+        'server error' => fn () => Http::response('down', 500),
+        'rate limited' => fn () => Http::response('slow down', 429),
+        'wrong secret key' => fn () => Http::response('unauthorized', 401),
+        'timeout' => fn () => Http::failedConnection('timed out'),
+    ]);
+
+    it('still signs in a linked person while Clerk\'s Backend API fails', function () {
+        config(['tantra.clerk.secret_key' => 'sk_test_x']);
+        $priya = embedUser('priya@usetantra.com', 'user_priya');
+        Http::fake([
+            EMBED_ISSUER.'/.well-known/jwks.json' => Http::response(embedClerkKey()['jwks']),
+            'https://api.clerk.com/v1/users/*' => Http::response('down', 500),
+        ]);
+
+        $this->postJson('/tantra/embed/session', ['token' => embedToken('user_priya')])->assertOk();
+
+        $this->assertAuthenticatedAs($priya);
+    });
+
+    it('answers 503 server, not no access, when no CLERK_SECRET_KEY is set to read the email', function () {
+        User::factory()->create(['email' => 'priya@usetantra.com']);
+
+        $this->postJson('/tantra/embed/session', ['token' => embedToken('user_priya')])
+            ->assertStatus(503)
+            ->assertExactJson(['code' => 'server']);
+
+        $this->assertGuest();
+    });
+
+    it('answers no access when Clerk says the person has no verified email', function () {
+        config(['tantra.clerk.secret_key' => 'sk_test_x']);
+        Http::fake([
+            EMBED_ISSUER.'/.well-known/jwks.json' => Http::response(embedClerkKey()['jwks']),
+            'https://api.clerk.com/v1/users/*' => Http::response([
+                'primary_email_address_id' => 'idn_1',
+                'email_addresses' => [['id' => 'idn_1', 'email_address' => 'priya@usetantra.com', 'verification' => ['status' => 'unverified']]],
+            ]),
+        ]);
+
+        $this->postJson('/tantra/embed/session', ['token' => embedToken('user_priya')])
+            ->assertForbidden()
+            ->assertExactJson(['code' => 'no_access']);
     });
 
     it('does not cycle the previous person\'s remember token', function () {
@@ -234,7 +337,6 @@ describe('embed boot page', function () {
         'protocol relative' => '//evil.com',
         'absolute' => 'https://evil.com',
         'backslash' => '/\\evil.com',
-        'scheme inside' => '/x?u=javascript://alert(1)',
         'no slash' => 'evil.com',
         'tab' => "/\t/evil.com",
         'newline' => "/\n/evil.com",
@@ -245,6 +347,10 @@ describe('embed boot page', function () {
     it('checks paths the same way in code', function () {
         expect(Embed::safePath('/tantra/review'))->toBe('/tantra/review')
             ->and(Embed::safePath('/schedule?tab=approvals'))->toBe('/schedule?tab=approvals')
+            ->and(Embed::safePath('/connect/x/prepare?next=https://example.com'))->toBe('/connect/x/prepare?next=https://example.com')
+            ->and(Embed::safePath('/x?u=javascript://alert(1)'))->toBe('/x?u=javascript://alert(1)')
+            ->and(Embed::safePath('/calendar/2026-11-15T10:00'))->toBe('/calendar/2026-11-15T10:00')
+            ->and(Embed::safePath('/a:80'))->toBe('/a:80')
             ->and(Embed::safePath(['/x']))->toBe('/tantra/insights')
             ->and(Embed::safePath(null))->toBe('/tantra/insights')
             ->and(Embed::safePath('/'.str_repeat('a', 1999)))->toHaveLength(2000);
@@ -254,6 +360,38 @@ describe('embed boot page', function () {
         config(['tantra.embed.parents' => ['https://crm.usetantra.com/', 'https://x.com; script-src *', 'javascript:alert(1)', 'HTTP://LOCALHOST:5173']]);
 
         expect(Embed::parents())->toBe(['https://crm.usetantra.com', 'http://localhost:5173']);
+    });
+});
+
+describe('connect popup bootstrap page', function () {
+    it('marks the popup with the nonce and opens the connect page', function () {
+        $html = $this->get('/tantra/connect-window?'.http_build_query(['nonce' => 'abcdefghijklmnopqrstuvwxyz012345', 'to' => '/connect/linkedin/prepare?kind=profile']))
+            ->assertOk()
+            ->getContent();
+
+        expect($html)->toContain("var nonce = 'abcdefghijklmnopqrstuvwxyz012345'")
+            ->and($html)->toContain("var to = '\/connect\/linkedin\/prepare?kind=profile'")
+            ->and($html)->toContain("sessionStorage.setItem('tantra.connect', nonce)")
+            ->and($html)->toContain("window.name = 'tantra-connect:' + nonce")
+            ->and($html)->toContain('location.replace(to)')
+            ->and($html)->not->toContain('opener')
+            ->and($html)->not->toContain('—')
+            ->and($html)->not->toContain('–');
+    });
+
+    it('never leaves this site', function () {
+        $html = $this->get('/tantra/connect-window?'.http_build_query(['nonce' => 'abcdefghijklmnopqrstuvwxyz012345', 'to' => '//evil.com/x']))->assertOk()->getContent();
+
+        expect($html)->toContain("var to = '\/settings\/workspace\/channels'");
+    });
+
+    it('refuses a missing or malformed nonce, and is not there while the switch is off', function () {
+        $this->get('/tantra/connect-window?to=/x')->assertNotFound();
+        $this->get('/tantra/connect-window?nonce=short&to=/x')->assertNotFound();
+        $this->get('/tantra/connect-window?'.http_build_query(['nonce' => "abcdefghijklmnop'</script>", 'to' => '/x']))->assertNotFound();
+
+        config(['tantra.embed.enabled' => false]);
+        $this->get('/tantra/connect-window?nonce=abcdefghijklmnopqrstuvwxyz012345&to=/x')->assertNotFound();
     });
 });
 
