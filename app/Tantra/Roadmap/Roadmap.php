@@ -32,7 +32,7 @@ class Roadmap
     public const PRODUCTS = [
         'content-engine' => 'Content Engine',
         'tantra-app' => 'Tantra app',
-        'crm' => 'Tantra CRM',
+        'crm' => 'Tantra pipeline and funnels',
     ];
 
     /** @var list<string> */
