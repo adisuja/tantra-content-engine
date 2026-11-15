@@ -2,13 +2,15 @@ name: Tests
 
 on:
   push:
-    branches: [main, develop, 'r/**'] # tantra: round 2 work branches get their own CI
+    branches: [main, develop]
+    paths-ignore: ['docs/**', '**/*.md']
   pull_request:
     branches: [main, develop]
+    paths-ignore: ['docs/**', '**/*.md']
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: true
 
 env:
   DB_CONNECTION: pgsql
