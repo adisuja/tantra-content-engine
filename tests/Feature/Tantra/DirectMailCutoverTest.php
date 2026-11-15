@@ -93,6 +93,33 @@ it('tells the main app which emails it can hand over when it reads the flags', f
     CrmMailFlags::all();
 
     Http::assertSent(fn ($r) => str_ends_with($r->url(), '/intake/engine/mail-flags')
-        && $r->hasHeader('X-Tantra-Engine-Emits', implode(',', CoreEvents::EMITS)));
+        && $r->hasHeader('X-Tantra-Engine-Emits', CoreEvents::emitsHeader()));
     expect(CoreEvents::EMITS)->toContain('engine.post_published', 'engine.workspace_invite', 'engine.numbers_to_sign_off:quotes');
+});
+
+it('sends one header token per field, so no field is lost when the header is split on commas', function () {
+    $tokens = explode(',', CoreEvents::emitsHeader());
+
+    expect($tokens)->toContain('engine.manual_task_due:text', 'engine.manual_task_due:network', 'engine.media_missing:excerpt', 'engine.media_missing:due_label', 'engine.review_ready:posts', 'engine.post_published');
+    foreach ($tokens as $token) {
+        expect($token)->toMatch('/^engine\.[a-z0-9_]{1,60}(:[a-z0-9_]{1,120})?$/');
+    }
+});
+
+it('reads the mail flags on the heartbeat every 5 minutes, even when no email went out', function () {
+    crmFlags([]);
+    $this->travelTo(now()->setTime(12, 5));
+
+    $this->artisan('tantra:heartbeat')->assertSuccessful();
+
+    Http::assertSent(fn ($r) => str_ends_with($r->url(), '/intake/engine/mail-flags'));
+});
+
+it('does not read the mail flags on the other minutes', function () {
+    crmFlags([]);
+    $this->travelTo(now()->setTime(12, 6));
+
+    $this->artisan('tantra:heartbeat')->assertSuccessful();
+
+    Http::assertNotSent(fn ($r) => str_ends_with($r->url(), '/intake/engine/mail-flags'));
 });

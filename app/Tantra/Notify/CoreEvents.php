@@ -42,6 +42,29 @@ final class CoreEvents
         'engine.review_ready:posts', 'engine.daily_digest:posts',
     ];
 
+    /**
+     * EMITS as one comma separated header. The header itself is split on commas, so an event with several fields is
+     * sent as one token per field ("engine.manual_task_due:text,engine.manual_task_due:network"); the main app merges
+     * them back per event. Joining EMITS as is dropped every field after the first (O-13).
+     */
+    public static function emitsHeader(): string
+    {
+        $tokens = [];
+        foreach (self::EMITS as $emit) {
+            [$event, $fields] = array_pad(explode(':', $emit, 2), 2, '');
+            if ($fields === '') {
+                $tokens[] = $event;
+
+                continue;
+            }
+            foreach (explode(',', $fields) as $field) {
+                $tokens[] = $event.':'.$field;
+            }
+        }
+
+        return implode(',', $tokens);
+    }
+
     /** The engine.* event name for an upstream Mailable, or null when it is not one of the 11. */
     public static function eventFor(Mailable $mail): ?string
     {
