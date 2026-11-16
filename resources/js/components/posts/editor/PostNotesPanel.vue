@@ -83,8 +83,14 @@ const scrollToBottom = () => {
     }
 };
 
-const loadNotes = async (page = 1) => {
+// Bumped whenever this panel changes the notes itself, so a list fetched
+// before that change (the initial load racing a fast first send) is dropped
+// instead of overwriting the newer notes and count.
+let mutations = 0;
+
+const loadNotes = async (page = 1): Promise<void> => {
     loading.value = true;
+    const startedAt = mutations;
 
     try {
         const response = await request(
@@ -96,6 +102,13 @@ const loadNotes = async (page = 1) => {
         }
 
         const data: PaginatedResponse = await response.json();
+
+        if (startedAt !== mutations) {
+            loading.value = false;
+
+            return loadNotes(page);
+        }
+
         const chronological = [...data.data].reverse();
         currentPage.value = data.meta.current_page;
         lastPage.value = data.meta.last_page;
@@ -146,6 +159,7 @@ const sendNote = async () => {
         }
 
         const created: PostNote = await response.json();
+        mutations++;
         notes.value.push(created);
 
         total.value++;
@@ -184,6 +198,7 @@ const deleteNote = async (note: PostNote) => {
         return;
     }
 
+    mutations++;
     notes.value = notes.value.filter((item) => item.id !== note.id);
     total.value = Math.max(0, total.value - 1);
 };
