@@ -84,7 +84,7 @@ it('changes nothing when the same body arrives twice', function () {
 });
 
 it('links a hand made engine user by email instead of making a second one', function () {
-    $hand = User::factory()->create(['email' => 'member@acme.test', 'clerk_user_id' => null]);
+    $hand = User::factory()->create(['email' => 'member@acme.test', 'clerk_user_id' => null, 'account_id' => null]);
 
     provCall($this)->assertOk()->assertJson(['people' => ['added' => 3, 'skipped' => 0]]);
 
