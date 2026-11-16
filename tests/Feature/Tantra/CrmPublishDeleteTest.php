@@ -11,6 +11,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -56,6 +57,13 @@ function crmDel(object $test, array $body, ?string $key = 'crm-key'): TestRespon
         ->postJson('/api/tantra/engagement/publish/delete', ['workspace' => 'ws_team', 'actor_email' => 'dana@example.test', ...$body]);
 }
 
+/** A fresh fake each time: Http::fake() called again only adds stubs behind the first, so the test would keep the old answer. */
+function crmDelFake(mixed $answer = null): void
+{
+    Http::swap(new HttpFactory);
+    Http::fake($answer === null ? null : ['*' => $answer]);
+}
+
 function crmDelPosts(object $test): TestResponse
 {
     return $test->withHeaders(['Authorization' => 'Bearer crm-key'])
@@ -89,7 +97,7 @@ function crmDelSentOnce(string $method, string $startsWith): void
 }
 
 it('answers 401 without the key and with a wrong key', function () {
-    Http::fake();
+    crmDelFake();
     $post = crmDelPost($this, $this->linkedin, 'urn:li:share:1');
     crmDel($this, ['post_id' => $post->id], null)->assertUnauthorized();
     crmDel($this, ['post_id' => $post->id], 'nope')->assertUnauthorized();
@@ -98,7 +106,7 @@ it('answers 401 without the key and with a wrong key', function () {
 });
 
 it('deletes a published LinkedIn post: one DELETE for the stored id, then the post is soft deleted and hidden everywhere', function () {
-    Http::fake(['*' => Http::response('', 204)]);
+    crmDelFake(Http::response('', 204));
     $post = crmDelPost($this, $this->linkedin, 'urn:li:share:7001');
 
     $r = crmDel($this, ['post_id' => $post->id])->assertOk()->assertHeader('Cache-Control', 'no-store, private')
@@ -117,14 +125,14 @@ it('deletes a published LinkedIn post: one DELETE for the stored id, then the po
 });
 
 it('deletes a LinkedIn page post with the same call on the page API', function () {
-    Http::fake(['*' => Http::response('', 204)]);
+    crmDelFake(Http::response('', 204));
     $post = crmDelPost($this, $this->page, 'urn:li:share:7002');
     crmDel($this, ['post_id' => $post->id])->assertOk()->assertJsonPath('data.platform', 'linkedin');
     crmDelSentOnce('DELETE', rtrim((string) config('trypost.platforms.linkedin-page.api'), '/').'/rest/posts/urn%3Ali%3Ashare%3A7002');
 });
 
 it('deletes a LinkedIn post through Unipile with the Unipile account and post id', function () {
-    Http::fake(['*' => Http::response('', 200)]);
+    crmDelFake(Http::response('', 200));
     $post = crmDelPost($this, $this->unipile, '7123456789', ['meta' => ['unipile_post_id' => '7123456789']]);
     crmDel($this, ['post_id' => $post->id])->assertOk()->assertJsonPath('data.platform', 'linkedin');
     crmDelSentOnce('DELETE', 'https://unipile.test/api/v2/acc_77/posts/7123456789');
@@ -133,7 +141,7 @@ it('deletes a LinkedIn post through Unipile with the Unipile account and post id
 });
 
 it('deletes an X post', function () {
-    Http::fake(['*' => Http::response(['data' => ['deleted' => true]], 200)]);
+    crmDelFake(Http::response(['data' => ['deleted' => true]], 200));
     $post = crmDelPost($this, $this->x, '1850000000000000001');
     crmDel($this, ['post_id' => $post->id])->assertOk()->assertJsonPath('data.platform', 'x');
     crmDelSentOnce('DELETE', rtrim((string) config('trypost.platforms.x.api'), '/').'/tweets/1850000000000000001');
@@ -141,14 +149,14 @@ it('deletes an X post', function () {
 });
 
 it('does not take an X answer that says it did not delete for a success', function () {
-    Http::fake(['*' => Http::response(['data' => ['deleted' => false]], 200)]);
+    crmDelFake(Http::response(['data' => ['deleted' => false]], 200));
     $post = crmDelPost($this, $this->x, '1850000000000000002');
     crmDel($this, ['post_id' => $post->id])->assertStatus(422)->assertJsonPath('error', 'delete_not_supported');
     crmDelUntouched($post);
 });
 
 it('deletes a Bluesky post with the record key, whether the stored id is the key or the at-uri', function () {
-    Http::fake(['*' => Http::response(['commit' => []], 200)]);
+    crmDelFake(Http::response(['commit' => []], 200));
     $byKey = crmDelPost($this, $this->bluesky, '3kabcdef');
     $byUri = crmDelPost($this, $this->bluesky, 'at://did:plc:abc123/app.bsky.feed.post/3kghijkl');
     crmDel($this, ['post_id' => $byKey->id])->assertOk()->assertJsonPath('data.platform', 'bluesky');
@@ -160,33 +168,33 @@ it('deletes a Bluesky post with the record key, whether the stored id is the key
 });
 
 it('deletes a Threads post', function () {
-    Http::fake(['*' => Http::response(['success' => true, 'deleted_id' => '1789'], 200)]);
+    crmDelFake(Http::response(['success' => true, 'deleted_id' => '1789'], 200));
     $post = crmDelPost($this, $this->threads, '17890000000000001');
     crmDel($this, ['post_id' => $post->id])->assertOk()->assertJsonPath('data.platform', 'threads');
     crmDelSentOnce('DELETE', rtrim((string) config('trypost.platforms.threads.graph_api'), '/').'/17890000000000001?access_token=');
 });
 
 it('deletes a Facebook page post', function () {
-    Http::fake(['*' => Http::response(['success' => true], 200)]);
+    crmDelFake(Http::response(['success' => true], 200));
     $post = crmDelPost($this, $this->facebook, '1000200030004_5000600070008');
     crmDel($this, ['post_id' => $post->id])->assertOk()->assertJsonPath('data.platform', 'facebook');
     crmDelSentOnce('DELETE', rtrim((string) config('trypost.platforms.facebook.graph_api'), '/').'/1000200030004_5000600070008?access_token=');
 });
 
 it('counts a post the network no longer has as deleted', function () {
-    Http::fake(['*' => Http::response(['message' => 'Not found'], 404)]);
+    crmDelFake(Http::response(['message' => 'Not found'], 404));
     $post = crmDelPost($this, $this->linkedin, 'urn:li:share:7003');
     crmDel($this, ['post_id' => $post->id])->assertOk()->assertJsonPath('data.deleted', true);
     expect(Post::query()->find($post->id))->toBeNull()->and(crmDelRow($post)->deleted_at)->not->toBeNull();
 
-    Http::fake(['*' => Http::response(['error' => ['code' => 100, 'error_subcode' => 33, 'message' => 'Unsupported delete request']], 400)]);
+    crmDelFake(Http::response(['error' => ['code' => 100, 'error_subcode' => 33, 'message' => 'Unsupported delete request']], 400));
     $fb = crmDelPost($this, $this->facebook, '1_2');
     crmDel($this, ['post_id' => $fb->id])->assertOk();
     expect(Post::query()->find($fb->id))->toBeNull();
 });
 
 it('settles a post the network already shows as deleted without calling the network', function () {
-    Http::fake();
+    crmDelFake();
     $post = crmDelPost($this, $this->linkedin, 'urn:li:share:7004', ['publish_status' => PublishStatus::Deleted]);
     crmDel($this, ['post_id' => $post->id])->assertOk()->assertJsonPath('data.deleted', true);
     Http::assertNothingSent();
@@ -194,7 +202,7 @@ it('settles a post the network already shows as deleted without calling the netw
 });
 
 it('refuses Instagram and an unwired network with a sentence naming the network, calls nothing and changes nothing', function () {
-    Http::fake();
+    crmDelFake();
     $ig = crmDelPost($this, $this->instagram, '17900000000000001');
     $tt = crmDelPost($this, $this->tiktok, '7300000000000000001');
     crmDel($this, ['post_id' => $ig->id])->assertStatus(422)->assertJsonPath('error', 'delete_not_supported')
@@ -207,7 +215,7 @@ it('refuses Instagram and an unwired network with a sentence naming the network,
 });
 
 it('refuses a post that is not published, calls nothing and changes nothing', function () {
-    Http::fake();
+    crmDelFake();
     $posts = [
         Post::factory()->forAccount($this->linkedin)->scheduled()->create(['user_id' => $this->direct->id]),
         Post::factory()->forAccount($this->linkedin)->draft()->create(['user_id' => $this->direct->id]),
@@ -224,7 +232,7 @@ it('refuses a post that is not published, calls nothing and changes nothing', fu
 });
 
 it('does not know a post of another team, an unmapped workspace, or an unknown post', function () {
-    Http::fake();
+    crmDelFake();
     $theirs = Post::factory()->forAccount($this->theirs)->published()->create(['user_id' => $this->other->user_id, 'platform_post_id' => 'urn:li:share:9']);
     $mine = crmDelPost($this, $this->linkedin, 'urn:li:share:7005');
     crmDel($this, ['post_id' => $theirs->id])->assertNotFound()->assertJsonPath('error', 'not_found');
@@ -237,7 +245,7 @@ it('does not know a post of another team, an unmapped workspace, or an unknown p
 });
 
 it('answers unknown_person for an email outside the workspace, and forbidden for a member who may not delete this post', function () {
-    Http::fake(['*' => Http::response('', 204)]);
+    crmDelFake(Http::response('', 204));
     $post = crmDelPost($this, $this->linkedin, 'urn:li:share:7006');
     crmDel($this, ['post_id' => $post->id, 'actor_email' => 'stan@example.test'])->assertForbidden()->assertJsonPath('error', 'unknown_person');
     crmDel($this, ['post_id' => $post->id, 'actor_email' => 'nobody@example.test'])->assertForbidden()->assertJsonPath('error', 'unknown_person');
@@ -248,7 +256,7 @@ it('answers unknown_person for an email outside the workspace, and forbidden for
 });
 
 it('lets the writer, a workspace admin and the workspace owner delete', function () {
-    Http::fake(['*' => Http::response('', 204)]);
+    crmDelFake(Http::response('', 204));
     foreach (['dana@example.test', 'amy@example.test', $this->owner->email] as $i => $email) {
         $post = crmDelPost($this, $this->linkedin, "urn:li:share:80{$i}");
         crmDel($this, ['post_id' => $post->id, 'actor_email' => $email])->assertOk();
@@ -257,43 +265,43 @@ it('lets the writer, a workspace admin and the workspace owner delete', function
 });
 
 it('answers channel_not_connected when the network no longer accepts the token, and changes nothing', function () {
-    Http::fake(['*' => Http::response(['message' => 'Invalid access token'], 401)]);
+    crmDelFake(Http::response(['message' => 'Invalid access token'], 401));
     $post = crmDelPost($this, $this->linkedin, 'urn:li:share:7007');
     crmDel($this, ['post_id' => $post->id])->assertStatus(409)->assertJsonPath('error', 'channel_not_connected')
         ->assertJsonPath('message', 'Adi Murali is not connected any more. Connect it again in Content, then delete the post.');
     crmDelUntouched($post);
 
-    Http::fake(['*' => Http::response(['error' => ['code' => 190, 'message' => 'Error validating access token']], 400)]);
+    crmDelFake(Http::response(['error' => ['code' => 190, 'message' => 'Error validating access token']], 400));
     $fb = crmDelPost($this, $this->facebook, '1_3');
     crmDel($this, ['post_id' => $fb->id])->assertStatus(409)->assertJsonPath('error', 'channel_not_connected');
     crmDelUntouched($fb);
 
     $off = SocialAccount::factory()->create(['workspace_id' => $this->team->id, 'platform' => Platform::X, 'display_name' => 'Old X', 'status' => Status::Disconnected]);
     $oldX = crmDelPost($this, $off, '185');
-    Http::fake();
+    crmDelFake();
     crmDel($this, ['post_id' => $oldX->id])->assertStatus(409)->assertJsonPath('error', 'channel_not_connected');
     Http::assertNothingSent();
     crmDelUntouched($oldX);
 });
 
 it('answers upstream for a provider 500 or a timeout, and the post stays published so it can be tried again', function () {
-    Http::fake(['*' => Http::response('boom', 500)]);
+    crmDelFake(Http::response('boom', 500));
     $post = crmDelPost($this, $this->linkedin, 'urn:li:share:7008');
     crmDel($this, ['post_id' => $post->id])->assertStatus(502)->assertJsonPath('error', 'upstream')
         ->assertJsonPath('message', 'LinkedIn is not answering. Try again in a minute.');
     crmDelUntouched($post);
 
-    Http::fake(fn () => throw new ConnectionException('cURL error 28: Operation timed out'));
+    crmDelFake(fn () => throw new ConnectionException('cURL error 28: Operation timed out'));
     crmDel($this, ['post_id' => $post->id])->assertStatus(502)->assertJsonPath('error', 'upstream');
     crmDelUntouched($post);
     expect(crmDelRow($post)->status)->toBe(PostStatus::Published);
 
-    Http::fake(['*' => Http::response('', 204)]);
+    crmDelFake(Http::response('', 204));
     crmDel($this, ['post_id' => $post->id])->assertOk();
 });
 
 it('answers with a reconnect sentence when the stored token lacks the permission to delete', function () {
-    Http::fake(['*' => Http::response(['message' => 'Not enough permissions'], 403)]);
+    crmDelFake(Http::response(['message' => 'Not enough permissions'], 403));
     $post = crmDelPost($this, $this->linkedin, 'urn:li:share:7009');
     $r = crmDel($this, ['post_id' => $post->id])->assertStatus(422)->assertJsonPath('error', 'delete_not_supported');
     expect($r->json('message'))->toContain('Connect the channel again in Content');
@@ -310,7 +318,7 @@ it('never puts a token, the provider body or the word Exception in an answer', f
         fn () => throw new ConnectionException('cURL error 7: tok-secret-abc Exception'),
     ];
     foreach ($fakes as $fake) {
-        Http::fake(['*' => $fake]);
+        crmDelFake($fake);
         $r = crmDel($this, ['post_id' => $post->id]);
         expect($r->getStatusCode())->toBeIn([409, 502, 422]);
         foreach (['tok-secret-abc', 'SECRET-PROVIDER-BODY', 'Exception', 'Stack trace', 'api.linkedin'] as $leak) {
@@ -318,13 +326,13 @@ it('never puts a token, the provider body or the word Exception in an answer', f
         }
         $r->assertHeader('Cache-Control', 'no-store, private');
     }
-    Http::fake(['*' => Http::response('', 204)]);
+    crmDelFake(Http::response('', 204));
     $ok = crmDel($this, ['post_id' => $post->id])->assertOk();
     expect($ok->getContent())->not->toContain('tok-secret-abc')->not->toContain('Exception');
 });
 
 it('answers not_found the second time and makes no provider call', function () {
-    Http::fake(['*' => Http::response('', 204)]);
+    crmDelFake(Http::response('', 204));
     $post = crmDelPost($this, $this->linkedin, 'urn:li:share:7011');
     crmDel($this, ['post_id' => $post->id])->assertOk();
     crmDel($this, ['post_id' => $post->id])->assertNotFound()->assertJsonPath('error', 'not_found');
@@ -332,7 +340,7 @@ it('answers not_found the second time and makes no provider call', function () {
 });
 
 it('refuses a missing or malformed body', function () {
-    Http::fake();
+    crmDelFake();
     crmDel($this, ['post_id' => 'not-a-uuid'])->assertUnprocessable()->assertJsonPath('error', 'validation');
     crmDel($this, ['post_id' => (string) str()->uuid(), 'actor_email' => 'not-an-email'])->assertUnprocessable()->assertJsonPath('error', 'validation');
     Http::assertNothingSent();

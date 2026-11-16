@@ -20,6 +20,7 @@ use App\Tantra\Repurpose\Reposts;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -161,7 +162,8 @@ class CrmPublishController extends Controller
         }
 
         $platform = $post->platform?->network();
-        $post->writePublication(['publish_status' => PublishStatus::Deleted, 'deleted_at' => now(), 'deleted_by' => $actor->id]);
+        // In a transaction, as Post::markPublicationDeleted() is: the "deleted on the network" webhook is sent after commit and must read the post once its timestamps are back.
+        DB::transaction(fn () => $post->writePublication(['publish_status' => PublishStatus::Deleted, 'deleted_at' => now(), 'deleted_by' => $actor->id]));
 
         return response()->json(['data' => ['deleted' => true, 'platform' => $platform]])->header('Cache-Control', 'no-store, private');
     }
