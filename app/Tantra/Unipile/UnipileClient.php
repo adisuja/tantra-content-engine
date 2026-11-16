@@ -59,6 +59,12 @@ class UnipileClient
         return $this->post("/{$accountId}/posts/{$postId}/reactions", ['reaction' => $reaction]);
     }
 
+    /** Delete a post of the account (v2 DELETE /{account}/posts/{post}); the response comes back whatever its status (D33). */
+    public function deletePost(string $accountId, string $postId): Response
+    {
+        return $this->send('delete', "/{$accountId}/posts/".rawurlencode($postId), null, true);
+    }
+
     /** @return string the new comment's id */
     public function comment(string $accountId, string $postId, string $text): string
     {
