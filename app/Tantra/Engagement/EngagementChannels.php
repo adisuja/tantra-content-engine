@@ -8,6 +8,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
 use App\Models\SocialAccount;
 use App\Services\Social\ConnectionVerifier;
+use App\Tantra\Provision\TantraWorkspaceLink;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -60,7 +61,13 @@ final class EngagementChannels
     /** @return list<string> */
     public static function engineWorkspaces(?string $crmWorkspace): array
     {
-        return $crmWorkspace === null ? [] : (self::workspaceMap()[$crmWorkspace] ?? []);
+        if ($crmWorkspace === null) {
+            return [];
+        }
+        // PV-02: the link the Tantra app wrote (POST /api/tantra/provision) first, the env map only as a fallback.
+        $linked = TantraWorkspaceLink::query()->where('tantra_workspace_id', $crmWorkspace)->value('workspace_id');
+
+        return $linked !== null ? [(string) $linked] : (self::workspaceMap()[$crmWorkspace] ?? []);
     }
 
     /** @return list<string> Engine platform values for one CRM platform, or every supported one. */
