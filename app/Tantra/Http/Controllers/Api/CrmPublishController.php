@@ -6,17 +6,21 @@ namespace App\Tantra\Http\Controllers\Api;
 
 use App\Actions\Post\CreatePosts;
 use App\Enums\Post\CreatedVia;
+use App\Enums\Post\PublishStatus;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\SocialAccount\Status as AccountStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Tantra\Crm\CrmContent;
+use App\Tantra\Crm\CrmDeleteRefused;
+use App\Tantra\Crm\CrmNetworkDelete;
 use App\Tantra\Crm\CrmPostPresenter;
 use App\Tantra\Repurpose\Reposts;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -27,6 +31,7 @@ use Illuminate\Validation\ValidationException;
  *
  *   POST publish/channels   the channels of the team, by name, with whether each is connected (never a token)
  *   POST publish            schedule a post, or publish it now, to one or more channels of one workspace
+ *   POST publish/delete     delete a published post on its network (D33, docs/crm/engine-patches/d33-delete-post/README.md)
  */
 class CrmPublishController extends Controller
 {
@@ -115,8 +120,56 @@ class CrmPublishController extends Controller
         ], 201)->header('Cache-Control', 'no-store, private');
     }
 
+    public function delete(Request $request, CrmNetworkDelete $network): JsonResponse
+    {
+        try {
+            $data = $request->validate([
+                'workspace' => ['required', 'string', 'max:100'],
+                'actor_email' => ['required', 'email', 'max:255'],
+                'post_id' => ['required', 'uuid'],
+            ]);
+        } catch (ValidationException $e) {
+            return $this->refuse(422, 'validation', (string) collect($e->errors())->flatten()->first());
+        }
+
+        // A post of another team, or of no mapped team, is the same not_found: nothing tells whether it exists.
+        $ids = CrmContent::workspaceIds($data['workspace']);
+        $post = $ids === [] ? null : Post::query()->whereIn('workspace_id', $ids)->whereNotNull('social_account_id')->with(['socialAccount', 'workspace'])->find($data['post_id']);
+        if (! $post instanceof Post || $post->workspace === null) {
+            return $this->refuse(404, 'not_found');
+        }
+
+        $actor = CrmContent::actor($post->workspace, $data['actor_email']);
+        if ($actor === null) {
+            return $this->refuse(403, 'unknown_person');
+        }
+        if ($post->user_id !== $actor->id && $post->workspace->user_id !== $actor->id && ! $actor->isWorkspaceAdmin($post->workspace)) {
+            return $this->refuse(403, 'forbidden', 'Only the person who wrote this post, or an owner or admin of the workspace, can delete it.');
+        }
+
+        $livePost = $post->status === PostStatus::Published || ($post->status === PostStatus::Publishing && filled($post->platform_post_id));
+        if (! $livePost) {
+            return $this->refuse(422, 'not_published', 'That post is not published yet, so there is nothing to delete.');
+        }
+
+        // The network already reports it gone (deleted there by hand): only the Engine's own record is left to settle.
+        if ($post->publish_status !== PublishStatus::Deleted) {
+            try {
+                $network->delete($post);
+            } catch (CrmDeleteRefused $e) {
+                return $this->refuse($e->httpStatus, $e->errorCode, $e->getMessage());
+            }
+        }
+
+        $platform = $post->platform?->network();
+        // In a transaction, as Post::markPublicationDeleted() is: the "deleted on the network" webhook is sent after commit and must read the post once its timestamps are back.
+        DB::transaction(fn () => $post->writePublication(['publish_status' => PublishStatus::Deleted, 'deleted_at' => now(), 'deleted_by' => $actor->id]));
+
+        return response()->json(['data' => ['deleted' => true, 'platform' => $platform]])->header('Cache-Control', 'no-store, private');
+    }
+
     private function refuse(int $status, string $code, ?string $message = null): JsonResponse
     {
-        return response()->json(array_filter(['error' => $code, 'message' => $message], fn ($v): bool => $v !== null), $status);
+        return response()->json(array_filter(['error' => $code, 'message' => $message], fn ($v): bool => $v !== null), $status)->header('Cache-Control', 'no-store, private');
     }
 }

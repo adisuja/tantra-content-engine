@@ -132,8 +132,20 @@ class Post extends Model
             'connection_warning_sent_at' => 'datetime',
             'retry_at' => 'datetime',
             'publication_updated_at' => 'datetime',
+            'deleted_at' => 'datetime', // tantra: a post deleted from its network through the Tantra app (D33)
             'scheduled_before_media_checks' => 'boolean',
         ];
+    }
+
+    /**
+     * tantra: a post deleted from its network through the Tantra app (POST publish/delete, D33) stays in the table for the
+     * Engine's history but is hidden from every query, so it is never listed, scheduled or published again.
+     */
+    protected static function booted(): void
+    {
+        static::addGlobalScope('tantra-not-deleted', function (Builder $query): void {
+            $query->whereNull($query->getModel()->getTable().'.deleted_at');
+        });
     }
 
     /**
