@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tantra\Auth;
 
 use App\Models\User;
+use App\Tantra\Provision\ProvisionTantraTeam;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -62,7 +63,11 @@ class ClerkLogin
         }
 
         $user = self::byEmail($email);
-        if ($user === null || ! self::canLink($user, $clerkId)) {
+        if ($user === null) {
+            // PV-02: a person on a provisioned Tantra team gets their engine user on first sign in; anyone else stays out.
+            return ['user' => ProvisionTantraTeam::completeLogin($clerkId, $email), 'email' => $email];
+        }
+        if (! self::canLink($user, $clerkId)) {
             return ['user' => null, 'email' => $email];
         }
 

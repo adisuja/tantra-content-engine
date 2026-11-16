@@ -18,6 +18,7 @@ use App\Tantra\Http\Controllers\Api\IdeaController;
 use App\Tantra\Http\Controllers\Api\MessagesController;
 use App\Tantra\Http\Controllers\Api\ProfileController;
 use App\Tantra\Http\Controllers\Api\ResultsController;
+use App\Tantra\Http\Controllers\Api\TantraProvisionController;
 use App\Tantra\Http\Controllers\Api\TantraReadController;
 use App\Tantra\Http\Controllers\Api\UploadController;
 use App\Tantra\Http\Controllers\HealthController;
@@ -163,3 +164,8 @@ Route::middleware(['api', 'tantra.crm-key', 'throttle:tantra-engagement-channels
         Route::post('/insights', CrmInsightsController::class)->name('insights');
         Route::post('/settings', CrmSettingsController::class)->name('settings');
     });
+
+// tantra: PV-02, one setup for every feature: the Tantra app sends a team and its people (docs/crm/engine-patches/pv-02/README.md).
+Route::middleware(['api', 'tantra.crm-key', 'throttle:tantra-engagement-channels'])
+    ->post('api/tantra/provision', TantraProvisionController::class)
+    ->name('tantra.api.provision');
