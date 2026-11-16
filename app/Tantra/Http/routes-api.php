@@ -6,6 +6,8 @@ use App\Tantra\Http\Controllers\Api\AgentRunnerController;
 use App\Tantra\Http\Controllers\Api\BatchController;
 use App\Tantra\Http\Controllers\Api\ChannelScheduleController;
 use App\Tantra\Http\Controllers\Api\CrmIdeasController;
+use App\Tantra\Http\Controllers\Api\CrmInsightsController;
+use App\Tantra\Http\Controllers\Api\CrmSettingsController;
 use App\Tantra\Http\Controllers\Api\CrmPostActionsController;
 use App\Tantra\Http\Controllers\Api\CrmPublishController;
 use App\Tantra\Http\Controllers\Api\CrmPostsController;
@@ -157,4 +159,6 @@ Route::middleware(['api', 'tantra.crm-key', 'throttle:tantra-engagement-channels
         Route::post('/repurpose/sources', [CrmRepurposeController::class, 'sources'])->name('repurpose.sources');
         Route::post('/repurpose/targets', [CrmRepurposeController::class, 'targets'])->name('repurpose.targets');
         Route::post('/repurpose/start', [CrmRepurposeController::class, 'start'])->name('repurpose.start');
+        Route::post('/insights', CrmInsightsController::class)->name('insights');
+        Route::post('/settings', CrmSettingsController::class)->name('settings');
     });
