@@ -58,7 +58,7 @@ class CrmInsightsController extends Controller
         $start = $end->copy()->subDays($days);
 
         $published = Post::query()->whereIn('workspace_id', $ids)->where('status', PostStatus::Published->value)
-            ->whereBetween('published_at', [$start, $end])->get(['id', 'platform', 'content', 'display_name', 'published_at', 'platform_url']);
+            ->whereBetween('published_at', [$start, $end])->with('socialAccount')->get();
         $scheduled = Post::query()->whereIn('workspace_id', $ids)->where('status', PostStatus::Scheduled->value)->whereBetween('scheduled_at', [$start, $end])->count();
         $failed = Post::query()->whereIn('workspace_id', $ids)->where('status', PostStatus::Failed->value)->whereBetween('updated_at', [$start, $end])->count();
 
