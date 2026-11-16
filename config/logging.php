@@ -73,6 +73,10 @@ return [
             'level' => env('LOG_LEVEL', 'debug'),
             'days' => env('LOG_DAILY_DAYS', 14),
             'replace_placeholders' => true,
+            // tantra: Horizon and the scheduler run as root in the container, the web server as www-data. Whichever writes
+            // first creates the day's file; with the default 0644 a root-owned file made every web request that logged
+            // answer 500 (16 Nov: the Threads delete refusal). Every process must be able to append.
+            'permission' => 0666,
         ],
 
         'slack' => [
