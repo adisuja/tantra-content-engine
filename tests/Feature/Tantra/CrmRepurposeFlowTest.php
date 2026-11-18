@@ -73,7 +73,7 @@ it('answers 401 without the key on the three new routes', function () {
 });
 
 it('takes the full brief on start in place of the note, and keeps where it came from and the draft only guard', function () {
-    $brief = "## Tone\nPlain and warm.\n\n".str_repeat('Keep the numbers. ', 100);
+    $brief = "## Tone\nPlain and warm.\n\n".str_repeat('Keep the numbers. ', 100).'End.';
     crmFlow($this, 'start', ['workspace' => 'ws_north', 'actor_email' => 'lead@example.test', 'review_item_id' => $this->item->id,
         'targets' => [['channel_id' => $this->x->id]], 'note' => mb_substr($brief, 0, 1000), 'brief' => $brief, 'origin' => 'repurpose_flow', 'draft_only' => true])
         ->assertCreated()->assertJsonPath('data.kind', 'repost');
