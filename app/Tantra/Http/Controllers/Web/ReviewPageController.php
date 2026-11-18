@@ -92,7 +92,7 @@ class ReviewPageController extends Controller
             ->values();
 
         $channels = SocialAccount::query()->whereIn('workspace_id', $items->pluck('workspace_id')->unique())->orderBy('created_at')->get()->unique('workspace_id')->keyBy('workspace_id');
-        $posts = Post::query()->whereIn('post_group_id', $items->pluck('post_group_id')->filter())->get()->groupBy('post_group_id');
+        $posts = Post::query()->with('socialAccount')->whereIn('post_group_id', $items->pluck('post_group_id')->filter())->get()->groupBy('post_group_id');
 
         $cache = [];
         $approvers = [];
