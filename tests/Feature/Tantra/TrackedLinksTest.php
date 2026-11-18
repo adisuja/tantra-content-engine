@@ -198,14 +198,14 @@ it('gives the generator and agents the standing card 29 context', function () {
 it('replaces a link before sentence punctuation, and never one inside an email address or subdomain', function () {
     expect(LinkRules::replace('Register at https://jointantra.com/workshop. See you', 'https://jointantra.com/workshop', 'https://go.usetantra.com/l/x'))
         ->toBe('Register at https://go.usetantra.com/l/x. See you')
-        ->and(LinkRules::urls('Mail adi@growthclub.org or read blog.jointantra.com/post'))->toBe([])
-        ->and(LinkRules::replace('adi@growthclub.org and growthclub.org', 'growthclub.org', 'https://go.usetantra.com/l/x'))
-        ->toBe('adi@growthclub.org and https://go.usetantra.com/l/x');
+        ->and(LinkRules::urls('Mail someone@growthclub.org or read blog.jointantra.com/post'))->toBe([])
+        ->and(LinkRules::replace('someone@growthclub.org and growthclub.org', 'growthclub.org', 'https://go.usetantra.com/l/x'))
+        ->toBe('someone@growthclub.org and https://go.usetantra.com/l/x');
 
     $post = Post::factory()->create(['workspace_id' => $this->ws->id, 'user_id' => $this->owner->id, 'status' => 'draft', 'platform' => Platform::LinkedIn,
-        'meta' => ['thread_replies' => [['text' => 'Join us: https://jointantra.com/workshop. Questions? adi@growthclub.org']]]]);
+        'meta' => ['thread_replies' => [['text' => 'Join us: https://jointantra.com/workshop. Questions? someone@growthclub.org']]]]);
 
-    expect($post->refresh()->meta['thread_replies'][0]['text'])->toBe('Join us: https://go.usetantra.com/l/ben-post-comment. Questions? adi@growthclub.org')
+    expect($post->refresh()->meta['thread_replies'][0]['text'])->toBe('Join us: https://go.usetantra.com/l/ben-post-comment. Questions? someone@growthclub.org')
         ->and(count(Storage::disk('local')->get(PieceLinks::LOG) ? explode("\n", trim(Storage::disk('local')->get(PieceLinks::LOG))) : []))->toBe(2);
 
     // The sweep finds nothing left and logs nothing more.

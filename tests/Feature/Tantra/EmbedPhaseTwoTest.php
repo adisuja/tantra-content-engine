@@ -58,7 +58,7 @@ function s12Team(array $emails, int $status = 200): void
 
 beforeEach(function () {
     Cache::flush();
-    $this->owner = User::factory()->create(['email' => 'adi@usetantra.com']);
+    $this->owner = User::factory()->create(['email' => 'owner@example.com']);
     // The owner's Account is the first one created: the main Account (the Tantra team).
     $this->account = Account::query()->whereKey($this->owner->account_id)->sole();
     $this->team = Workspace::factory()->create(['account_id' => $this->account->id, 'user_id' => $this->owner->id, 'name' => 'Tantra']);
@@ -73,13 +73,13 @@ beforeEach(function () {
         'tantra.clerk.frontend_api' => S12_ISSUER,
         'tantra.clerk.authorized_parties' => [S12_CRM],
         'tantra.clerk.secret_key' => null,
-        'tantra.clerk.team_emails' => ['team@growthclubpro.com'],
+        'tantra.clerk.team_emails' => ['team@example.com'],
     ]);
 });
 
 describe('auto provisioning', function () {
     it('creates a login for a Tantra teammate and adds them to the team workspace', function () {
-        s12Team(['adi@usetantra.com', 'Priya.Raman@usetantra.com']);
+        s12Team(['owner@example.com', 'Priya.Raman@usetantra.com']);
 
         $this->postJson('/tantra/embed/session', ['token' => s12Token('user_priya', 'priya.raman@usetantra.com')])
             ->assertOk()
@@ -108,7 +108,7 @@ describe('auto provisioning', function () {
     });
 
     it('answers no access for someone who is not in the Tantra team', function () {
-        s12Team(['adi@usetantra.com']);
+        s12Team(['owner@example.com']);
 
         $this->postJson('/tantra/embed/session', ['token' => s12Token('user_x', 'stranger@example.com')])
             ->assertForbidden()->assertExactJson(['code' => 'no_access']);
@@ -189,7 +189,7 @@ describe('email links into Tantra', function () {
         'https://content.usetantra.com/',
         'https://evil.example.com/tantra/review',
         'https://content.usetantra.com:8443/tantra/review',
-        'mailto:team@growthclubpro.com',
+        'mailto:team@example.com',
     ]);
 
     it('changes nothing while the flag is off', function () {

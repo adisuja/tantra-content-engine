@@ -10,11 +10,42 @@
 set -euo pipefail
 
 DIR=/opt/tantra
-RAW=https://raw.githubusercontent.com/adisuja/tantra-content-engine/main/deploy/tantra
 cd "$DIR"
 
+# The repo is private. Files come from the GitHub API, first without a token
+# (works only while the repo is public), then with a read token: a fine-grained
+# token with Contents read only on adisuja/tantra-content-engine. Pass it as
+# ENGINE_READ_TOKEN in the environment (sudo --preserve-env=ENGINE_READ_TOKEN) or
+# paste it when asked. It goes to curl on stdin only: never on disk, never in argv.
+# No token? Copy compose.yaml into /opt/tantra yourself, or let tantra-ops
+# tasks/deploy.sh ship it; this script then keeps the copy it finds.
+engine_get() { # <repo path> <destination>
+    local url="https://api.github.com/repos/adisuja/tantra-content-engine/contents/$1?ref=main"
+    if [ -n "${ENGINE_READ_TOKEN:-}" ]; then
+        printf 'Authorization: Bearer %s\n' "$ENGINE_READ_TOKEN" \
+            | curl -fsSL -H @- -H 'Accept: application/vnd.github.raw' "$url" -o "$2.new"
+    else
+        curl -fsSL -H 'Accept: application/vnd.github.raw' "$url" -o "$2.new" 2>/dev/null
+    fi && mv "$2.new" "$2" || { rm -f "$2.new"; return 1; }
+}
+
 echo "==> Fetching the latest compose file"
-curl -fsSL "$RAW/compose.yaml" -o compose.yaml
+if ! engine_get deploy/tantra/compose.yaml compose.yaml; then
+    if [ -z "${ENGINE_READ_TOKEN:-}" ] && [ -t 0 ]; then
+        echo "The repo is private. Paste a GitHub read token for it (hidden), or press Enter to skip."
+        read -rs ENGINE_READ_TOKEN
+        echo
+    fi
+    if [ -n "${ENGINE_READ_TOKEN:-}" ] && engine_get deploy/tantra/compose.yaml compose.yaml; then
+        :
+    elif [ -s compose.yaml ]; then
+        echo "Could not fetch it: keeping the compose.yaml already in $DIR."
+    else
+        echo "No compose.yaml: copy deploy/tantra/compose.yaml into $DIR, or run again with a read token." >&2
+        exit 1
+    fi
+fi
+unset ENGINE_READ_TOKEN
 
 if [ ! -f .env ]; then
     echo "==> Writing .env (secrets are generated on this VM)"

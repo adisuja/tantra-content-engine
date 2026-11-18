@@ -78,7 +78,7 @@ beforeEach(function () {
         'tantra.clerk.frontend_api' => EMBED_ISSUER,
         'tantra.clerk.authorized_parties' => ['https://content.usetantra.com', EMBED_CRM],
         'tantra.clerk.secret_key' => null,
-        'tantra.clerk.team_emails' => ['team@growthclubpro.com'],
+        'tantra.clerk.team_emails' => ['team@example.com'],
     ]);
     Http::fake([
         EMBED_ISSUER.'/.well-known/jwks.json' => Http::response(embedClerkKey()['jwks']),
@@ -153,7 +153,7 @@ describe('embed session', function () {
     });
 
     it('swaps to the new CRM user when another person was signed in', function () {
-        $adi = embedUser('adi@usetantra.com', 'user_adi');
+        $adi = embedUser('owner@example.com', 'user_adi');
         $priya = embedUser('priya@usetantra.com', 'user_priya');
 
         $this->actingAs($adi)
@@ -185,7 +185,7 @@ describe('embed session', function () {
     });
 
     it('ends the previous session before answering no access', function () {
-        $adi = embedUser('adi@usetantra.com', 'user_adi');
+        $adi = embedUser('owner@example.com', 'user_adi');
 
         $this->actingAs($adi)
             ->postJson('/tantra/embed/session', ['token' => embedToken('user_stranger', ['email_verified' => true, 'email' => 'stranger@example.com'])])
@@ -196,7 +196,7 @@ describe('embed session', function () {
     });
 
     it('forgets the previous person\'s remember cookie before answering no access', function () {
-        $adi = embedUser('adi@usetantra.com', 'user_adi');
+        $adi = embedUser('owner@example.com', 'user_adi');
         $recaller = Auth::guard('web')->getRecallerName();
 
         $this->actingAs($adi)
@@ -209,7 +209,7 @@ describe('embed session', function () {
     });
 
     it('starts a fresh session when it swaps, and keeps the session for the same person', function () {
-        $adi = embedUser('adi@usetantra.com', 'user_adi');
+        $adi = embedUser('owner@example.com', 'user_adi');
         $priya = embedUser('priya@usetantra.com', 'user_priya');
 
         $this->actingAs($adi)
@@ -298,7 +298,7 @@ describe('embed session', function () {
     });
 
     it('does not cycle the previous person\'s remember token', function () {
-        $adi = embedUser('adi@usetantra.com', 'user_adi');
+        $adi = embedUser('owner@example.com', 'user_adi');
         $adi->forceFill(['remember_token' => 'adi-other-devices'])->save();
         embedUser('priya@usetantra.com', 'user_priya');
 
@@ -310,7 +310,7 @@ describe('embed session', function () {
     });
 
     it('changes nothing for a bad token while someone is signed in', function () {
-        $adi = embedUser('adi@usetantra.com', 'user_adi');
+        $adi = embedUser('owner@example.com', 'user_adi');
 
         $this->actingAs($adi)
             ->postJson('/tantra/embed/session', ['token' => embedToken('user_priya', ['azp' => 'https://evil.example.com'])])

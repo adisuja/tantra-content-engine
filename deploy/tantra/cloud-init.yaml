@@ -12,7 +12,9 @@ runcmd:
   - systemctl enable --now docker
   - usermod -aG docker ubuntu
   - mkdir -p /opt/tantra
-  - curl -fsSL https://raw.githubusercontent.com/adisuja/tantra-content-engine/main/deploy/tantra/setup.sh -o /opt/tantra/setup.sh
-  - chmod 700 /opt/tantra/setup.sh
+  # Works only while the repo is public. Private: scp deploy/tantra/setup.sh to the
+  # VM and sudo install -m 700 it as /opt/tantra/setup.sh (no token in user data).
+  - "curl -fsSL -H 'Accept: application/vnd.github.raw' 'https://api.github.com/repos/adisuja/tantra-content-engine/contents/deploy/tantra/setup.sh?ref=main' -o /opt/tantra/setup.sh || echo 'setup.sh not fetched (private repo), copy it by hand'"
+  - test -f /opt/tantra/setup.sh && chmod 700 /opt/tantra/setup.sh || true
   - timedatectl set-timezone UTC
   - touch /opt/tantra/.cloud-init-done
