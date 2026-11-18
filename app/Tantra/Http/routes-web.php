@@ -13,6 +13,7 @@ use App\Tantra\Http\Controllers\TemplatesController;
 use App\Tantra\Http\Controllers\Web\ChannelAppController;
 use App\Tantra\Http\Controllers\Web\ClerkSessionController;
 use App\Tantra\Http\Controllers\Web\ConnectorController;
+use App\Tantra\Http\Controllers\Web\CrmConnectController;
 use App\Tantra\Http\Controllers\Web\DeveloperAppsController;
 use App\Tantra\Http\Controllers\Web\DigestUnsubscribeController;
 use App\Tantra\Http\Controllers\Web\EmbedController;
@@ -227,6 +228,13 @@ Route::middleware(['web', 'throttle:60,1'])
 Route::middleware(['web'])
     ->get('tantra/connect-window', [EmbedController::class, 'connectWindow'])
     ->name('tantra.embed.connect-window');
+// tantra: RF-10, the Tantra app's signed "connect this network" link, back to its invite page when done (CrmConnectLink).
+Route::middleware(['web', 'signed', 'throttle:20,1'])
+    ->get('tantra/crm-connect', CrmConnectController::class)
+    ->name('tantra.crm-connect');
+Route::middleware(['web'])
+    ->get('tantra/crm-connect/back', [CrmConnectController::class, 'back'])
+    ->name('tantra.crm-connect.back');
 // tantra: signing out of Tantra ends the Engine session too (S-12).
 Route::middleware(['web'])
     ->get('tantra/embed/signout', [EmbedController::class, 'signOutPage'])
