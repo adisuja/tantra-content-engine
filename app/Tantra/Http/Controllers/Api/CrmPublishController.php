@@ -12,6 +12,8 @@ use App\Enums\SocialAccount\Status as AccountStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Post;
 use App\Models\SocialAccount;
+use App\Models\Workspace;
+use App\Tantra\Channels\CrmConnectLink;
 use App\Tantra\Crm\CrmContent;
 use App\Tantra\Crm\CrmDeleteRefused;
 use App\Tantra\Crm\CrmNetworkDelete;
@@ -32,6 +34,7 @@ use Illuminate\Validation\ValidationException;
  *   POST publish/channels   the channels of the team, by name, with whether each is connected (never a token)
  *   POST publish            schedule a post, or publish it now, to one or more channels of one workspace
  *   POST publish/delete     delete a published post on its network (D33, docs/crm/engine-patches/d33-delete-post/README.md)
+ *   POST publish/connect    a signed link that connects one network and comes back to the Tantra app (RF-10, CrmConnectLink)
  */
 class CrmPublishController extends Controller
 {
@@ -166,6 +169,55 @@ class CrmPublishController extends Controller
         DB::transaction(fn () => $post->writePublication(['publish_status' => PublishStatus::Deleted, 'deleted_at' => now(), 'deleted_by' => $actor->id]));
 
         return response()->json(['data' => ['deleted' => true, 'platform' => $platform]])->header('Cache-Control', 'no-store, private');
+    }
+
+    /**
+     * RF-10: the link that connects one network for this person and comes back to the return URL (only
+     * https://crm.usetantra.com/content/invite). 404 no_link when this network has no sign in link here (a form network,
+     * or no keys yet): the Tantra app then opens its own fallback.
+     */
+    public function connect(Request $request): JsonResponse
+    {
+        try {
+            $data = $request->validate([
+                'workspace' => ['required', 'string', 'max:100'],
+                'actor_email' => ['required', 'email', 'max:255'],
+                'network' => ['required', 'string', 'in:'.implode(',', CrmConnectLink::NETWORKS)],
+                'return_url' => ['required', 'string', 'max:1000'],
+            ]);
+        } catch (ValidationException $e) {
+            return $this->refuse(422, 'validation', (string) collect($e->errors())->flatten()->first());
+        }
+        $return = CrmConnectLink::safeReturn($data['return_url']);
+        if ($return === null) {
+            return $this->refuse(422, 'invalid_return', 'The return URL must be the invite page of the Tantra app.');
+        }
+        $route = CrmConnectLink::startRoute($data['network']);
+        if ($route === null) {
+            return $this->refuse(404, 'no_link');
+        }
+
+        // The person's own place in the team: the first mapped workspace they belong to, and they must be able to add channels there.
+        $ids = CrmContent::workspaceIds($data['workspace']);
+        $found = collect($ids === [] ? [] : Workspace::query()->whereIn('id', $ids)->get())
+            ->sortBy(fn (Workspace $w): int|false => array_search($w->id, $ids, true))
+            ->map(fn (Workspace $w): array => [$w, CrmContent::actor($w, $data['actor_email'])])
+            ->filter(fn (array $pair): bool => $pair[1] !== null)
+            ->values();
+        if ($found->isEmpty()) {
+            return $this->refuse(403, 'unknown_person');
+        }
+        $pick = $found->first(fn (array $pair): bool => $pair[1]->can('manageAccounts', $pair[0]));
+        if ($pick === null) {
+            return $this->refuse(403, 'cannot_connect', 'Ask the owner of your team to connect this network, or ask them to make you an admin.');
+        }
+        [$workspace, $actor] = $pick;
+
+        return response()->json(['data' => [
+            'network' => $data['network'],
+            'url' => CrmConnectLink::signedUrl($actor, $workspace, $data['network'], $return),
+            'expires_at' => now()->addMinutes(CrmConnectLink::TTL_MINUTES)->toIso8601String(),
+        ]])->header('Cache-Control', 'no-store, private');
     }
 
     private function refuse(int $status, string $code, ?string $message = null): JsonResponse

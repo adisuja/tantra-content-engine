@@ -158,6 +158,7 @@ Route::middleware(['api', 'tantra.crm-key', 'throttle:tantra-engagement-channels
         Route::post('/publish/channels', [CrmPublishController::class, 'channels'])->name('publish.channels');
         Route::post('/publish', [CrmPublishController::class, 'publish'])->name('publish');
         Route::post('/publish/delete', [CrmPublishController::class, 'delete'])->name('publish.delete');
+        Route::post('/publish/connect', [CrmPublishController::class, 'connect'])->name('publish.connect');
         Route::post('/repurpose/sources', [CrmRepurposeController::class, 'sources'])->name('repurpose.sources');
         Route::post('/repurpose/targets', [CrmRepurposeController::class, 'targets'])->name('repurpose.targets');
         Route::post('/repurpose/start', [CrmRepurposeController::class, 'start'])->name('repurpose.start');

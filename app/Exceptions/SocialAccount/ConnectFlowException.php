@@ -6,6 +6,7 @@ namespace App\Exceptions\SocialAccount;
 
 use App\Enums\SocialAccount\Platform;
 use App\Support\Social\PendingConnection;
+use App\Tantra\Channels\CrmConnectLink;
 use Illuminate\Contracts\Debug\ShouldntReport;
 use Illuminate\Http\RedirectResponse;
 use RuntimeException;
@@ -32,6 +33,13 @@ class ConnectFlowException extends RuntimeException implements ShouldntReport
     {
         if ($this->messageKey !== self::SESSION_EXPIRED) {
             PendingConnection::current()?->fail($this->messageKey);
+        }
+
+        // tantra: a connection from the Tantra app's invite page goes back there (RF-10): cancelled, or failed.
+        if (CrmConnectLink::owns($this->platform)) {
+            PendingConnection::forget();
+
+            return redirect()->to(CrmConnectLink::backRoute(CrmConnectLink::resultFor($this->messageKey)));
         }
 
         return $this->platform !== null

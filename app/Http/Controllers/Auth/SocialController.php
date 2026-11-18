@@ -22,6 +22,7 @@ use App\Models\Workspace;
 use App\Services\PostHogService;
 use App\Support\Social\PendingConnection;
 use App\Tantra\Channels\ConnectFailures;
+use App\Tantra\Channels\CrmConnectLink;
 use Exception;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -113,7 +114,8 @@ class SocialController extends Controller
             'identities' => $state === 'select' ? $this->identityCards($pending) : [],
             'retryUrl' => $this->startUrl($pending),
             'switchUrl' => $state === 'select' ? $this->startUrl($pending, switchingAccount: true) : null,
-            'backUrl' => $pending?->returnUrl() ?? PendingConnection::defaultReturnUrl(),
+            // tantra: a connection from the Tantra app's invite page goes back there (RF-10, CrmConnectLink).
+            'backUrl' => CrmConnectLink::owns($this->platform) ? CrmConnectLink::backRoute(CrmConnectLink::CANCELLED) : ($pending?->returnUrl() ?? PendingConnection::defaultReturnUrl()),
             // tantra: the next step, the network's own words, and the way to tester access.
             'tantraHelp' => ConnectFailures::present($this->platform, $pending?->failure(), $state, $request->user()),
         ]);
@@ -166,6 +168,11 @@ class SocialController extends Controller
         }
 
         PendingConnection::forget();
+
+        // tantra: a connection from the Tantra app's invite page goes back there with result=connected (RF-10).
+        if (CrmConnectLink::owns($this->platform)) {
+            return redirect()->to(CrmConnectLink::backRoute(CrmConnectLink::CONNECTED));
+        }
 
         $created = $accounts->first(fn (SocialAccount $account): bool => $account->wasRecentlyCreated && $reconnect === null);
         $channel = $created ?? $accounts->first();
@@ -262,6 +269,11 @@ class SocialController extends Controller
 
     protected function rememberConnectSession(Request $request, Workspace $workspace): void
     {
+        // tantra: only a connect started from the Tantra app's link (RF-10) goes back there; any other one ends here as before.
+        if ($request->query(CrmConnectLink::FLAG) !== '1') {
+            CrmConnectLink::forget();
+        }
+
         PendingConnection::start(
             $this->platform,
             $workspace,
@@ -383,6 +395,13 @@ class SocialController extends Controller
 
         if ($pending?->platform() === $this->platform) {
             $pending->fail($reason);
+        }
+
+        // tantra: a connection from the Tantra app's invite page goes back there with the result (RF-10).
+        if (CrmConnectLink::owns($this->platform)) {
+            PendingConnection::forget();
+
+            return redirect()->to(CrmConnectLink::backRoute(CrmConnectLink::resultFor($reason)));
         }
 
         return redirect()->route('app.social.connect.show', $this->platform);
@@ -521,6 +540,7 @@ class SocialController extends Controller
             'reconnect' => $pending?->reconnectId(),
             'return_to' => $pending?->returnPath(),
             'switch' => $switchingAccount ? '1' : null,
+            CrmConnectLink::FLAG => CrmConnectLink::owns($this->platform) ? '1' : null, // tantra: RF-10
         ]));
     }
 

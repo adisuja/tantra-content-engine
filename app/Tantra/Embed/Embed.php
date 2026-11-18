@@ -81,7 +81,7 @@ class Embed
      * callback stays on this host), sign in and set password pages, signed links, the embed pages themselves,
      * public previews, media and unsubscribe links.
      */
-    private const STANDALONE = '#^/(auth|login|logout|register|forgot-password|reset-password|email|join|connect|accounts|social|oauth|tantra/embed|tantra/connect-window|tantra/reconnect|tantra/join|previewlink|p/|media|storage|unsubscribe|webhooks?|api/)#';
+    private const STANDALONE = '#^/(auth|login|logout|register|forgot-password|reset-password|email|join|connect|accounts|social|oauth|tantra/embed|tantra/connect-window|tantra/crm-connect|tantra/reconnect|tantra/join|previewlink|p/|media|storage|unsubscribe|webhooks?|api/)#';
 
     /**
      * A link from an Engine email, opened inside Tantra (S-12): https://content.usetantra.com/schedule?x=1 becomes
