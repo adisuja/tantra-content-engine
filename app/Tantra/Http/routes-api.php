@@ -162,6 +162,9 @@ Route::middleware(['api', 'tantra.crm-key', 'throttle:tantra-engagement-channels
         Route::post('/repurpose/sources', [CrmRepurposeController::class, 'sources'])->name('repurpose.sources');
         Route::post('/repurpose/targets', [CrmRepurposeController::class, 'targets'])->name('repurpose.targets');
         Route::post('/repurpose/start', [CrmRepurposeController::class, 'start'])->name('repurpose.start');
+        Route::post('/repurpose/source-posts', [CrmRepurposeController::class, 'sourcePosts'])->name('repurpose.source-posts');
+        Route::post('/repurpose/start-post', [CrmRepurposeController::class, 'startPost'])->name('repurpose.start-post');
+        Route::post('/repurpose/runs', [CrmRepurposeController::class, 'runs'])->name('repurpose.runs');
         Route::post('/insights', CrmInsightsController::class)->name('insights');
         Route::post('/settings', CrmSettingsController::class)->name('settings');
     });

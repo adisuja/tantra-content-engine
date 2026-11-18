@@ -12,6 +12,7 @@ use App\Tantra\Agent\JobApplier;
 use App\Tantra\Ideas\IdeaToReview;
 use App\Tantra\Ideas\TantraIdeas;
 use App\Tantra\Ideas\UpsertIdeas;
+use App\Tantra\Review\Enums\ReviewStatus;
 use App\Tantra\Review\Models\ReviewItem;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
@@ -45,12 +46,15 @@ final class RepostApplier implements JobApplier
 
         $input = $job->input ?? [];
         $targets = collect($input['targets'] ?? [])->keyBy('target');
-        $source = ReviewItem::query()->find(data_get($input, 'source.review_item_id'));
+        $source = filled(data_get($input, 'source.review_item_id')) ? ReviewItem::query()->find(data_get($input, 'source.review_item_id')) : null;
+        // A post from outside the Engine (a feed, or a connected profile's own post): no review item behind it.
+        $outside = blank(data_get($input, 'source.review_item_id')) && filled(data_get($input, 'source.external_key'));
         $sourceFiles = array_values((array) ($source?->media_manifest['previews'] ?? []));
         $user = User::query()->find($job->requested_by);
-        if ($source === null || $user === null) {
+        if (($source === null && ! $outside) || $user === null) {
             throw new InvalidResult('The post or the person who asked for this is gone.');
         }
+        $draftOnly = (bool) ($input['draft_only'] ?? false);
 
         $toReview = $waiting = 0;
         foreach (array_values($result['items']) as $n => $item) {
@@ -67,7 +71,7 @@ final class RepostApplier implements JobApplier
             try {
                 $rows = UpsertIdeas::execute($user, [[
                 'external_key' => "job-{$job->id}-{$n}",
-                'workspace_id' => $target['workspace_id'] ?? $source->workspace_id,
+                'workspace_id' => $target['workspace_id'] ?? $source?->workspace_id ?? $job->workspace_id,
                 'stage' => $job->kind === 'repurpose' ? 'Repurposed' : 'Reposts',
                 'platform' => $platform,
                 'channel_id' => $target['channel_id'] ?? null,
@@ -79,7 +83,7 @@ final class RepostApplier implements JobApplier
                     'text' => $text, 'first_comment' => $item['first_comment'] ?? null, 'thread' => $item['thread'] ?? [],
                     'media' => array_filter(['type' => data_get($item, 'media.type'), 'files' => $files]) ?: null,
                 ], fn ($x) => $x !== null && $x !== []),
-                'source_review_item_id' => $source->id,
+                'source_review_item_id' => $source?->id,
                 'cadence_week' => $input['cadence_week'] ?? null,
                 'target_date' => $item['planned_date'] ?? null,
                 'agent_job_id' => $job->id,
@@ -96,9 +100,12 @@ final class RepostApplier implements JobApplier
                     $reviewItemId = null; // stays in Ideas with its reason; nothing is lost
                 }
             }
+            if ($reviewItemId && $draftOnly) {
+                self::keepDraft($reviewItemId);
+            }
             $reviewItemId ? $toReview++ : $waiting++;
 
-            if (! ($target['rework'] ?? false)) {
+            if ($source !== null && ! ($target['rework'] ?? false)) {
                 RepurposeProgress::query()->updateOrCreate(
                     ['source_review_item_id' => $source->id, 'network' => $target['network']],
                     ['account_id' => $source->account_id, 'via' => $job->kind === 'repurpose' ? 'cadence' : 'repost',
@@ -109,5 +116,14 @@ final class RepostApplier implements JobApplier
         }
 
         return trim(($toReview ? "{$toReview} sent to review. " : '').($waiting ? "{$waiting} ready in Ideas." : ''));
+    }
+
+    /** A draft only job (the Tantra app's Repurpose automation) never goes past Review: nothing it makes is approved or scheduled. */
+    private static function keepDraft(string $reviewItemId): void
+    {
+        $item = ReviewItem::query()->find($reviewItemId);
+        if ($item !== null && ! in_array($item->review_status, [ReviewStatus::InReview, ReviewStatus::ChangesRequested], true)) {
+            $item->forceFill(['review_status' => ReviewStatus::InReview, 'approved_by' => null, 'approved_at' => null])->save();
+        }
     }
 }
