@@ -128,6 +128,8 @@ export interface ReviewItemRow {
     events: ReviewEventRow[];
     batch_id?: string;
     workspace?: string | null;
+    /** Who approves this post (the workspace's review owner). */
+    approver?: string | null;
     published_at?: string | null;
     delivery?: Delivery;
     metrics?: {

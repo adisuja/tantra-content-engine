@@ -21,7 +21,8 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * tantra: Content > Review in Tantra (AF-09, PRD 9.22): every post already created, as the phone preview shows it, with
- * what the person may do to each (approve, edit the text, reject). The actions are the review studio's own
+ * what the person may do to each (approve, edit the text, reject). A post someone else approves comes too, read only,
+ * with who approves it (`approver`, `waiting_on_other`), so nothing waiting looks missing. The actions are the review studio's own
  * (ReviewActions), so the approval rules and the slots stay the engine's.
  */
 final class ReviewFeed
@@ -36,6 +37,8 @@ final class ReviewFeed
     public const TEXT_MAX = 10000;
 
     /**
+     * counts.waiting_others: of the waiting posts, those someone else approves.
+     *
      * @return array{items: list<array<string, mixed>>, counts: array<string, int>}
      */
     public static function for(User $user, string $state = 'waiting', int $limit = 60): array
@@ -48,17 +51,25 @@ final class ReviewFeed
         $items = $base()->whereIn('review_status', $values($state))->with('workspace')->latest('updated_at')->limit(max(1, min($limit, 200)))->get();
         $posts = Post::query()->whereIn('post_group_id', $items->pluck('post_group_id')->filter())->get()->groupBy('post_group_id');
 
+        $approvers = [];
+        $counts = collect(array_keys(self::STATES))->mapWithKeys(fn (string $s): array => [$s => $base()->whereIn('review_status', $values($s))->count()])->all();
+        $others = ReviewGate::othersWorkspaceIds($user, $visible);
+        $counts['waiting_others'] = $others === [] ? 0 : $base()->whereIn('workspace_id', $others)->whereIn('review_status', $values('waiting'))->count();
+
         return [
-            'items' => $items->map(fn (ReviewItem $i): array => self::item($i, $user, $posts->get($i->post_group_id, new Collection)))->values()->all(),
-            'counts' => collect(array_keys(self::STATES))->mapWithKeys(fn (string $s): array => [$s => $base()->whereIn('review_status', $values($s))->count()])->all(),
+            'items' => $items->map(function (ReviewItem $i) use ($user, $posts, &$approvers): array {
+                return self::item($i, $user, $posts->get($i->post_group_id, new Collection), $approvers);
+            })->values()->all(),
+            'counts' => $counts,
         ];
     }
 
     /**
      * @param  Collection<int, Post>  $posts
+     * @param  array<string, ?string>  $approvers  memo for ReviewGate::reviewOwnerName
      * @return array<string, mixed>
      */
-    public static function item(ReviewItem $i, User $user, Collection $posts): array
+    public static function item(ReviewItem $i, User $user, Collection $posts, array &$approvers = []): array
     {
         $p = (array) ($i->payload ?? []);
         $manifest = (array) ($i->media_manifest ?? []);
@@ -98,6 +109,8 @@ final class ReviewFeed
             'scheduled_at' => $posts->pluck('scheduled_at')->filter()->sort()->first()?->toIso8601String(),
             'post_url' => $posts->pluck('platform_url')->filter()->first(),
             'updated_at' => $i->updated_at?->toIso8601String(),
+            'approver' => ReviewGate::reviewOwnerName($i, $approvers),
+            'waiting_on_other' => $open && ! $owner,
             'can_approve' => $owner && $open,
             'can_edit' => $owner && $open,
             'can_reject' => $owner && ! in_array($i->review_status, [ReviewStatus::Scheduled, ReviewStatus::Published, ReviewStatus::Rejected], true),

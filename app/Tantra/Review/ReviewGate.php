@@ -83,6 +83,35 @@ final class ReviewGate
             ->values()->all();
     }
 
+    /**
+     * Workspaces this user can see whose posts someone else approves: their posts
+     * show read only under "Waiting for someone else", so nothing looks missing.
+     *
+     * @param  iterable<string>  $visibleWorkspaceIds
+     * @return list<string>
+     */
+    public static function othersWorkspaceIds(User $user, iterable $visibleWorkspaceIds): array
+    {
+        return array_values(array_diff(collect($visibleWorkspaceIds)->all(), self::reviewedWorkspaceIds($user)));
+    }
+
+    /**
+     * The name of the person who approves a workspace's posts, for "Waiting for
+     * Priya to approve". Null when nobody can (no Account owner).
+     *
+     * @param  array<string, ?string>  $memo  workspace id => name, kept by the caller across rows
+     */
+    public static function reviewOwnerName(ReviewItem $item, array &$memo = []): ?string
+    {
+        $workspaceId = (string) $item->workspace_id;
+        if (! array_key_exists($workspaceId, $memo)) {
+            $id = self::reviewOwnerId($item);
+            $memo[$workspaceId] = $id === null ? null : User::query()->whereKey($id)->value('name');
+        }
+
+        return $memo[$workspaceId];
+    }
+
     public static function waitingCount(User $user): int
     {
         $workspaceIds = self::reviewedWorkspaceIds($user);
