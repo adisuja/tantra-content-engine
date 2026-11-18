@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Tantra\Links;
 
 use App\Models\Post;
+use App\Models\Workspace;
+use App\Tantra\Auth\TeamAccess;
 use App\Tantra\Ideas\IdeaMeta;
+use App\Tantra\Provision\TantraWorkspaceLink;
 use App\Tantra\Review\Models\ReviewItem;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
@@ -38,7 +41,30 @@ class PieceLinks
 
     public static function enabled(): bool
     {
-        return (bool) config('tantra.crm.links.enabled') && CrmTracking::configured();
+        return (bool) config('tantra.crm.links.enabled') && (CrmTracking::configured() || CrmTracking::teamConfigured());
+    }
+
+    /**
+     * Whose tracking a workspace's links are made in (audit 2026-11-18, root cause 3):
+     * null for Tantra's own (the main Account's workspaces, and a piece with no workspace, as before),
+     * the Tantra team id for a workspace provisioned for another team (Tantra makes the link in that team's own tracking),
+     * false to leave the link as it is (a workspace outside the main Account that no Tantra team owns).
+     */
+    public static function teamOf(?string $workspaceId): string|false|null
+    {
+        if (blank($workspaceId)) {
+            return null;
+        }
+        $workspace = Workspace::query()->find($workspaceId);
+        if ($workspace === null) {
+            return false;
+        }
+        if ($workspace->account_id !== null && $workspace->account_id === TeamAccess::mainAccount()?->id) {
+            return null;
+        }
+        $team = TantraWorkspaceLink::query()->where('workspace_id', $workspace->id)->value('tantra_workspace_id');
+
+        return filled($team) ? (string) $team : false;
     }
 
     /** Whether any text holds a link we would rewrite (cheap, no I/O beyond one lookup per organic link). */
@@ -46,7 +72,7 @@ class PieceLinks
     {
         foreach ($texts as $text) {
             foreach (LinkRules::urls($text) as $url) {
-                if (LinkRules::needsTracking($url, self::ourFullLink(...))) {
+                if (LinkRules::needsTracking($url, self::ourFullLink(...)) && ! self::ourTeamLink($url)) {
                     return true;
                 }
             }
@@ -58,6 +84,12 @@ class PieceLinks
     public static function ourFullLink(?string $utmContent): bool
     {
         return filled($utmContent) && TrackedLink::query()->where('code', $utmContent)->where('shortened', false)->exists();
+    }
+
+    /** A full link a team's own tracking made for a LinkedIn preview card: already tracked. */
+    public static function ourTeamLink(string $url): bool
+    {
+        return TrackedLink::query()->where('long_url', $url)->where('shortened', false)->whereNull('crm_link_id')->exists();
     }
 
     /** True on the first pass: make the CRM links, change nothing. */
@@ -202,7 +234,7 @@ class PieceLinks
         $firstUrl = $urls[0] ?? null;
         $claimed = [];
         foreach (array_unique($urls) as $url) {
-            if (! LinkRules::needsTracking($url, self::ourFullLink(...))) {
+            if (! LinkRules::needsTracking($url, self::ourFullLink(...)) || self::ourTeamLink($url)) {
                 continue;
             }
             $destination = LinkRules::destination($url);
@@ -211,6 +243,8 @@ class PieceLinks
 
             try {
                 $link = $this->link($piece, $where, $medium, $destination, $keepFull);
+            } catch (TrackingOff) {
+                continue; // the team has tracking off in Tantra: the link stays as it is
             } catch (Throwable $e) {
                 $this->errors[] = "{$subjectType} {$subjectId} {$field}: ".$e->getMessage();
                 Log::warning('tantra: could not track a link', ['subject' => $subjectType, 'id' => $subjectId, 'field' => $field, 'error' => $e->getMessage()]);
@@ -218,6 +252,9 @@ class PieceLinks
                 continue;
             }
 
+            if ($link === null) {
+                continue;
+            }
             $new = $link->url();
             if ($new === '' || $new === $url) {
                 continue;
@@ -235,14 +272,28 @@ class PieceLinks
         return $text;
     }
 
-    /** The piece's link for this placement: the one made before, else a new CRM short link. */
-    public function link(Piece $piece, string $placement, string $medium, string $destination, bool $keepFull): TrackedLink
+    /**
+     * The piece's link for this placement: the one made before, else a new CRM short link, in the tracking of the team
+     * the piece belongs to. Null when the link is to be left as it is.
+     */
+    public function link(Piece $piece, string $placement, string $medium, string $destination, bool $keepFull): ?TrackedLink
     {
         $existing = TrackedLink::query()->where([
             'member_key' => $piece->memberKey, 'piece_ref' => $piece->ref, 'platform' => $piece->platform, 'placement' => $placement,
         ])->first();
         if ($existing !== null && $existing->destination === $destination) {
             return $existing;
+        }
+
+        $team = self::teamOf($piece->workspaceId);
+        if ($team === false) {
+            return null;
+        }
+        if ($team !== null) {
+            return CrmTracking::teamConfigured() ? $this->teamLink($team, $piece, $placement, $medium, $destination, $keepFull, $existing) : null;
+        }
+        if (! CrmTracking::configured()) {
+            return null;
         }
 
         $channelId = $this->crm->channel($piece->platform);
@@ -274,6 +325,42 @@ class PieceLinks
             'shortened' => ! $keepFull, 'crm_link_id' => $created['id'], 'crm_asset_id' => $assetId, 'crm_channel_id' => $channelId,
         ];
 
+        return $this->save($piece, $placement, $existing, $attributes);
+    }
+
+    /**
+     * A link made by Tantra in the team's own tracking (POST /intake/content/links). The CRM ids stay null: the team's
+     * campaign, channel and asset live in Tantra. The short link goes in the copy, or Tantra's full link for a preview card.
+     *
+     * @throws TrackingOff when the team has tracking off
+     */
+    private function teamLink(string $team, Piece $piece, string $placement, string $medium, string $destination, bool $keepFull, ?TrackedLink $existing): TrackedLink
+    {
+        $created = null;
+        $code = '';
+        for ($n = 1; $n <= 9 && $created === null; $n++) {
+            $code = LinkRules::code($piece->memberKey, $piece->name, $piece->platform, $placement, $medium, $n);
+            if (TrackedLink::query()->where('code', $code)->when($existing !== null, fn ($q) => $q->whereKeyNot($existing->id))->exists()) {
+                continue;
+            }
+            $created = $this->crm->teamLink($team, $piece->platform, $destination, $piece->ref.':'.$piece->platform, $piece->name, $placement, $code);
+        }
+        if ($created === null) {
+            throw new \RuntimeException("No free code for {$piece->memberKey} {$piece->name} {$placement}.");
+        }
+
+        $full = $keepFull && filled($created['long_url']);
+
+        return $this->save($piece, $placement, $existing, [
+            'workspace_id' => $piece->workspaceId, 'piece_name' => mb_substr($piece->name, 0, 200), 'medium' => $medium,
+            'code' => $created['code'] ?: $code, 'destination' => $destination, 'short_url' => $created['short_url'],
+            'long_url' => $created['long_url'], 'shortened' => ! $full, 'crm_link_id' => null, 'crm_asset_id' => null, 'crm_channel_id' => null,
+        ]);
+    }
+
+    /** @param  array<string, mixed>  $attributes */
+    private function save(Piece $piece, string $placement, ?TrackedLink $existing, array $attributes): TrackedLink
+    {
         if ($existing !== null) {
             $existing->forceFill($attributes)->save();
 
