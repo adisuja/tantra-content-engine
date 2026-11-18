@@ -26,13 +26,41 @@ import {
 import { syncPreferences } from '@/preferences';
 import type { Auth } from '@/types';
 
-const appName = import.meta.env.VITE_APP_NAME || 'TryPost.it';
+const engineName = import.meta.env.VITE_APP_NAME || 'TryPost.it';
+
+// tantra: AF-10, inside Tantra (framed, or a session the Tantra embed started) the engine's own name never shows.
+const nameFor = (page: unknown): string =>
+    isEmbedded() ||
+    (
+        (page as { props?: { tantraView?: { active?: boolean } } } | undefined)
+            ?.props?.tantraView
+    )?.active === true
+        ? 'Tantra'
+        : engineName;
+
+// tantra: after a deploy an open page can ask for a chunk that no longer
+// exists. Reload once to pick up the new build; the sessionStorage guard
+// stops a loop when the chunk is missing for another reason.
+const PRELOAD_RELOAD_KEY = 'tantra.preloadReload';
+window.addEventListener('vite:preloadError', (event) => {
+    try {
+        if (sessionStorage.getItem(PRELOAD_RELOAD_KEY)) {
+            return;
+        }
+        sessionStorage.setItem(PRELOAD_RELOAD_KEY, String(Date.now()));
+    } catch {
+        // No sessionStorage (a locked down frame): never reload blindly.
+        return;
+    }
+    event.preventDefault();
+    window.location.reload();
+});
 
 createInertiaApp({
     title: (title, page) =>
         // tantra: a public page (the roadmap) names its own full title.
         (page?.props?.tantraTitle as string | undefined) ??
-        (title ? `${title} - ${appName}` : appName),
+        (title ? `${title} - ${nameFor(page)}` : nameFor(page)),
     resolve: (name) =>
         resolvePageComponent(
             `./pages/${name}.vue`,
@@ -97,6 +125,14 @@ createInertiaApp({
 
                 mounted = true;
                 app.mount(el);
+                // tantra: the page loaded, so a later missing chunk may reload once again.
+                window.setTimeout(() => {
+                    try {
+                        sessionStorage.removeItem(PRELOAD_RELOAD_KEY);
+                    } catch {
+                        // No sessionStorage: nothing to clear.
+                    }
+                }, 10_000);
 
                 // tantra: inside the Tantra CRM's Content tab (PRD 2026-11-15).
                 if (isEmbedded()) {

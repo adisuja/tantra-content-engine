@@ -9,6 +9,7 @@ import AppLogo from '@/components/AppLogo.vue';
 import PlatformBrandIcon from '@/components/PlatformBrandIcon.vue';
 import PostDetailsDialog from '@/components/publish/PostDetailsDialog.vue';
 import PublicationDetailsDialog from '@/components/publish/PublicationDetailsDialog.vue';
+import { useTantraView } from '@/composables/tantra/useTantraView';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { usePostDetails } from '@/composables/usePostDetails';
 import date from '@/date';
@@ -18,6 +19,9 @@ import { videoFrameUrl } from '@/lib/videoFrame';
 import type { TopPost, WorkspaceAnalyticsReport } from '@/types/analytics';
 import { Platform } from '@/types/platform';
 import { TOP_SORTS } from '@/types/tantra-insights'; // tantra: the Top 5 sorts (PRD 26)
+
+// tantra: inside Tantra (AF-10) a post sent from here was published via Tantra.
+const { inTantra } = useTantraView();
 
 const props = defineProps<{
     topPosts: WorkspaceAnalyticsReport['top_posts'];
@@ -212,7 +216,9 @@ const thumbnailFor = (post: TopPost): string | null => {
                         }}</span>
                         <template v-if="post.origin === 'trypost'">
                             <AppLogo variant="mark" class="text-[13px]" />
-                            <span class="shrink-0">TryPost</span>
+                            <span class="shrink-0">{{
+                                inTantra ? 'Tantra' : 'TryPost'
+                            }}</span>
                         </template>
                         <template v-else>
                             <PlatformBrandIcon

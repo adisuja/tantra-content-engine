@@ -72,7 +72,7 @@
                         'X-CSRF-TOKEN': csrf,
                         'X-Requested-With': 'XMLHttpRequest'
                     },
-                    body: JSON.stringify({ token: data.token })
+                    body: JSON.stringify(typeof data.timezone === 'string' && data.timezone.length <= 64 ? { token: data.token, timezone: data.timezone } : { token: data.token })
                 }).then(function (response) {
                     return response.json().catch(function () {
                         return {};

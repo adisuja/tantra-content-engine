@@ -24,6 +24,7 @@ use App\Http\Controllers\Api\TikTokCreatorInfoController;
 use App\Http\Controllers\Api\UploadController;
 use App\Http\Controllers\Api\WebhookController;
 use App\Http\Controllers\Api\WorkspaceController;
+use App\Tantra\Http\Controllers\Api\GatewayContentController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -163,5 +164,15 @@ Route::middleware(['api', 'tantra.gateway', 'throttle:api'])
         Route::get('/webhooks/{webhook}/logs', [WebhookController::class, 'logs'])->name('api.webhooks.logs');
         Route::post('/webhooks/{webhook}/logs/{webhookLog}/replay', [WebhookController::class, 'replay'])->name('api.webhooks.replay');
         Route::delete('/webhooks/{webhook}', [WebhookController::class, 'destroy'])->name('api.webhooks.destroy');
+
+        // tantra: Tantra's native Content > Create and Review (AF-09). Not generated from routes/api.php: engine Tantra routes.
+        Route::get('/tantra/formats', [GatewayContentController::class, 'formats'])->name('tantra.formats');
+        Route::get('/tantra/create', [GatewayContentController::class, 'pieces'])->name('tantra.create.index');
+        Route::post('/tantra/create', [GatewayContentController::class, 'create'])->name('tantra.create.store');
+        Route::get('/tantra/create/{piece}', [GatewayContentController::class, 'piece'])->whereUuid('piece')->name('tantra.create.show');
+        Route::get('/tantra/review', [GatewayContentController::class, 'review'])->name('tantra.review.index');
+        Route::put('/tantra/review/{item}', [GatewayContentController::class, 'edit'])->whereUuid('item')->name('tantra.review.update');
+        Route::post('/tantra/review/{item}/approve', [GatewayContentController::class, 'approve'])->whereUuid('item')->name('tantra.review.approve');
+        Route::post('/tantra/review/{item}/reject', [GatewayContentController::class, 'reject'])->whereUuid('item')->name('tantra.review.reject');
 
     });

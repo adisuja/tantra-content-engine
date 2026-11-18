@@ -11,7 +11,6 @@ import {
     IconMcp,
     IconPlugConnected,
     IconSignature,
-    IconSwitchHorizontal,
     IconTag,
     IconUser,
     IconUsers,
@@ -20,6 +19,7 @@ import {
 import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
+import { HIDDEN_IN_TANTRA } from '@/composables/tantra/useTantraView';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { isEmbedded } from '@/lib/tantra/embed';
 import { members } from '@/routes/app';
@@ -214,30 +214,23 @@ export const useSettingsNavigation = () => {
             });
         }
 
-        // tantra: inside the Tantra CRM (PRD 2026-11-15, 4.6) personal settings
-        // and billing stay with the CRM account, and the workspace switcher
-        // (in the hidden sidebar user menu) becomes a Workspaces item.
-        if (isEmbedded()) {
+        // tantra: inside Tantra (PRD 2026-11-15, 4.6; AF-10) personal settings
+        // and billing stay with the Tantra account, and the engine's own team
+        // pages (Members, Workspaces) are not listed: Tantra owns the team.
+        const tantraView =
+            (page.props.tantraView as { active?: boolean } | undefined)
+                ?.active === true;
+        if (isEmbedded() || tantraView) {
             const embeddedGroups = groups
                 .filter((group) => group.key !== 'personal')
-                .map((group) =>
-                    group.key === 'workspace'
-                        ? {
-                              ...group,
-                              items: [
-                                  ...group.items.filter(
-                                      (navItem) => navItem.name !== 'billing',
-                                  ),
-                                  {
-                                      name: 'workspaces',
-                                      title: 'Workspaces',
-                                      href: '/workspaces',
-                                      icon: IconSwitchHorizontal,
-                                  },
-                              ],
-                          }
-                        : group,
-                );
+                .map((group) => ({
+                    ...group,
+                    items: group.items.filter(
+                        (navItem) =>
+                            navItem.name !== 'billing' &&
+                            !HIDDEN_IN_TANTRA.includes(navItem.name),
+                    ),
+                }));
 
             return embeddedGroups.filter((group) => group.items.length > 0);
         }

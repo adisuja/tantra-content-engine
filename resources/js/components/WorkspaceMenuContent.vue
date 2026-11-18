@@ -37,6 +37,7 @@ import {
     DropdownMenuSubTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useTantraBrand } from '@/composables/tantra/useTantraBrand';
+import { useTantraView } from '@/composables/tantra/useTantraView';
 import { useChangelogDialog } from '@/composables/useChangelogDialog';
 import { clearAllComposerAutosaves } from '@/composables/useComposerAutosave';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
@@ -73,6 +74,8 @@ const emit = defineEmits<{
 const page = usePage();
 const { canManageBilling, canManageTeam, canManageWorkspace } =
     useWorkspaceAbilities();
+// tantra: inside Tantra (AF-10) the team and its workspaces are Tantra's: no Members or Workspaces here.
+const { inTantra } = useTantraView();
 const selfHosted = computed(() => Boolean(page.props.selfHosted));
 const showBilling = computed(() => canManageBilling.value && !selfHosted.value);
 const showChannels = computed(() => canManageWorkspace.value);
@@ -225,7 +228,7 @@ const supportLinks = computed(() =>
             </div>
         </div>
         <DropdownMenuItem
-            v-if="canManageTeam"
+            v-if="canManageTeam && !inTantra"
             :as-child="true"
             :class="
                 cn(
@@ -254,7 +257,7 @@ const supportLinks = computed(() =>
         {{ $t('settings.sidebar.groups.workspace') }}
     </DropdownMenuLabel>
     <DropdownMenuGroup>
-        <DropdownMenuSub>
+        <DropdownMenuSub v-if="!inTantra">
             <DropdownMenuSubTrigger data-testid="sidebar-workspaces-trigger">
                 <Avatar
                     :src="currentWorkspace?.logo_url ?? null"

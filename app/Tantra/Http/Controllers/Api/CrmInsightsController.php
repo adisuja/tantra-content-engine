@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Tantra\Http\Controllers\Api;
 
 use App\Enums\Post\Status as PostStatus;
+use App\Enums\SocialAccount\Status as AccountStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Post;
+use App\Models\SocialAccount;
 use App\Tantra\Crm\CrmContent;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,7 +22,7 @@ use Illuminate\Support\Facades\DB;
  * same analytics the Engine's Insights page reads (the latest daily snapshot of each post's publication). A network that does not
  * report a number gives null, never 0. No token, meta or workspace id leaves here.
  *
- *   POST insights   totals, per network and the best posts of the last 7, 30 or 90 days
+ *   POST insights   totals, per network, per connected profile (AF-09: one view of every profile) and the best posts of the last 7, 30 or 90 days
  */
 class CrmInsightsController extends Controller
 {
@@ -45,7 +47,7 @@ class CrmInsightsController extends Controller
     /** @return array<string, mixed> */
     private static function empty(): array
     {
-        return ['totals' => ['posts' => null, 'published' => null, 'scheduled' => null, 'failed' => null, 'impressions' => null, 'engagements' => null], 'by_network' => [], 'top' => [], 'updated_at' => null];
+        return ['totals' => ['posts' => null, 'published' => null, 'scheduled' => null, 'failed' => null, 'impressions' => null, 'engagements' => null], 'by_network' => [], 'by_profile' => [], 'top' => [], 'updated_at' => null];
     }
 
     /**
@@ -68,6 +70,7 @@ class CrmInsightsController extends Controller
 
             return [
                 'id' => (string) $post->id,
+                'account' => $post->social_account_id === null ? null : (string) $post->social_account_id,
                 'platform' => $post->platform?->value ?? 'unknown',
                 'content' => (string) $post->content,
                 'display_name' => $post->display_name,
@@ -85,6 +88,9 @@ class CrmInsightsController extends Controller
             'engagements' => self::sum($group->pluck('engagements')),
         ])->sortByDesc('posts')->values()->all();
 
+        $byProfile = $this->profiles($ids, $rows);
+        $rows = $rows->map(fn (array $r): array => array_diff_key($r, ['account' => true]));
+
         $top = $rows->sort(fn (array $a, array $b): int => [$b['engagements'] ?? -1, $b['impressions'] ?? -1] <=> [$a['engagements'] ?? -1, $a['impressions'] ?? -1])
             ->take(10)->values()->all();
 
@@ -98,9 +104,39 @@ class CrmInsightsController extends Controller
                 'engagements' => self::sum($rows->pluck('engagements')),
             ],
             'by_network' => $byNetwork,
+            'by_profile' => $byProfile,
             'top' => $top,
             'updated_at' => $end->toIso8601String(),
         ];
+    }
+
+    /**
+     * AF-09: every profile connected to the team's workspaces with its numbers for the period, the busiest first. A profile
+     * with no post in the period still shows (posts 0, numbers null). The account's own id never leaves here.
+     *
+     * @param  list<string>  $ids
+     * @param  Collection<int, array<string, mixed>>  $rows
+     * @return list<array<string, mixed>>
+     */
+    private function profiles(array $ids, Collection $rows): array
+    {
+        $accounts = SocialAccount::query()->whereIn('workspace_id', $ids)->orderBy('created_at')->limit(200)->get();
+        $byAccount = $rows->groupBy(fn (array $r): string => (string) ($r['account'] ?? ''));
+
+        return $accounts->map(function (SocialAccount $a) use ($byAccount): array {
+            $group = $byAccount->get((string) $a->id, new Collection);
+
+            return [
+                'platform' => $a->platform?->value ?? 'unknown',
+                'display_name' => $a->display_name ?: $a->username,
+                'username' => $a->username,
+                'avatar' => self::https($a->avatar_url),
+                'connected' => $a->status === AccountStatus::Connected,
+                'posts' => $group->count(),
+                'impressions' => self::sum($group->pluck('impressions')),
+                'engagements' => self::sum($group->pluck('engagements')),
+            ];
+        })->sortByDesc(fn (array $p): array => [$p['posts'], $p['impressions'] ?? -1])->values()->all();
     }
 
     /**
