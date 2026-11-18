@@ -22,7 +22,8 @@ final class TantraView
 {
     public const SESSION = 'tantra.embed';
 
-    public const SESSION_TIMEZONE = 'tantra.embed.timezone';
+    /** A sibling key, not tantra.embed.timezone: the session store reads dots as nesting, and that would turn SESSION into an array. */
+    public const SESSION_TIMEZONE = 'tantra.embed_timezone';
 
     /** What the engine gives a provisioned person before Tantra says otherwise. */
     public const ENGINE_DEFAULTS = ['Asia/Kolkata', 'UTC'];
