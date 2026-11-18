@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // tantra: the one review screen (PRD 10.2, 2026-11-12). One post at a time,
 // as its phone preview, with an arrow on each side (or a swipe) to move to the
-// previous or next post. Three tabs: Review, Scheduled and Published.
+// previous or next post. Tabs: Review, Waiting for someone else (read only,
+// shown while there is any), Scheduled and Published.
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { useEcho } from '@laravel/echo-vue';
 import {
@@ -19,7 +20,7 @@ import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { connectLinkClick, embedded } from '@/lib/tantra/embed';
 
-type Tab = 'review' | 'scheduled' | 'published';
+type Tab = 'review' | 'others' | 'scheduled' | 'published';
 
 type Reconnect = {
     id: string;
@@ -45,7 +46,18 @@ const props = defineProps<{
     composer: ComposerWaiting[];
 }>();
 
-const TABS: Tab[] = ['review', 'scheduled', 'published'];
+const ALL_TABS: Tab[] = ['review', 'others', 'scheduled', 'published'];
+/* Waiting for someone else shows only while posts wait there (or it is open). */
+const TABS = computed<Tab[]>(() =>
+    ALL_TABS.filter(
+        (t) => t !== 'others' || props.tab === 'others' || props.counts.others > 0,
+    ),
+);
+/* The card's own mode: a post waiting for someone else is a review card that
+   this person cannot act on (can_review is false). */
+const cardMode = computed<'review' | 'scheduled' | 'published'>(() =>
+    props.tab === 'others' ? 'review' : props.tab,
+);
 
 const page = usePage();
 const viewer = computed(() => {
@@ -285,6 +297,20 @@ const reconnectLine = (r: Reconnect): string => {
                 <div class="text-sm text-muted-foreground">
                     {{ $t(`tantra.review.feed.empty_${tab}_body`) }}
                 </div>
+                <div
+                    v-if="tab === 'review' && !batch && counts.others > 0"
+                    class="mt-3 text-sm"
+                    data-testid="tantra-others-hint"
+                >
+                    {{
+                        $t('tantra.review.feed.empty_review_others', {
+                            count: String(counts.others),
+                        })
+                    }}
+                    <Link :href="tabHref('others')" class="underline">{{
+                        $t('tantra.review.feed.show_others')
+                    }}</Link>
+                </div>
             </div>
 
             <template v-else>
@@ -297,6 +323,22 @@ const reconnectLine = (r: Reconnect): string => {
                             n: String(index + 1),
                             total: String(items.length),
                         })
+                    }}
+                </div>
+
+                <div
+                    v-if="cardMode === 'review' && !current.can_review"
+                    class="self-center rounded-full border border-border bg-card px-3 py-1 text-center text-xs text-muted-foreground"
+                    data-testid="tantra-waiting-on"
+                >
+                    {{
+                        current.approver
+                            ? $t('tantra.review.feed.waiting_on', {
+                                  name: current.approver,
+                              })
+                            : $t('tantra.review.feed.waiting_on_unknown', {
+                                  workspace: current.workspace ?? '',
+                              })
                     }}
                 </div>
 
@@ -331,7 +373,7 @@ const reconnectLine = (r: Reconnect): string => {
                             class="min-w-0 flex-1"
                             :item="current"
                             :viewer="viewer"
-                            :mode="tab"
+                            :mode="cardMode"
                             @changed="reload"
                         />
                     </Transition>

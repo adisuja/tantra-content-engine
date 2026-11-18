@@ -172,3 +172,55 @@ it('tells open review screens when an item changes', function () {
         && $e->batchId === $item->batch_id
         && $e->broadcastOn()[0]->name === "private-tantra.review.batch.{$item->batch_id}");
 });
+
+it('lists posts someone else approves under Waiting for someone else, read only, naming who approves them', function () {
+    $this->teammate->update(['name' => 'Sam Reviewer']);
+
+    $this->actingAs($this->owner)->get(route('tantra.review.index'))
+        ->assertInertia(fn (Assert $page) => $page->where('tab', 'review')
+            ->has('items', 1)
+            ->where('items.0.engine_post_id', 'A1')
+            ->where('counts.review', 1)
+            ->where('counts.others', 1));
+
+    $this->actingAs($this->owner)->get(route('tantra.review.index', ['tab' => 'others']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->where('tab', 'others')
+            ->has('items', 1)
+            ->where('items.0.engine_post_id', 'M1')
+            ->where('items.0.approver', 'Sam Reviewer')
+            ->where('items.0.can_review', false)
+            ->where('counts.review', 1)
+            ->where('counts.others', 1));
+});
+
+it('keeps approve, edit and reject with the review owner for a post waiting for someone else', function () {
+    $item = ReviewItem::query()->where('engine_post_id', 'M1')->sole();
+
+    expect(fn () => ReviewActions::approve($this->owner, $item))->toThrow(Illuminate\Validation\ValidationException::class)
+        ->and(fn () => ReviewActions::reject($this->owner, $item))->toThrow(Illuminate\Validation\ValidationException::class)
+        ->and($item->refresh()->review_status)->toBe(App\Tantra\Review\Enums\ReviewStatus::InReview);
+});
+
+it('shows a team login that approves nothing every waiting post under Waiting for someone else', function () {
+    $team = User::factory()->create(['account_id' => $this->owner->account_id, 'name' => 'Team Login']);
+    foreach ([$this->adi, $this->team] as $workspace) {
+        $workspace->members()->attach($team->id, membershipPivot('admin'));
+    }
+    $team->update(['current_workspace_id' => $this->adi->id]);
+
+    $this->actingAs($team)->get(route('tantra.review.index'))
+        ->assertInertia(fn (Assert $page) => $page->has('items', 0)->where('counts.review', 0)->where('counts.others', 2));
+
+    $this->actingAs($team)->get(route('tantra.review.index', ['tab' => 'others']))
+        ->assertInertia(fn (Assert $page) => $page->has('items', 2)
+            ->where('items.0.can_review', false)
+            ->where('items.1.can_review', false));
+});
+
+it('opens a link to a post someone else approves on Waiting for someone else', function () {
+    $item = ReviewItem::query()->where('engine_post_id', 'M1')->sole();
+
+    $this->actingAs($this->owner)->get(route('tantra.review.index', ['item' => $item->id]))
+        ->assertInertia(fn (Assert $page) => $page->where('tab', 'others')->where('focus', $item->id));
+});

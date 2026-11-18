@@ -164,6 +164,26 @@ describe('embed session', function () {
         $this->assertAuthenticatedAs($priya);
     });
 
+    it('swaps an Account owner\'s session for the team login when the team login opens Content', function () {
+        config(['tantra.clerk.team_emails' => ['team@example.test']]);
+        $owner = createApiTestToken()['user'];
+        $owner->forceFill(['clerk_user_id' => 'user_owner'])->save();
+
+        $this->actingAs($owner)
+            ->postJson('/tantra/embed/session', ['token' => embedToken('user_team', ['email_verified' => true, 'email' => 'team@example.test'])])
+            ->assertOk()
+            ->assertJson(['email' => 'team@example.test']);
+
+        $team = User::query()->where('email', 'team@example.test')->sole();
+        $this->assertAuthenticatedAs($team);
+        expect($team->id)->not->toBe($owner->id)
+            ->and($team->clerk_user_id)->toBe('user_team');
+
+        // Opening Content again as the owner swaps back: the CRM member decides, never the old engine cookie.
+        $this->postJson('/tantra/embed/session', ['token' => embedToken('user_owner')])->assertOk();
+        $this->assertAuthenticatedAs($owner);
+    });
+
     it('ends the previous session before answering no access', function () {
         $adi = embedUser('adi@usetantra.com', 'user_adi');
 

@@ -152,6 +152,33 @@ describe('review', function () {
         expect($this->item->refresh()->review_status)->toBe(ReviewStatus::Rejected);
     });
 
+    it('lists a post someone else approves, read only, with who approves it, and keeps the actions with them', function () {
+        $mate = App\Models\User::factory()->create(['account_id' => $this->user->account_id, 'name' => 'Sam Reviewer']);
+        $team = App\Models\Workspace::factory()->create(['account_id' => $this->user->account_id, 'user_id' => $mate->id]);
+        $team->members()->attach($mate->id, membershipPivot('admin'));
+        WorkspaceSettings::query()->create(['workspace_id' => $team->id, 'brand_profile_key' => 'mate', 'review_owner_user_id' => $mate->id]);
+        ImportBatch::execute($this->user, ['engine_batch_id' => 'b3', 'posts' => [['engine_post_id' => 'M1', 'profile' => 'mate', 'platform' => 'linkedin', 'text' => 'Waiting for someone else.']]]);
+        $other = ReviewItem::query()->where('engine_post_id', 'M1')->sole();
+
+        $data = nativeGatewayCall($this, 'GET', '/api/gateway/tantra/review')->assertOk()->json('data');
+        $rows = collect($data['items'])->keyBy('ref');
+
+        expect($data['counts']['waiting'])->toBe(2)
+            ->and($data['counts']['waiting_others'])->toBe(1)
+            ->and($rows[$other->id]['approver'])->toBe('Sam Reviewer')
+            ->and($rows[$other->id]['waiting_on_other'])->toBeTrue()
+            ->and($rows[$other->id]['can_approve'])->toBeFalse()
+            ->and($rows[$other->id]['can_edit'])->toBeFalse()
+            ->and($rows[$other->id]['can_reject'])->toBeFalse()
+            ->and($rows[$this->item->id]['waiting_on_other'])->toBeFalse()
+            ->and($rows[$this->item->id]['approver'])->toBe($this->user->name);
+
+        nativeGatewayCall($this, 'POST', "/api/gateway/tantra/review/{$other->id}/approve")->assertStatus(422);
+        nativeGatewayCall($this, 'PUT', "/api/gateway/tantra/review/{$other->id}", ['text' => 'Not mine to edit.'])->assertStatus(422);
+        expect($other->refresh()->review_status)->toBe(ReviewStatus::InReview)
+            ->and($other->payload['text'])->toBe('Waiting for someone else.');
+    });
+
     it('answers 404 for a post the person cannot see', function () {
         nativeGatewayCall($this, 'POST', '/api/gateway/tantra/review/00000000-0000-4000-8000-000000000000/reject')->assertNotFound();
     });
