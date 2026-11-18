@@ -26,10 +26,21 @@ swapon -a || true
 
 timedatectl set-timezone UTC
 
-# The one-time setup script, refreshed on each boot.
+# The one-time setup script, refreshed on each boot while the repo is public.
+# The repo is private: this anonymous fetch then fails and the boot goes on.
+# Copy setup.sh in once yourself (no token belongs in user data, which the cloud
+# stores): scp deploy/tantra/setup.sh ubuntu@<vm>:/tmp/ then
+# sudo install -m 700 /tmp/setup.sh /opt/tantra/setup.sh
 mkdir -p /opt/tantra
-curl -fsSL https://raw.githubusercontent.com/adisuja/tantra-content-engine/main/deploy/tantra/setup.sh -o /opt/tantra/setup.sh
-chmod 700 /opt/tantra/setup.sh
+if curl -fsSL -H 'Accept: application/vnd.github.raw' \
+    "https://api.github.com/repos/adisuja/tantra-content-engine/contents/deploy/tantra/setup.sh?ref=main" \
+    -o /opt/tantra/setup.sh.new 2>/dev/null; then
+    mv /opt/tantra/setup.sh.new /opt/tantra/setup.sh
+else
+    rm -f /opt/tantra/setup.sh.new
+    echo "setup.sh not fetched (private repo): copy it to /opt/tantra by hand" >&2
+fi
+[ -f /opt/tantra/setup.sh ] && chmod 700 /opt/tantra/setup.sh
 
 # Once setup.sh has written .env, bring the stack back up after a reboot.
 if [ -f /opt/tantra/.env ] && [ -f /opt/tantra/compose.yaml ]; then

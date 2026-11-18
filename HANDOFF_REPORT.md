@@ -54,7 +54,7 @@ Review cards show the account and avatar, the slot in the reviewer's timezone, a
 
 **No Approve link.** Approving needs a signed-in session, and the app has no signed, expiring approve token. An approve link in an inbox would let anyone holding the email approve, so I left it out.
 
-Inbox test: all 31 emails were sent through the Engine's mailer (tantra-ops `tasks/mail-gallery-send.sh`) to adi@growthclub.org and boards@fintechcircle.com. All landed in the inbox. Gmail filed 7 under Promotions (published, failed, poll, approval, cancelled, renewal heads-up, at-risk); see section 6.
+Inbox test: all 31 emails were sent through the Engine's mailer (tantra-ops `tasks/mail-gallery-send.sh`) to the test inbox. All landed in the inbox. Gmail filed 7 under Promotions (published, failed, poll, approval, cancelled, renewal heads-up, at-risk); see section 6.
 
 ## 3. Daily digest
 
@@ -92,7 +92,7 @@ Done since the first version of this report: deploy, Dodo webhook registration, 
 
 **Decisions I made for you**
 - Used `dodo.env`, not `dodo-enterprise.env`; it is the account with every Tantra product.
-- Sent tests to adi@growthclub.org and to boards@fintechcircle.com, because the Gmail connector can only read the latter.
+- Sent tests to the test inbox, because the Gmail connector can only read that one.
 - Billing is per workspace, not per account, as you asked.
 - Grace period is 10 days, so the day-7 reminder comes before the pause.
 - Tantra copy is English only. Upstream's translated emails return if branding is turned off.

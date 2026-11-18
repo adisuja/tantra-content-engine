@@ -236,7 +236,7 @@ describe('signing in', function () {
     });
 
     it('creates the team login on its first sign in with every workspace', function () {
-        $owner = User::factory()->create(['email' => 'adi@growthclub.org']);
+        $owner = User::factory()->create(['email' => 'owner@example.com']);
         clerkWorkspace($owner, 'Adi');
         clerkWorkspace($owner, 'Priya');
 
@@ -263,7 +263,7 @@ describe('signing in', function () {
 
 describe('tantra:team-account', function () {
     it('makes the team login an admin of every workspace, and is safe to run again', function () {
-        $owner = User::factory()->create(['email' => 'adi@growthclub.org']);
+        $owner = User::factory()->create(['email' => 'owner@example.com']);
         clerkWorkspace($owner, 'Adi');
         $priya = clerkWorkspace($owner, 'Priya');
 
@@ -290,13 +290,13 @@ describe('tantra:team-account', function () {
     });
 
     it('hands over the Account with --owner', function () {
-        $owner = User::factory()->create(['email' => 'adi@growthclub.org']);
+        $owner = User::factory()->create(['email' => 'owner@example.com']);
         clerkWorkspace($owner, 'Adi');
 
         $other = clerkWorkspace($owner, 'Priya');
         DB::table('user_workspace')->where('user_id', $owner->id)->where('workspace_id', $other->id)->delete();
 
-        expect(Artisan::call('tantra:team-account', ['--owner' => true, '--force' => true, '--account' => 'adi@growthclub.org']))->toBe(0);
+        expect(Artisan::call('tantra:team-account', ['--owner' => true, '--force' => true, '--account' => 'owner@example.com']))->toBe(0);
 
         $team = User::query()->where('email', 'team@growthclubpro.com')->firstOrFail();
         expect($team->isAccountOwner())->toBeTrue()
@@ -306,7 +306,7 @@ describe('tantra:team-account', function () {
     });
 
     it('asks before handing over the Account', function () {
-        $owner = User::factory()->create(['email' => 'adi@growthclub.org']);
+        $owner = User::factory()->create(['email' => 'owner@example.com']);
         clerkWorkspace($owner, 'Adi');
 
         $this->artisan('tantra:team-account', ['--owner' => true])
@@ -318,11 +318,11 @@ describe('tantra:team-account', function () {
     });
 
     it('refuses an email that belongs to another Account', function () {
-        $owner = User::factory()->create(['email' => 'adi@growthclub.org']);
+        $owner = User::factory()->create(['email' => 'owner@example.com']);
         clerkWorkspace($owner, 'Adi');
         User::factory()->create(['email' => 'team@growthclubpro.com']);
 
-        expect(Artisan::call('tantra:team-account', ['--account' => 'adi@growthclub.org']))->toBe(1)
+        expect(Artisan::call('tantra:team-account', ['--account' => 'owner@example.com']))->toBe(1)
             ->and(DB::table('user_workspace')->where('user_id', User::query()->where('email', 'team@growthclubpro.com')->value('id'))->count())->toBe(0);
     });
 });
@@ -378,7 +378,7 @@ describe('review fixes', function () {
     });
 
     it('signs the team login in through the Backend API path production uses', function () {
-        $owner = User::factory()->create(['email' => 'adi@growthclub.org']);
+        $owner = User::factory()->create(['email' => 'owner@example.com']);
         clerkWorkspace($owner, 'Adi');
         fakeClerkBackend('Team@growthclubpro.com');
 
@@ -390,7 +390,7 @@ describe('review fixes', function () {
     });
 
     it('never grants team access from the email stored on the Engine user', function () {
-        $owner = User::factory()->create(['email' => 'adi@growthclub.org']);
+        $owner = User::factory()->create(['email' => 'owner@example.com']);
         $adi = clerkWorkspace($owner, 'Adi');
         // Someone changed their own Engine email to the team address.
         $sneaky = User::factory()->create(['email' => 'team@growthclubpro.com', 'account_id' => $owner->account_id]);
@@ -404,7 +404,7 @@ describe('review fixes', function () {
     });
 
     it('refuses the team grant to an Engine user linked to another live Clerk user', function () {
-        $owner = User::factory()->create(['email' => 'adi@growthclub.org']);
+        $owner = User::factory()->create(['email' => 'owner@example.com']);
         clerkWorkspace($owner, 'Adi');
         $team = User::factory()->create(['email' => 'team@growthclubpro.com', 'account_id' => $owner->account_id]);
         $team->forceFill(['clerk_user_id' => 'user_live'])->save();
@@ -439,7 +439,7 @@ describe('review fixes', function () {
     });
 
     it('unlinks with tantra:clerk-unlink and the owner-only Team page action', function () {
-        $owner = User::factory()->create(['email' => 'adi@growthclub.org']);
+        $owner = User::factory()->create(['email' => 'owner@example.com']);
         $priya = User::factory()->create(['email' => 'priya@usetantra.com', 'account_id' => $owner->account_id]);
         $priya->forceFill(['clerk_user_id' => 'user_old'])->save();
 
@@ -539,7 +539,7 @@ describe('second review fixes', function () {
     })->skip(fn (): bool => DB::getDriverName() !== 'pgsql', 'The index is for PostgreSQL; MySQL compares emails without case already.');
 
     it('does not adopt an existing user holding the team email without --force', function () {
-        $owner = User::factory()->create(['email' => 'adi@growthclub.org']);
+        $owner = User::factory()->create(['email' => 'owner@example.com']);
         $adi = clerkWorkspace($owner, 'Adi');
         $existing = User::factory()->create(['name' => 'Someone Else', 'email' => 'team@growthclubpro.com', 'account_id' => $owner->account_id]);
 
