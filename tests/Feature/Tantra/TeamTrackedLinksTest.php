@@ -115,7 +115,7 @@ it('asks Tantra for a provisioned team\'s link, in that team\'s own tracking, ne
 it('keeps Tantra\'s own workspaces on Tantra\'s own campaign, as before', function () {
     $post = teamPost($this->tantraWs, $this->tantraOwner, 'Read this: https://example.org/notes');
 
-    expect($post->content)->toBe('Read this: https://go.usetantra.com/l/sam-read-this-x-post');
+    expect($post->content)->toBe('Read this: https://go.usetantra.com/l/sam-read-x-post');
     $paths = collect($this->calls)->pluck('path');
     expect($paths)->not->toContain('/intake/content/links')->and($paths)->toContain('/api/trk/links');
     $made = collect($this->calls)->firstWhere('path', '/api/trk/links');
@@ -136,20 +136,20 @@ it('leaves the link as it is when the team has tracking off, and tries the next 
     $post = teamPost($this->teamWs, $this->teamOwner, 'Read this: https://example.org/notes');
     expect($post->content)->toBe('Read this: https://example.org/notes')->and(TrackedLink::query()->count())->toBe(0);
 
-    $this->teamAnswer = fn (Request $r) => $r['code'] === 'river-read-this-x-post'
+    $this->teamAnswer = fn (Request $r) => $r['code'] === 'river-read-x-post'
         ? Http::response(['error' => 'taken', 'code' => 'code_taken'], 409)
         : Http::response(['short_url' => 'https://go.usetantra.com/l/'.$r['code'], 'long_url' => null, 'code' => $r['code'], 'created' => true]);
     $other = teamPost($this->teamWs, $this->teamOwner, 'Read this: https://example.org/more');
-    expect($other->content)->toBe('Read this: https://go.usetantra.com/l/river-read-this-x-post-2');
+    expect($other->content)->toBe('Read this: https://go.usetantra.com/l/river-read-x-post-2');
 });
 
 it('uses the full link Tantra made for a LinkedIn preview card, and knows it as tracked next time', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->teamWs->id, 'user_id' => $this->teamOwner->id, 'status' => 'draft', 'platform' => Platform::LinkedIn,
-        'content' => "New season.\n\nSee it: https://example.org/season",
+        'content' => "New season.\n\nSee it: https://jointantra.com/season",
     ])->refresh();
 
-    expect($post->content)->toBe("New season.\n\nSee it: https://example.org/season?utm_source=linkedin&utm_medium=organic_social&utm_campaign=content-posts&tlid=t1");
+    expect($post->content)->toBe("New season.\n\nSee it: https://jointantra.com/season?utm_source=linkedin&utm_medium=organic_social&utm_campaign=content-posts&tlid=t1");
     $link = TrackedLink::query()->sole();
     expect($link->shortened)->toBeFalse()->and($link->url())->toBe($link->long_url);
 
