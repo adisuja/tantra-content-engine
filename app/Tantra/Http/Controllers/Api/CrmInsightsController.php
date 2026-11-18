@@ -23,6 +23,11 @@ use Illuminate\Support\Facades\DB;
  * report a number gives null, never 0. No token, meta or workspace id leaves here.
  *
  *   POST insights   totals, per network, per connected profile (AF-09: one view of every profile) and the best posts of the last 7, 30 or 90 days
+ *
+ * ci-insights (18 Nov): `linked` tells an unmapped team (false) from a mapped one with nothing yet (true); impressions fall back to the
+ * snapshot's exposure (views or reach) for networks that count views, not impressions (Instagram, TikTok, YouTube, Threads); `clicks`
+ * are the link clicks a network reports; `measured` counts the posts that have a reading yet, so the app can say "numbers arrive after
+ * the next daily read" instead of a bare zero.
  */
 class CrmInsightsController extends Controller
 {
@@ -47,7 +52,7 @@ class CrmInsightsController extends Controller
     /** @return array<string, mixed> */
     private static function empty(): array
     {
-        return ['totals' => ['posts' => null, 'published' => null, 'scheduled' => null, 'failed' => null, 'impressions' => null, 'engagements' => null], 'by_network' => [], 'by_profile' => [], 'top' => [], 'updated_at' => null];
+        return ['linked' => false, 'totals' => ['posts' => null, 'published' => null, 'scheduled' => null, 'failed' => null, 'impressions' => null, 'engagements' => null, 'clicks' => null, 'measured' => null], 'by_network' => [], 'by_profile' => [], 'top' => [], 'updated_at' => null];
     }
 
     /**
@@ -66,7 +71,7 @@ class CrmInsightsController extends Controller
 
         $metrics = $this->metrics($published->pluck('id')->all());
         $rows = $published->map(function (Post $post) use ($metrics): array {
-            $m = $metrics[$post->id] ?? ['impressions' => null, 'engagements' => null];
+            $m = $metrics[$post->id] ?? ['impressions' => null, 'engagements' => null, 'clicks' => null, 'measured' => false];
 
             return [
                 'id' => (string) $post->id,
@@ -77,6 +82,8 @@ class CrmInsightsController extends Controller
                 'published_at' => $post->published_at?->utc()->toIso8601String(),
                 'impressions' => $m['impressions'],
                 'engagements' => $m['engagements'],
+                'clicks' => $m['clicks'],
+                'measured' => $m['measured'],
                 'platform_url' => self::https($post->platform_url),
             ];
         });
@@ -86,15 +93,19 @@ class CrmInsightsController extends Controller
             'posts' => $group->count(),
             'impressions' => self::sum($group->pluck('impressions')),
             'engagements' => self::sum($group->pluck('engagements')),
+            'clicks' => self::sum($group->pluck('clicks')),
+            'measured' => $group->where('measured', true)->count(),
         ])->sortByDesc('posts')->values()->all();
 
         $byProfile = $this->profiles($ids, $rows);
-        $rows = $rows->map(fn (array $r): array => array_diff_key($r, ['account' => true]));
+        $measured = $rows->where('measured', true)->count();
+        $rows = $rows->map(fn (array $r): array => array_diff_key($r, ['account' => true, 'measured' => true]));
 
         $top = $rows->sort(fn (array $a, array $b): int => [$b['engagements'] ?? -1, $b['impressions'] ?? -1] <=> [$a['engagements'] ?? -1, $a['impressions'] ?? -1])
             ->take(10)->values()->all();
 
         return [
+            'linked' => true,
             'totals' => [
                 'posts' => $rows->count() + $scheduled + $failed,
                 'published' => $rows->count(),
@@ -102,6 +113,8 @@ class CrmInsightsController extends Controller
                 'failed' => $failed,
                 'impressions' => self::sum($rows->pluck('impressions')),
                 'engagements' => self::sum($rows->pluck('engagements')),
+                'clicks' => self::sum($rows->pluck('clicks')),
+                'measured' => $measured,
             ],
             'by_network' => $byNetwork,
             'by_profile' => $byProfile,
@@ -135,16 +148,19 @@ class CrmInsightsController extends Controller
                 'posts' => $group->count(),
                 'impressions' => self::sum($group->pluck('impressions')),
                 'engagements' => self::sum($group->pluck('engagements')),
+                'clicks' => self::sum($group->pluck('clicks')),
+                'measured' => $group->where('measured', true)->count(),
             ];
         })->sortByDesc(fn (array $p): array => [$p['posts'], $p['impressions'] ?? -1])->values()->all();
     }
 
     /**
-     * The latest daily snapshot of each post's publication: impressions, and engagements (the stored engagement count, else the sum
-     * of reactions, comments and shares). Null when the network reports nothing.
+     * The latest daily snapshot of each post's publication: impressions (else the snapshot's exposure: views or reach, for networks
+     * that count those instead), engagements (the stored engagement count, else the sum of reactions, comments and shares) and link
+     * clicks (from the snapshot's metrics). Null when the network reports nothing; `measured` when the post has a reading at all.
      *
      * @param  list<string>  $postIds
-     * @return array<string, array{impressions: ?int, engagements: ?int}>
+     * @return array<string, array{impressions: ?int, engagements: ?int, clicks: ?int, measured: bool}>
      */
     private function metrics(array $postIds): array
     {
@@ -161,16 +177,35 @@ class CrmInsightsController extends Controller
                 ->joinSub($latest, 'l', 'l.publication_id', '=', 'p.id')
                 ->join('analytics_publication_daily_snapshots as s', fn ($j) => $j->on('s.publication_id', '=', 'p.id')->on('s.date', '=', 'l.latest_date'))
                 ->whereIn('p.post_id', $chunk)
-                ->get(['p.post_id', 's.impressions_count', 's.engagement_count', 's.reactions_count', 's.comments_count', 's.shares_count']);
+                ->get(['p.post_id', 's.impressions_count', 's.exposure_count', 's.engagement_count', 's.reactions_count', 's.comments_count', 's.shares_count', 's.metrics']);
             foreach ($rows as $row) {
                 $parts = [$row->reactions_count, $row->comments_count, $row->shares_count];
                 $known = array_filter($parts, fn ($v): bool => $v !== null);
                 $engagements = $row->engagement_count !== null ? (int) $row->engagement_count : ($known === [] ? null : (int) array_sum($known));
-                $out[$row->post_id] = ['impressions' => $row->impressions_count === null ? null : (int) $row->impressions_count, 'engagements' => $engagements];
+                $seen = $row->impressions_count ?? $row->exposure_count;
+                $out[$row->post_id] = ['impressions' => $seen === null ? null : (int) $seen, 'engagements' => $engagements, 'clicks' => self::clicks($row->metrics), 'measured' => true];
             }
         }
 
         return $out;
+    }
+
+    /** Link clicks from a snapshot's metrics JSON (link clicks, else clicks, else outbound clicks), when the network reported them. */
+    private static function clicks(mixed $metrics): ?int
+    {
+        $metrics = is_string($metrics) ? json_decode($metrics, true) : $metrics;
+        if (! is_array($metrics)) {
+            return null;
+        }
+        foreach (['link_clicks', 'clicks', 'outbound_clicks'] as $key) {
+            $m = $metrics[$key] ?? null;
+            $value = is_array($m) ? ($m['value'] ?? null) : null;
+            if (is_array($m) && ($m['availability'] ?? 'available') === 'available' && is_numeric($value)) {
+                return max(0, (int) $value);
+            }
+        }
+
+        return null;
     }
 
     /** @param Collection<int, mixed> $values */
