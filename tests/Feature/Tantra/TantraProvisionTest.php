@@ -226,3 +226,24 @@ it('makes one workspace for two calls about the same new team', function () {
 
     expect(Workspace::query()->count())->toBe(1)->and(TantraWorkspaceLink::query()->count())->toBe(1);
 });
+
+// tantra: AF-04, the Tantra workspace's time zone replaces the engine default.
+it('stores the Tantra time zone on the workspace and gives it to people who still have the engine default', function () {
+    provCall($this, ['workspace' => 'ws_acme', 'name' => 'Acme', 'people' => provPeople(), 'timezone' => 'Europe/Berlin'])->assertOk();
+
+    $link = TantraWorkspaceLink::query()->where('tantra_workspace_id', 'ws_acme')->firstOrFail();
+    expect(\App\Tantra\Review\Models\WorkspaceSettings::query()->find($link->workspace_id)?->timezone)->toBe('Europe/Berlin')
+        ->and(provUser('user_own')->timezone)->toBe('Europe/Berlin')
+        ->and(provUser('user_mem')->timezone)->toBe('Europe/Berlin');
+
+    $chosen = provUser('user_adm');
+    $chosen->forceFill(['timezone' => 'America/Chicago'])->save();
+    provCall($this, ['workspace' => 'ws_acme', 'name' => 'Acme', 'people' => provPeople(), 'timezone' => 'Europe/Paris'])->assertOk();
+
+    expect($chosen->refresh()->timezone)->toBe('America/Chicago')
+        ->and(provUser('user_own')->timezone)->toBe('Europe/Berlin');
+});
+
+it('refuses a time zone that is not real', function () {
+    provCall($this, ['workspace' => 'ws_acme', 'name' => 'Acme', 'people' => provPeople(), 'timezone' => 'Mars/Olympus'])->assertStatus(422);
+});

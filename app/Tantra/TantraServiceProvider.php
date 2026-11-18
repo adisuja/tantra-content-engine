@@ -52,6 +52,7 @@ use App\Tantra\Console\TeamAccountsCommand;
 use App\Tantra\Console\TrackLinksCommand;
 use App\Tantra\Console\ZernioConnectCommand;
 use App\Tantra\Embed\Embed;
+use App\Tantra\Embed\TantraView;
 use App\Tantra\Gateway\AuthenticateTantraGateway;
 use App\Tantra\Http\Controllers\Web\ReviewPageController;
 use App\Tantra\Http\Middleware\EnsureCrmKey;
@@ -237,6 +238,8 @@ class TantraServiceProvider extends ServiceProvider
 
         // The CRM origins embedded mode may talk to (PRD 2026-11-15, 4.3); none while TANTRA_EMBED is off.
         Inertia::share('tantraEmbedParents', fn (): array => Embed::enabled() ? Embed::parents() : []);
+        // AF-10: a session started by the Tantra embed hides the engine's own product parts (TantraView).
+        Inertia::share('tantraView', fn (): array => Embed::enabled() ? TantraView::props(request()) : ['active' => false, 'timezone' => null]);
 
         // Studio ops in the sidebar for admins only (PRD 25.4).
         Inertia::share('tantraAdmin', fn (): bool => Admin::is(Auth::user()));

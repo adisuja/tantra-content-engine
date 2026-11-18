@@ -14,6 +14,7 @@ use App\Enums\User\WeekStart;
 use App\Models\Account;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Tantra\Embed\TantraView;
 use App\Tantra\Engagement\EngagementChannels;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
@@ -33,19 +34,24 @@ final class ProvisionTantraTeam
         'member' => ['is_admin' => false, 'requires_approval' => false],
     ];
 
+    /** AF-04: the Tantra workspace's time zone, when the Tantra app sent one. */
+    private ?string $timezone = null;
+
     /**
      * @param  list<array{clerk_user_id: string, email: string, name?: ?string, role: string}>  $people
      * @return array{created: bool, people: array{added: int, removed: int, kept: int, skipped: int}}
      *
      * @throws NoOwner
      */
-    public static function execute(string $tantraWorkspace, string $name, array $people): array
+    public static function execute(string $tantraWorkspace, string $name, array $people, ?string $timezone = null): array
     {
+        $self = new self;
+        $self->timezone = TantraView::timezone($timezone);
         try {
-            return DB::transaction(fn (): array => (new self)->run($tantraWorkspace, $name, $people));
+            return DB::transaction(fn (): array => $self->run($tantraWorkspace, $name, $people));
         } catch (UniqueConstraintViolationException) {
             // Two first calls for the same team raced: the unique index let one win, so this one reads its link.
-            return DB::transaction(fn (): array => (new self)->run($tantraWorkspace, $name, $people));
+            return DB::transaction(fn (): array => $self->run($tantraWorkspace, $name, $people));
         }
     }
 
@@ -117,6 +123,8 @@ final class ProvisionTantraTeam
         }
 
         $workspace = $link->workspace()->firstOrFail();
+        // AF-04: Tantra's time zone for the workspace replaces the engine default (TantraView).
+        $tz = TantraView::rememberWorkspaceTimezone($workspace, $this->timezone) ?? TantraView::workspaceTimezone($workspace);
         $link->forceFill(['name' => $name, 'account_id' => $workspace->account_id])->save();
         if ($link->made_workspace && $workspace->name !== $name) {
             $workspace->forceFill(['name' => $name])->save();
@@ -138,6 +146,7 @@ final class ProvisionTantraTeam
             if ($user->account_id === null) {
                 $user->forceFill(['account_id' => $workspace->account_id])->save();
             }
+            TantraView::adopt($user, $tz);
             $listed[] = $id;
 
             $role = $person['role'];

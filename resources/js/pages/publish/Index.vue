@@ -43,6 +43,7 @@ import PublishHeader from '@/components/publish/PublishHeader.vue';
 import PublishTabs from '@/components/publish/PublishTabs.vue';
 import QueueTimeline from '@/components/publish/QueueTimeline.vue';
 import { Button } from '@/components/ui/button';
+import { useTantraView } from '@/composables/tantra/useTantraView';
 import { useWorkspaceEcho } from '@/composables/echo/useWorkspaceEcho';
 import { useBelowBreakpoint } from '@/composables/useBreakpoint';
 import { useComposerData } from '@/composables/useComposerData';
@@ -126,6 +127,8 @@ const NO_TIME = 'no-time';
 
 const props = defineProps<Props>();
 const page = usePage();
+// tantra: inside Tantra (AF-10) the team is Tantra's: no "Invite your team" here.
+const { inTantra } = useTantraView();
 const { canManageAccounts, canManageTeam, canPublishDirectly } =
     useWorkspaceAbilities();
 
@@ -941,7 +944,7 @@ const submitComposition = (
                             {{ $t('channels.connect') }}
                         </Button>
                         <Button
-                            v-if="canManageTeam"
+                            v-if="canManageTeam && !inTantra"
                             variant="outline"
                             data-testid="publish-welcome-invite"
                             @click="openInviteMemberDialog"

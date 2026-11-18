@@ -10,6 +10,7 @@ use App\Tantra\Auth\ClerkToken;
 use App\Tantra\Auth\InvalidClerkToken;
 use App\Tantra\Embed\Embed;
 use App\Tantra\Embed\Provision;
+use App\Tantra\Embed\TantraView;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -125,6 +126,8 @@ class EmbedController extends Controller
             // No remember cookie: every Content mount proves who is signed in again.
             $guard->login($user, remember: false);
         }
+        // AF-10: this session is Tantra's view of the engine (TantraView), with Tantra's workspace time zone when it is sent.
+        TantraView::mark($request, $user, $request->input('timezone'));
 
         // 6. The boot page now opens the page it was given.
         return response()->json(['ok' => true, 'email' => $user->email]);

@@ -19,8 +19,8 @@ use Illuminate\Support\Facades\URL;
  * signed link to GET tantra/crm-connect: it signs the person in (as the embed does), opens their team's workspace and starts the
  * Engine's own connect route for that network, so the same OAuth apps, consent screens and identity picker run. When the
  * connection finishes, is cancelled or fails, the person goes back to the return URL the Tantra app gave, with the network and
- * the result in the query (?network=x&result=connected|cancelled|failed). Only https://crm.usetantra.com/content/invite is a
- * return URL; anything else is refused when the link is asked for.
+ * the result in the query (?network=x&result=connected|cancelled|failed). Only https://crm.usetantra.com/content/invite and
+ * (AF-09, the Channels tab) /content/channels are return URLs; anything else is refused when the link is asked for.
  */
 final class CrmConnectLink
 {
@@ -28,6 +28,9 @@ final class CrmConnectLink
     public const string RETURN_HOST = 'crm.usetantra.com';
 
     public const string RETURN_PATH = '/content/invite';
+
+    /** AF-09: Content > Channels connects a network in Tantra too, and gets the person back there. */
+    public const array RETURN_PATHS = [self::RETURN_PATH, '/content/channels'];
 
     public const int TTL_MINUTES = 10;
 
@@ -93,7 +96,7 @@ final class CrmConnectLink
         $parts = parse_url($url);
         if ($parts === false || ($parts['scheme'] ?? '') !== 'https' || strtolower((string) ($parts['host'] ?? '')) !== self::RETURN_HOST
             || isset($parts['port']) || isset($parts['user']) || isset($parts['pass']) || isset($parts['fragment'])
-            || ($parts['path'] ?? '') !== self::RETURN_PATH) {
+            || ! in_array($parts['path'] ?? '', self::RETURN_PATHS, true)) {
             return null;
         }
 
@@ -107,7 +110,9 @@ final class CrmConnectLink
         parse_str((string) ($parts['query'] ?? ''), $query);
         $query = [...$query, 'network' => $network, 'result' => $result];
 
-        return 'https://'.self::RETURN_HOST.self::RETURN_PATH.'?'.http_build_query($query, '', '&', PHP_QUERY_RFC3986);
+        $path = in_array($parts['path'] ?? '', self::RETURN_PATHS, true) ? $parts['path'] : self::RETURN_PATH;
+
+        return 'https://'.self::RETURN_HOST.$path.'?'.http_build_query($query, '', '&', PHP_QUERY_RFC3986);
     }
 
     /** The signed link the person opens: it carries the person, the workspace, the network and the return URL, and expires. */

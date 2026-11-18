@@ -9,6 +9,7 @@ import SettingsSection from '@/components/settings/SettingsSection.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import { useTantraView } from '@/composables/tantra/useTantraView';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { uploadLogo, deleteLogo } from '@/routes/app/workspace';
 
@@ -26,6 +27,7 @@ defineProps<{
 }>();
 
 const { canManageBilling } = useWorkspaceAbilities();
+const { inTantra } = useTantraView();
 </script>
 
 <template>
@@ -74,7 +76,8 @@ const { canManageBilling } = useWorkspaceAbilities();
             </Form>
         </SettingsSection>
 
-        <template v-if="canManageBilling">
+        <!-- tantra: inside Tantra (AF-10) the team is Tantra's: no Delete workspace here. -->
+        <template v-if="canManageBilling && !inTantra">
             <Separator />
 
             <DeleteWorkspace

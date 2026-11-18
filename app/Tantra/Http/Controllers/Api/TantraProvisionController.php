@@ -30,6 +30,7 @@ class TantraProvisionController extends Controller
             'people.*.email' => ['required', 'email', 'max:255'],
             'people.*.name' => ['nullable', 'string', 'max:120'],
             'people.*.role' => ['required', 'in:owner,admin,member'],
+            'timezone' => ['nullable', 'string', 'max:64', 'timezone:all'],
         ], [
             'people.*.role.in' => 'A person\'s role must be owner, admin or member.',
             'people.*.clerk_user_id.distinct' => 'Each person may be listed only once.',
@@ -46,7 +47,7 @@ class TantraProvisionController extends Controller
 
         $data = $validator->validated();
         try {
-            $result = ProvisionTantraTeam::execute($data['workspace'], $data['name'], $data['people']);
+            $result = ProvisionTantraTeam::execute($data['workspace'], $data['name'], $data['people'], $data['timezone'] ?? null);
         } catch (NoOwner) {
             return $this->fail(422, 'A new team needs an owner before it can be set up.', 'no_owner');
         } catch (QueryException $e) {

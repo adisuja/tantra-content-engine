@@ -39,6 +39,7 @@ import {
     SidebarHeader,
     useSidebar,
 } from '@/components/ui/sidebar';
+import { useTantraView } from '@/composables/tantra/useTantraView';
 import { useConnectChannelDialog } from '@/composables/useConnectChannelDialog';
 import { openPostComposer } from '@/composables/useGlobalPostComposer';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
@@ -56,6 +57,7 @@ const currentWorkspace = computed(() => page.props.auth.currentWorkspace);
 
 const { canCreatePost, canManageRepurposes, canManageAccounts, canManageTeam } =
     useWorkspaceAbilities();
+const { inTantra } = useTantraView();
 const { open: openConnectDialog } = useConnectChannelDialog();
 
 const inviteMemberDialogOpen = ref(false);
@@ -274,7 +276,7 @@ const mainNavItems = computed<NavItem[]>(() => [
                                 {{ $t('sidebar.new_menu.channel') }}
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                                v-if="canManageTeam"
+                                v-if="canManageTeam && !inTantra"
                                 data-testid="sidebar-new-member"
                                 @select="openInviteMemberDialog"
                             >

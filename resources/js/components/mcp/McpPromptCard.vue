@@ -8,6 +8,7 @@ import McpConnectDialog from '@/components/mcp/McpConnectDialog.vue';
 import { Button } from '@/components/ui/button';
 import { useBelowBreakpoint } from '@/composables/useBreakpoint';
 import { useUserStorage } from '@/composables/useBrowserStorage';
+import { useTantraView } from '@/composables/tantra/useTantraView';
 import {
     mcpAppLogos,
     mcpClients,
@@ -38,6 +39,7 @@ const avatars: McpAppLogo[] = AVATAR_APPS.flatMap((id) =>
 
 const page = usePage<SharedData>();
 const isPhone = useBelowBreakpoint('sm');
+const { inTantra } = useTantraView();
 
 const dismissed = useUserStorage('mcp.promptDismissed', false);
 const connected = ref(false);
@@ -50,6 +52,8 @@ const prompt = computed(() => page.props.mcpPrompt ?? null);
 const visible = computed(
     (): boolean =>
         prompt.value !== null &&
+        // tantra: never inside Tantra (AF-10): Tantra has its own chat.
+        !inTantra.value &&
         !dismissed.value &&
         !connected.value &&
         !isPhone.value &&

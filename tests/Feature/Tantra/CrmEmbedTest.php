@@ -465,3 +465,68 @@ describe('connect popup contract', function () {
             ->and((string) file_get_contents(app_path('Tantra/Channels/ConnectSafetyNet.php')))->toContain("redirect()->route('app.social.connect.show'");
     });
 });
+
+// tantra: AF-10 and AF-04, the engine as Tantra shows it (TantraView).
+describe('Tantra view', function () {
+    it('marks the embed session and shares it with the pages', function () {
+        embedUser('priya@usetantra.com', 'user_priya');
+
+        $this->postJson('/tantra/embed/session', ['token' => embedToken('user_priya')])->assertOk();
+
+        expect(session(\App\Tantra\Embed\TantraView::SESSION))->toBeTrue();
+
+        $request = \Illuminate\Http\Request::create('/');
+        $request->setLaravelSession(app('session.store'));
+        $request->session()->put(\App\Tantra\Embed\TantraView::SESSION, true);
+        $request->session()->put(\App\Tantra\Embed\TantraView::SESSION_TIMEZONE, 'Europe/London');
+        expect(\App\Tantra\Embed\TantraView::props($request))->toBe(['active' => true, 'timezone' => 'Europe/London']);
+    });
+
+    it('gives the person Tantra\'s time zone sent with the embed session, in place of the engine default', function () {
+        $priya = embedUser('priya@usetantra.com', 'user_priya');
+        $priya->forceFill(['timezone' => 'Asia/Kolkata'])->save();
+
+        $this->postJson('/tantra/embed/session', ['token' => embedToken('user_priya'), 'timezone' => 'Europe/London'])->assertOk();
+
+        expect($priya->refresh()->timezone)->toBe('Europe/London')
+            ->and(session(\App\Tantra\Embed\TantraView::SESSION_TIMEZONE))->toBe('Europe/London');
+    });
+
+    it('keeps a time zone the person set themselves and ignores one that is not real', function () {
+        $priya = embedUser('priya@usetantra.com', 'user_priya');
+        $priya->forceFill(['timezone' => 'America/New_York'])->save();
+
+        $this->postJson('/tantra/embed/session', ['token' => embedToken('user_priya'), 'timezone' => 'Europe/London'])->assertOk();
+        expect($priya->refresh()->timezone)->toBe('America/New_York');
+
+        $priya->forceFill(['timezone' => 'UTC'])->save();
+        $this->postJson('/tantra/embed/session', ['token' => embedToken('user_priya'), 'timezone' => 'Mars/Olympus'])->assertOk();
+        expect($priya->refresh()->timezone)->toBe('UTC');
+    });
+
+    it('uses the workspace time zone provisioning stored when the session sends none', function () {
+        $priya = embedUser('priya@usetantra.com', 'user_priya');
+        $workspace = Workspace::factory()->create(['user_id' => $priya->id]);
+        $priya->forceFill(['current_workspace_id' => $workspace->id, 'timezone' => 'Asia/Kolkata'])->save();
+        \App\Tantra\Embed\TantraView::rememberWorkspaceTimezone($workspace, 'Australia/Sydney');
+
+        $this->postJson('/tantra/embed/session', ['token' => embedToken('user_priya')])->assertOk();
+
+        expect($priya->refresh()->timezone)->toBe('Australia/Sydney');
+    });
+
+    it('is not active for a session the embed did not start', function () {
+        $request = \Illuminate\Http\Request::create('/');
+        $request->setLaravelSession(app('session.store'));
+        $request->session()->forget(\App\Tantra\Embed\TantraView::SESSION);
+
+        expect(\App\Tantra\Embed\TantraView::active($request))->toBeFalse()
+            ->and(\App\Tantra\Embed\TantraView::props($request))->toBe(['active' => false, 'timezone' => null]);
+    });
+
+    it('forwards the time zone from the boot page to the session', function () {
+        $html = $this->get('/tantra/embed?to=/tantra/insights')->assertOk()->getContent();
+
+        expect($html)->toContain("typeof data.timezone === 'string'");
+    });
+});

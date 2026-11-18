@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useTantraBrand } from '@/composables/tantra/useTantraBrand';
+import { useTantraView } from '@/composables/tantra/useTantraView';
 
 withDefaults(
     defineProps<{
@@ -11,6 +12,7 @@ withDefaults(
 
 // tantra: the Tantra mark and wordmark replace TryPost's when branding is on.
 const { brand, isTantraBranded } = useTantraBrand();
+const { inTantra } = useTantraView();
 </script>
 
 <template>
@@ -44,8 +46,9 @@ const { brand, isTantraBranded } = useTantraBrand();
             />
         </template>
     </span>
+    <!-- tantra: inside Tantra (AF-10) the engine's own name and logo never show. -->
     <span
-        v-else
+        v-else-if="!inTantra"
         class="inline-flex shrink-0 items-center gap-[0.32em] font-logo leading-none font-bold tracking-[-0.01em] text-foreground"
         role="img"
         aria-label="TryPost"
