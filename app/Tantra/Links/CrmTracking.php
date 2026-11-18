@@ -22,6 +22,12 @@ class CrmTracking
         return filled(config('tantra.crm.api_key'));
     }
 
+    /** Whether Tantra can make links in a team's own tracking: the intake key the engine already sends to /intake/engine. */
+    public static function teamConfigured(): bool
+    {
+        return filled(config('tantra.crm.intake_key')) && filled(config('tantra.crm.url'));
+    }
+
     public function campaignId(): string
     {
         return (string) config('tantra.crm.links.campaign_id');
@@ -162,6 +168,55 @@ class CrmTracking
         $response = $this->http()->timeout(25)->get('/api/trk/reports/campaign/'.rawurlencode($this->campaignId()), ['from' => $from, 'to' => $to]);
 
         return (array) $this->ok($response, 'read the campaign report')->json();
+    }
+
+    /**
+     * POST {crm}/intake/content/links (tantra-crm docs/crm/audits/2026-11-18/CONTENT_INSIGHTS_AUDIT.md, "Per team tracked links"):
+     * Tantra makes the link in the named team's own tracking (its own campaign, a channel per network, an asset per post), never
+     * in Tantra's own. Asking again for the same post, network, destination and placement gives the same link. Returns null when
+     * the code is taken, so the caller can try the next one.
+     *
+     * @return array{short_url: string, long_url: string|null, code: string}|null
+     *
+     * @throws TrackingOff when the team has tracking off: the link is left as it is
+     * @throws RuntimeException on anything else
+     */
+    public function teamLink(string $tantraTeam, string $platform, string $destination, string $pieceRef, string $pieceName, string $placement, string $code): ?array
+    {
+        if (! self::teamConfigured()) {
+            throw new RuntimeException('TANTRA_CRM_INTAKE_KEY is not set on the server.');
+        }
+        $response = Http::baseUrl(rtrim((string) config('tantra.crm.url'), '/'))
+            ->withToken((string) config('tantra.crm.intake_key'))
+            ->acceptJson()
+            ->timeout(15)
+            ->post('/intake/content/links', [
+                'workspace_id' => $tantraTeam,
+                'platform' => $platform,
+                'destination' => $destination,
+                'piece_ref' => mb_substr($pieceRef, 0, 80),
+                'piece_name' => mb_substr($pieceName, 0, 120),
+                'placement' => mb_substr($placement, 0, 40),
+                'code' => $code,
+            ]);
+
+        if ($response->status() === 409 && $response->json('code') === 'code_taken') {
+            return null;
+        }
+        if ($response->status() === 409 && $response->json('code') === 'tracking_off') {
+            throw new TrackingOff('Tracking is off for this team.');
+        }
+        $this->ok($response, 'make the team link '.$code);
+        $short = (string) ($response->json('short_url') ?? '');
+        if ($short === '') {
+            throw new RuntimeException('The CRM made the team link '.$code.' but sent no short link.');
+        }
+
+        return [
+            'short_url' => $short,
+            'long_url' => filled($response->json('long_url')) ? (string) $response->json('long_url') : null,
+            'code' => (string) ($response->json('code') ?: $code),
+        ];
     }
 
     private function addVocab(string $kind, string $value): void
