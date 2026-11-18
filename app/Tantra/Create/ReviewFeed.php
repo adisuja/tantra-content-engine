@@ -48,7 +48,7 @@ final class ReviewFeed
         $base = fn () => ReviewItem::query()->where('account_id', $user->account_id)->whereIn('workspace_id', $visible);
         $values = fn (string $s): array => array_map(fn (ReviewStatus $r): string => $r->value, self::STATES[$s]);
 
-        $items = $base()->whereIn('review_status', $values($state))->with('workspace')->latest('updated_at')->limit(max(1, min($limit, 200)))->get();
+        $items = $base()->whereIn('review_status', $values($state))->with('workspace.account')->latest('updated_at')->limit(max(1, min($limit, 200)))->get();
         $posts = Post::query()->whereIn('post_group_id', $items->pluck('post_group_id')->filter())->get()->groupBy('post_group_id');
 
         $approvers = [];

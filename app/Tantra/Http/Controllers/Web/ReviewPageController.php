@@ -85,7 +85,7 @@ class ReviewPageController extends Controller
 
         $query = ($batch !== null ? $base()->where('batch_id', $batch->id) : $scope($tab))->whereIn('review_status', $statuses[$tab]);
 
-        $items = $query->with(['events.user:id,name', 'workspace'])->limit(200)->get();
+        $items = $query->with(['events.user:id,name', 'workspace.account'])->limit(200)->get();
         $items = ($tab === 'published'
             ? $items->sortByDesc(fn (ReviewItem $i): string => ($i->planned_date?->toDateString() ?? '').' '.$i->engine_post_id)
             : $items->sortBy(fn (ReviewItem $i): string => ($i->review_status === ReviewStatus::ChangesRequested ? '1' : '0').' '.($i->planned_date?->toDateString() ?? '9999').' '.($i->planned_time ?? '').' '.$i->engine_post_id))
