@@ -65,7 +65,7 @@ it('counts the numbers of the mapped team only', function () {
     Post::factory()->forAccount($this->linkedin)->create(['status' => PostStatus::Failed, 'content' => 'Broke']);
 
     $r = crmIns($this, 'insights', ['workspace' => 'ws_team', 'days' => 30])->assertOk()->assertHeader('Cache-Control', 'no-store, private');
-    expect($r->json('data.totals'))->toBe(['posts' => 4, 'published' => 2, 'scheduled' => 1, 'failed' => 1, 'impressions' => 1500, 'engagements' => 70])
+    expect($r->json('data.totals'))->toBe(['posts' => 4, 'published' => 2, 'scheduled' => 1, 'failed' => 1, 'impressions' => 1500, 'engagements' => 70, 'clicks' => null, 'measured' => 2])
         ->and(collect($r->json('data.by_network'))->pluck('platform')->sort()->values()->all())->toBe(['linkedin', 'x'])
         ->and(collect($r->json('data.top'))->pluck('content')->all())->toBe(['A post', 'On X'])
         ->and($r->json('data.updated_at'))->not->toBeNull();
