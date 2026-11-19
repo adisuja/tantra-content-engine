@@ -83,6 +83,10 @@ final class ReviewFeed
         if ($images->isEmpty()) {
             $images = collect($manifest['previews'] ?? [])->filter(fn ($path): bool => is_string($path))->map(fn (string $path): string => Storage::url($path))->values();
         }
+        if ($images->isEmpty()) {
+            // A carousel the CRM built goes to LinkedIn as its PDF; its pages are what the preview shows (ImportBuilt).
+            $images = collect(data_get($p, 'built.pages', []))->filter(fn ($url): bool => is_string($url) && ImportBuilt::urlAllowed($url))->values();
+        }
         $video = $media->first(fn ($m): bool => str_starts_with((string) ($m['mime_type'] ?? ''), 'video/'));
         $network = $i->platform === 'x' ? 'x' : 'linkedin';
         $who = Identity::forWorkspace((string) $i->workspace_id, $network) ?? [];

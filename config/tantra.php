@@ -219,4 +219,15 @@ return [
         'telegram_secrets' => env('TELEGRAM_ENGAGEMENT_SECRETS', ''),
     ],
 
+    // Create as a chat (CR-06): the Tantra CRM builds the finished post itself and sends it on POST
+    // /api/gateway/tantra/create (and PUT /api/gateway/tantra/review/{item}) in `built`. Its media is downloaded only
+    // from these hosts, https only, with no redirect followed (exact names or "*.suffix", comma separated). The CRM
+    // serves its R2 files from its own Worker origin (crm-api.usetantra.com). Empty: no built media is taken.
+    'built' => [
+        'media_hosts' => array_values(array_filter(array_map('trim', explode(',', (string) env('TANTRA_BUILT_MEDIA_HOSTS', 'crm-api.usetantra.com'))))),
+        'max_pages' => (int) env('TANTRA_BUILT_MAX_PAGES', 20),
+        'max_file_mb' => (int) env('TANTRA_BUILT_MAX_FILE_MB', 100),
+        'max_total_mb' => (int) env('TANTRA_BUILT_MAX_TOTAL_MB', 300),
+    ],
+
 ];
