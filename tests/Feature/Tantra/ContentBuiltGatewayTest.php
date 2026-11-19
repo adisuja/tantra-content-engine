@@ -71,9 +71,11 @@ beforeEach(function () {
     config(['tantra_gateway.enabled' => true, 'tantra_gateway.secrets' => ['k1' => BUILT_GW_SECRET], 'tantra.built.media_hosts' => [BUILT_HOST]]);
     $png = file_get_contents(base_path('tests/fixtures/1x1.png'));
     Http::fake([
-        'https://'.BUILT_HOST.'/content/built/*.png' => Http::response($png, 200, ['Content-Type' => 'image/png']),
-        'https://'.BUILT_HOST.'/content/built/*.pdf' => Http::response(builtPdf(), 200, ['Content-Type' => 'application/pdf']),
-        'https://'.BUILT_HOST.'/content/built/*.mp4' => Http::response(file_get_contents(base_path('tests/fixtures/sample.mp4')), 200, ['Content-Type' => 'video/mp4']),
+        // A fresh response per request: a download streams the body to a file.
+        'https://'.BUILT_HOST.'/content/built/*.png' => fn () => Http::response($png, 200, ['Content-Type' => 'image/png']),
+        'https://'.BUILT_HOST.'/content/built/*.pdf' => fn () => Http::response(builtPdf(), 200, ['Content-Type' => 'application/pdf']),
+        'https://'.BUILT_HOST.'/content/built/*.mp4' => fn () => Http::response(file_get_contents(base_path('tests/fixtures/sample.mp4')), 200, ['Content-Type' => 'video/mp4']),
+        'https://'.BUILT_HOST.'/content/large/*' => fn () => Http::response(file_get_contents(base_path('tests/fixtures/1x1.png')).str_repeat("\0", 1024 * 1024 + 10), 200),
     ]);
     $result = createApiTestToken();
     subscribeAccount($result['user']->account);
@@ -173,8 +175,7 @@ describe('create with built', function () {
 
     it('refuses a file over the size cap', function () {
         config(['tantra.built.max_file_mb' => 1]);
-        Http::fake(['https://'.BUILT_HOST.'/content/built/big.png' => Http::response(file_get_contents(base_path('tests/fixtures/1x1.png')).str_repeat("\0", 1024 * 1024 + 10), 200)]);
-        builtGatewayCall($this, 'POST', '/api/gateway/tantra/create', ['format' => 'LI7', 'built' => ['text' => 'Copy.', 'media' => ['type' => 'image', 'image' => builtUrl('big.png')]]])
+        builtGatewayCall($this, 'POST', '/api/gateway/tantra/create', ['format' => 'LI7', 'built' => ['text' => 'Copy.', 'media' => ['type' => 'image', 'image' => 'https://'.BUILT_HOST.'/content/large/big.png']]])
             ->assertStatus(422)->assertJsonValidationErrors('built.media');
 
         expect(Media::query()->count())->toBe(0);
