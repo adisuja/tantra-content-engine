@@ -125,7 +125,8 @@ describe('create with built', function () {
         $held = (array) $item->media_manifest['held_tokens'];
 
         expect($held)->toHaveCount(2)
-            ->and(Media::query()->whereIn('upload_token', $held)->orderBy('created_at')->pluck('original_filename')->all())->toBe(['p1.png', 'p2.png']);
+            // held_tokens keeps page order; created_at ties at second precision on MySQL, so it is no order.
+            ->and(array_map(fn (string $t) => Media::query()->where('upload_token', $t)->value('original_filename'), array_values($held)))->toBe(['p1.png', 'p2.png']);
     });
 
     it('takes a video post as its MP4', function () {
