@@ -65,7 +65,7 @@ it('counts the numbers of the mapped team only', function () {
     Post::factory()->forAccount($this->linkedin)->create(['status' => PostStatus::Failed, 'content' => 'Broke']);
 
     $r = crmIns($this, 'insights', ['workspace' => 'ws_team', 'days' => 30])->assertOk()->assertHeader('Cache-Control', 'no-store, private');
-    expect($r->json('data.totals'))->toBe(['posts' => 4, 'published' => 2, 'scheduled' => 1, 'failed' => 1, 'impressions' => 1500, 'engagements' => 70])
+    expect($r->json('data.totals'))->toBe(['posts' => 4, 'published' => 2, 'scheduled' => 1, 'failed' => 1, 'impressions' => 1500, 'engagements' => 70, 'clicks' => null, 'measured' => 2])
         ->and(collect($r->json('data.by_network'))->pluck('platform')->sort()->values()->all())->toBe(['linkedin', 'x'])
         ->and(collect($r->json('data.top'))->pluck('content')->all())->toBe(['A post', 'On X'])
         ->and($r->json('data.updated_at'))->not->toBeNull();
@@ -118,6 +118,33 @@ it('gives an unmapped team the empty answer', function () {
     $r = crmIns($this, 'insights', ['workspace' => 'ws_unknown', 'days' => 30])->assertOk();
     expect($r->json('data.by_network'))->toBe([])->and($r->json('data.top'))->toBe([])->and($r->json('data.updated_at'))->toBeNull()
         ->and(collect($r->json('data.totals'))->filter(fn ($v) => $v !== null))->toBeEmpty();
+});
+
+it('tells a mapped team with nothing yet from an unmapped one (ci-insights)', function () {
+    expect(crmIns($this, 'insights', ['workspace' => 'ws_unknown', 'days' => 30])->json('data.linked'))->toBeFalse();
+    $r = crmIns($this, 'insights', ['workspace' => 'ws_team', 'days' => 30])->assertOk();
+    expect($r->json('data.linked'))->toBeTrue()
+        ->and($r->json('data.totals.published'))->toBe(0)
+        ->and($r->json('data.totals.measured'))->toBe(0)
+        ->and($r->json('data.by_profile'))->toHaveCount(2);
+});
+
+it('counts views as impressions where a network has no impressions, reads link clicks, and counts posts with a reading (ci-insights)', function () {
+    $instagram = SocialAccount::factory()->create(['workspace_id' => $this->team->id, 'platform' => Platform::Instagram, 'status' => Status::Connected]);
+    crmInsPost($this, $instagram, ['content' => 'A reel'], ['impressions_count' => null, 'exposure_count' => 2400, 'exposure_kind' => 'views', 'engagement_count' => 60]);
+    crmInsPost($this, $this->x, ['content' => 'A thread'], ['impressions_count' => 900, 'engagement_count' => 30, 'metrics' => ['link_clicks' => ['value' => 14, 'availability' => 'available']]]);
+    Post::factory()->forAccount($this->linkedin)->create(['status' => PostStatus::Published, 'content' => 'Not read yet', 'published_at' => now()->subDay()]);
+
+    $r = crmIns($this, 'insights', ['workspace' => 'ws_team', 'days' => 30])->assertOk();
+    $byNetwork = collect($r->json('data.by_network'))->keyBy('platform');
+    expect($r->json('data.totals.impressions'))->toBe(3300)
+        ->and($r->json('data.totals.clicks'))->toBe(14)
+        ->and($r->json('data.totals.published'))->toBe(3)
+        ->and($r->json('data.totals.measured'))->toBe(2)
+        ->and($byNetwork['instagram']['impressions'])->toBe(2400)
+        ->and($byNetwork['instagram']['clicks'])->toBeNull()
+        ->and($byNetwork['linkedin']['measured'])->toBe(0)
+        ->and(collect($r->json('data.top'))->every(fn (array $p): bool => ! array_key_exists('measured', $p) && ! array_key_exists('account', $p)))->toBeTrue();
 });
 
 it('puts no token, meta or workspace id in the insights JSON', function () {
