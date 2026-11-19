@@ -219,6 +219,17 @@ final class CreateFromFormat
         return trim($text);
     }
 
+    /**
+     * Keep a piece made elsewhere (a built piece, ImportBuilt) with the workspace's recent pieces.
+     *
+     * @param  array<string, mixed>  $state
+     */
+    public static function store(array $state): void
+    {
+        self::put($state);
+        self::remember((string) $state['workspace_id'], (string) $state['id']);
+    }
+
     /** @param array<string, mixed> $state */
     private static function put(array $state): void
     {
