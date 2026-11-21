@@ -27,8 +27,8 @@ final class AuthenticateTantraGateway
 {
     public const PER_MINUTE = 600;
 
-    /** Routes that decide what goes out or starts a recurring run. */
-    public const PUBLISH_PATH = '#/(approve|reject|activate|resume|pause|disable)$#';
+    /** Routes that decide what goes out, take that back, sign off its numbers or start a recurring run. */
+    public const PUBLISH_PATH = '#/(approve|unapprove|sign-off|reject|activate|resume|pause|disable)$#';
 
     public function handle(Request $request, Closure $next): Response
     {

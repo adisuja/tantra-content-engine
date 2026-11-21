@@ -25,6 +25,11 @@ use App\Http\Controllers\Api\UploadController;
 use App\Http\Controllers\Api\WebhookController;
 use App\Http\Controllers\Api\WorkspaceController;
 use App\Tantra\Http\Controllers\Api\GatewayContentController;
+use App\Tantra\Http\Controllers\Api\GatewayIdeasController;
+use App\Tantra\Http\Controllers\Api\GatewayLibraryController;
+use App\Tantra\Http\Controllers\Api\GatewayMediaController;
+use App\Tantra\Http\Controllers\Api\GatewayReviewController;
+use App\Tantra\Http\Controllers\Api\GatewayTasksController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -174,5 +179,30 @@ Route::middleware(['api', 'tantra.gateway', 'throttle:api'])
         Route::put('/tantra/review/{item}', [GatewayContentController::class, 'edit'])->whereUuid('item')->name('tantra.review.update');
         Route::post('/tantra/review/{item}/approve', [GatewayContentController::class, 'approve'])->whereUuid('item')->name('tantra.review.approve');
         Route::post('/tantra/review/{item}/reject', [GatewayContentController::class, 'reject'])->whereUuid('item')->name('tantra.review.reject');
+
+        // tantra: the rest of Review, post by hand, the composer's media, link preview, Tantra ideas, feeds and templates.
+        Route::get('/tantra/review/{item}/comments', [GatewayReviewController::class, 'comments'])->whereUuid('item')->name('tantra.review.comments');
+        Route::post('/tantra/review/{item}/comments', [GatewayReviewController::class, 'comment'])->whereUuid('item')->name('tantra.review.comment');
+        Route::post('/tantra/review/{item}/request-changes', [GatewayReviewController::class, 'requestChanges'])->whereUuid('item')->name('tantra.review.request-changes');
+        Route::post('/tantra/review/{item}/sign-off', [GatewayReviewController::class, 'signOff'])->whereUuid('item')->name('tantra.review.sign-off');
+        Route::post('/tantra/review/{item}/unapprove', [GatewayReviewController::class, 'unapprove'])->whereUuid('item')->name('tantra.review.unapprove');
+
+        Route::get('/tantra/tasks', [GatewayTasksController::class, 'index'])->name('tantra.tasks.index');
+        Route::post('/tantra/tasks/{task}/posted', [GatewayTasksController::class, 'posted'])->whereUuid('task')->name('tantra.tasks.posted');
+        Route::post('/tantra/tasks/{task}/skip', [GatewayTasksController::class, 'skip'])->whereUuid('task')->name('tantra.tasks.skip');
+
+        Route::get('/tantra/media', [GatewayMediaController::class, 'index'])->name('tantra.media.index');
+        Route::post('/tantra/media', [GatewayMediaController::class, 'store'])->name('tantra.media.store');
+        Route::patch('/tantra/media/{media}', [GatewayMediaController::class, 'alt'])->whereUuid('media')->name('tantra.media.alt');
+        Route::get('/tantra/link-preview', [GatewayMediaController::class, 'linkPreview'])->middleware('throttle:60,1')->name('tantra.link-preview');
+
+        Route::get('/tantra/ideas', [GatewayIdeasController::class, 'index'])->name('tantra.ideas.index');
+        Route::post('/tantra/ideas', [GatewayIdeasController::class, 'store'])->name('tantra.ideas.store');
+        Route::patch('/tantra/ideas/{idea}', [GatewayIdeasController::class, 'update'])->whereUuid('idea')->name('tantra.ideas.update');
+        Route::delete('/tantra/ideas/{idea}', [GatewayIdeasController::class, 'destroy'])->whereUuid('idea')->name('tantra.ideas.destroy');
+        Route::post('/tantra/ideas/{idea}/to-review', [GatewayIdeasController::class, 'toReview'])->whereUuid('idea')->name('tantra.ideas.to-review');
+
+        Route::get('/tantra/feeds', [GatewayLibraryController::class, 'feeds'])->name('tantra.feeds');
+        Route::get('/tantra/post-templates', [GatewayLibraryController::class, 'postTemplates'])->name('tantra.post-templates');
 
     });
