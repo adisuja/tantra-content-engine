@@ -19,6 +19,15 @@ return [
     // In production, fold upstream's Horizon supervisors into one pool of a
     // few workers (App\Tantra\Ops\LeanHorizon), sized for a small team on a
     // 2 GB server. Set TANTRA_LEAN_WORKERS=false to use upstream's sizing.
+    // Load tests only (P3 capacity, section 10): every network publisher is replaced by a stub that waits latency_ms and answers a fake post
+    // id. Nothing reaches a network. Refused in production whatever the switch says (App\Tantra\Ops\StubPublisher::enabled).
+    'publish_stub' => [
+        'enabled' => (bool) env('TANTRA_PUBLISH_STUB', false),
+        'latency_ms' => (int) env('TANTRA_PUBLISH_STUB_LATENCY_MS', 800),
+        // 0 to 100: the share of stubbed publishes that fail, to test the failure path under load.
+        'fail_percent' => (int) env('TANTRA_PUBLISH_STUB_FAIL_PERCENT', 0),
+    ],
+
     'lean_workers' => [
         'enabled' => (bool) env('TANTRA_LEAN_WORKERS', true),
         'processes' => (int) env('TANTRA_LEAN_WORKER_PROCESSES', 3),
@@ -97,6 +106,17 @@ return [
             'timeout' => (int) env('TANTRA_CRM_ENGAGEMENT_TIMEOUT', 20),
             // Every published post is sent to Engagement as engine.post_published (One Tantra R1), to become a watched post.
             'posts' => (bool) env('TANTRA_CRM_ENGAGEMENT_POSTS', true),
+        ],
+        // Speed P3 (tantra-crm PRD_2026_11_21_SPEED_AND_STABILITY section 10, B2 and B3): every post, review, channel and metrics change is sent
+        // to the CRM intake as engine.content_changed, after commit, for the team's Content mirror. Only workspaces mapped to a Tantra team
+        // (tantra_workspace_links, else ENGINE_CHANNELS_WORKSPACES) send anything. Its own low priority queue and worker, never the publishing pool.
+        'mirror' => [
+            'enabled' => (bool) env('TANTRA_CRM_MIRROR', true),
+            'queue' => (string) env('TANTRA_CRM_MIRROR_QUEUE', 'tantra-mirror'),
+            'processes' => (int) env('TANTRA_CRM_MIRROR_PROCESSES', 1),
+            'timeout' => (int) env('TANTRA_CRM_MIRROR_TIMEOUT', 10),
+            // Metrics arrive in bursts (one row per post per day): one metrics.read per workspace per this many seconds.
+            'metrics_debounce' => (int) env('TANTRA_CRM_MIRROR_METRICS_DEBOUNCE', 60),
         ],
         // Every link in content becomes a CRM short link for its piece and person (card 29 context, 2026-11-14).
         'links' => [

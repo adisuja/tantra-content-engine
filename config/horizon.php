@@ -315,6 +315,21 @@ return [
             'tries' => 1,
             'nice' => 0,
         ],
+
+        // tantra: the Content mirror notifications to the CRM (App\Tantra\Notify\Mirror). Its own low priority worker, so it never
+        // shares the publishing workers; LeanHorizon keeps "tantra-" supervisors as they are.
+        'tantra-mirror' => [
+            'connection' => 'redis',
+            'queue' => [env('TANTRA_CRM_MIRROR_QUEUE', 'tantra-mirror')],
+            'balance' => false,
+            'maxProcesses' => (int) env('TANTRA_CRM_MIRROR_PROCESSES', 1),
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 128,
+            'tries' => 3,
+            'timeout' => 30,
+            'nice' => 10,
+        ],
     ],
 
     'environments' => [

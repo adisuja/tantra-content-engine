@@ -28,14 +28,13 @@ use App\Tantra\Composer\MakeComposerThread;
 use App\Tantra\Console\AgentJobsCommand;
 use App\Tantra\Console\AiConnectorCommand;
 use App\Tantra\Console\CheckConnectorsCommand;
-use App\Tantra\Console\ReportAiUsageCommand;
 use App\Tantra\Console\ClerkUnlinkCommand;
 use App\Tantra\Console\CollectMetricsCommand;
 use App\Tantra\Console\CreateOwnerCommand;
 use App\Tantra\Console\DailyDigestCommand;
 use App\Tantra\Console\EngagementBackfillCommand;
-use App\Tantra\Console\GiveawayRepliesCommand;
 use App\Tantra\Console\GatewayKeyUsageCommand;
+use App\Tantra\Console\GiveawayRepliesCommand;
 use App\Tantra\Console\HealthCommand;
 use App\Tantra\Console\HeartbeatCommand;
 use App\Tantra\Console\InviteTeammateCommand;
@@ -43,9 +42,10 @@ use App\Tantra\Console\LinkedInSyncCommand;
 use App\Tantra\Console\ManualTasksCommand;
 use App\Tantra\Console\MapProfileCommand;
 use App\Tantra\Console\ReconnectRemindersCommand;
-use App\Tantra\Console\RoutesJsonCommand;
+use App\Tantra\Console\ReportAiUsageCommand;
 use App\Tantra\Console\RepurposeCadenceCommand;
 use App\Tantra\Console\RoadmapKeyCommand;
+use App\Tantra\Console\RoutesJsonCommand;
 use App\Tantra\Console\SyncChannelsCommand;
 use App\Tantra\Console\TeamAccountCommand;
 use App\Tantra\Console\TeamAccountsCommand;
@@ -64,6 +64,7 @@ use App\Tantra\Http\Middleware\LandOnReview;
 use App\Tantra\Ideas\IdeaMeta;
 use App\Tantra\Links\TrackPieceLinks;
 use App\Tantra\Manual\ManualTask;
+use App\Tantra\Notify\Mirror\MirrorObservers;
 use App\Tantra\Ops\LeanHorizon;
 use App\Tantra\Rebrand\Rebrand;
 use App\Tantra\Rebrand\RebrandApplier;
@@ -182,6 +183,9 @@ class TantraServiceProvider extends ServiceProvider
                 MakeComposerThread::dispatch($event->post->id);
             }
         });
+
+        // Speed P3: every post, review, channel and metrics change goes to the CRM's Content mirror, after commit, on its own queue.
+        MirrorObservers::register();
 
         // Every link saved into a piece becomes a CRM short link for that piece and person (card 29 rule).
         TrackPieceLinks::listen();
