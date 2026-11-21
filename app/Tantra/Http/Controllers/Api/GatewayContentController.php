@@ -5,18 +5,14 @@ declare(strict_types=1);
 namespace App\Tantra\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Post;
 use App\Tantra\Create\CreateFromFormat;
 use App\Tantra\Create\FormatCards;
 use App\Tantra\Create\ImportBuilt;
 use App\Tantra\Create\ReviewFeed;
-use App\Tantra\Http\Controllers\Web\ReviewPageController;
+use App\Tantra\Http\Controllers\Api\Concerns\GatewayReviewItems;
 use App\Tantra\Review\Actions\ReviewActions;
-use App\Tantra\Review\Models\ReviewItem;
-use App\Tantra\Review\ReviewGate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 /**
@@ -38,6 +34,8 @@ use Illuminate\Validation\Rule;
  */
 class GatewayContentController extends Controller
 {
+    use GatewayReviewItems;
+
     public function formats(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -130,24 +128,5 @@ class GatewayContentController extends Controller
         ReviewActions::reject($request->user(), $row, $request->validate(['note' => ['nullable', 'string', 'max:2000']])['note'] ?? null);
 
         return $this->ok($request, $row, 'Rejected.');
-    }
-
-    private function item(Request $request, string $id): ReviewItem
-    {
-        $user = $request->user();
-        $row = Str::isUuid($id)
-            ? ReviewItem::query()->where('account_id', $user->account_id)->whereIn('workspace_id', ReviewPageController::visibleWorkspaceIds($user))->find($id)
-            : null;
-        abort_if($row === null || ! ReviewGate::canView($user, $row), 404);
-
-        return $row;
-    }
-
-    private function ok(Request $request, ReviewItem $item, string $message): JsonResponse
-    {
-        $item->refresh()->load('workspace');
-        $posts = $item->post_group_id ? Post::query()->where('post_group_id', $item->post_group_id)->get() : collect();
-
-        return response()->json(['message' => $message, 'data' => ReviewFeed::item($item, $request->user(), $posts)]);
     }
 }
