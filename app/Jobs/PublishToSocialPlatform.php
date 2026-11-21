@@ -32,14 +32,15 @@ use App\Services\Social\ThreadsPublisher;
 use App\Services\Social\TikTokPublisher;
 use App\Services\Social\XPublisher;
 use App\Services\Social\YouTubePublisher;
-use App\Tantra\Unipile\UnipilePublisher; // tantra:
-use App\Tantra\Zernio\ZernioPublisher; // tantra:
-use App\Support\Social\GoogleBusinessDerivativeCleaner;
-use App\Support\Social\LimitRetryPolicy;
-use App\Support\Social\PublishCheckpoint;
+use App\Support\Social\GoogleBusinessDerivativeCleaner; // tantra:
+use App\Support\Social\LimitRetryPolicy; // tantra:
+use App\Support\Social\PublishCheckpoint; // tantra:
 use App\Support\Social\ThreadProgress;
 use App\Support\Social\TikTokPhotoDerivativeCleaner;
 use App\Support\ThreadReplies;
+use App\Tantra\Ops\StubPublisher;
+use App\Tantra\Unipile\UnipilePublisher;
+use App\Tantra\Zernio\ZernioPublisher;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -561,8 +562,13 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             : 'An unexpected error occurred while publishing. Please try again.';
     }
 
-    private function getPublisher(): LinkedInPublisher|LinkedInPagePublisher|XPublisher|TikTokPublisher|YouTubePublisher|FacebookPublisher|InstagramPublisher|ThreadsPublisher|PinterestPublisher|BlueskyPublisher|MastodonPublisher|TelegramPublisher|DiscordPublisher|GoogleBusinessPublisher|ZernioPublisher|UnipilePublisher
+    private function getPublisher(): LinkedInPublisher|LinkedInPagePublisher|XPublisher|TikTokPublisher|YouTubePublisher|FacebookPublisher|InstagramPublisher|ThreadsPublisher|PinterestPublisher|BlueskyPublisher|MastodonPublisher|TelegramPublisher|DiscordPublisher|GoogleBusinessPublisher|ZernioPublisher|UnipilePublisher|StubPublisher
     {
+        // tantra: the capacity test's stub stands in for every network (never in production).
+        if (StubPublisher::enabled()) {
+            return app(StubPublisher::class);
+        }
+
         return match ($this->post->platform) {
             SocialPlatform::LinkedIn => app(LinkedInPublisher::class),
             SocialPlatform::LinkedInPage => app(LinkedInPagePublisher::class),

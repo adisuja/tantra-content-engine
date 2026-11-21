@@ -13,7 +13,9 @@ function tantraLeanPlan(int $processes = 3): array
 }
 
 test('one pool works every queue upstream supervisors work', function () {
+    // Our own "tantra-" supervisors (the Content mirror) keep their workers and are not folded in.
     $upstream = collect(config('horizon.defaults'))
+        ->reject(fn (array $supervisor, string $name): bool => str_starts_with($name, 'tantra-'))
         ->flatMap(fn (array $supervisor): array => (array) $supervisor['queue'])
         ->unique()
         ->values();
@@ -66,8 +68,9 @@ test('in production the provider swaps in the lean pool and names it for the env
 
     (new TantraServiceProvider(app()))->boot();
 
-    expect(array_keys(config('horizon.defaults')))->toBe([LeanHorizon::SUPERVISOR])
-        ->and(config('horizon.environments.production'))->toBe([LeanHorizon::SUPERVISOR => ['maxProcesses' => 3]]);
+    // The Content mirror's own low priority worker (tantra-mirror) stays beside the pool, never inside it.
+    expect(array_keys(config('horizon.defaults')))->toEqualCanonicalizing([LeanHorizon::SUPERVISOR, 'tantra-mirror'])
+        ->and(config('horizon.environments.production'))->toEqualCanonicalizing([LeanHorizon::SUPERVISOR => ['maxProcesses' => 3], 'tantra-mirror' => ['maxProcesses' => 1]]);
 });
 
 test('horizon can start with the lean pool in every environment', function () {
