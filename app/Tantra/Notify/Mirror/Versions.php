@@ -16,12 +16,25 @@ final class Versions
     public static function next(string $key, int $floorMs): int
     {
         $floor = max(1, $floorMs);
+        $args = [mb_substr($key, 0, 120), $floor, now()];
+        if (DB::getDriverName() === 'mysql') {
+            // MySQL has no RETURNING: the upsert locks the row until commit, so the read in the same transaction is still atomic.
+            return (int) DB::transaction(function () use ($args) {
+                DB::statement(
+                    'INSERT INTO tantra_mirror_versions (`key`, version, updated_at) VALUES (?, ?, ?)
+                     ON DUPLICATE KEY UPDATE version = GREATEST(version + 1, VALUES(version)), updated_at = VALUES(updated_at)',
+                    $args,
+                );
+
+                return DB::selectOne('SELECT version FROM tantra_mirror_versions WHERE `key` = ?', [$args[0]])->version;
+            });
+        }
         $row = DB::selectOne(
             'INSERT INTO tantra_mirror_versions (key, version, updated_at) VALUES (?, ?, ?)
              ON CONFLICT (key) DO UPDATE SET version = CASE WHEN tantra_mirror_versions.version + 1 > excluded.version
                  THEN tantra_mirror_versions.version + 1 ELSE excluded.version END, updated_at = excluded.updated_at
              RETURNING version',
-            [mb_substr($key, 0, 120), $floor, now()],
+            $args,
         );
 
         return (int) $row->version;
