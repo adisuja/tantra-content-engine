@@ -41,7 +41,7 @@ final class ReviewActions
      */
     public static function approve(User $user, ReviewItem $item, ?string $note = null, bool $confirmNumbers = false): array
     {
-        ReviewGate::assertReviewOwner($user, $item);
+        ReviewGate::assertReviewOwnerUnlessCrm($user, $item);
         self::assertStatus($item, [ReviewStatus::InReview, ReviewStatus::ChangesRequested]);
 
         // On the review screen approving also confirms the numbers this person may sign off.
@@ -120,7 +120,7 @@ final class ReviewActions
 
     public static function unapprove(User $user, ReviewItem $item): void
     {
-        ReviewGate::assertReviewOwner($user, $item);
+        ReviewGate::assertReviewOwnerUnlessCrm($user, $item);
         self::assertStatus($item, [ReviewStatus::Scheduled, ReviewStatus::Approved]);
 
         foreach ($item->posts() as $post) {
@@ -157,7 +157,7 @@ final class ReviewActions
 
     public static function reject(User $user, ReviewItem $item, ?string $note = null): void
     {
-        ReviewGate::assertReviewOwner($user, $item);
+        ReviewGate::assertReviewOwnerUnlessCrm($user, $item);
 
         if (in_array($item->review_status, [ReviewStatus::Scheduled, ReviewStatus::Published], true)) {
             throw ValidationException::withMessages(['review' => 'Unapprove it first.']);

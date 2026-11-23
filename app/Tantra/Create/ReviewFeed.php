@@ -91,6 +91,8 @@ final class ReviewFeed
         $network = $i->platform === 'x' ? 'x' : 'linkedin';
         $who = Identity::forWorkspace((string) $i->workspace_id, $network) ?? [];
         $owner = ReviewGate::isReviewOwner($user, $i);
+        // M2: on a CRM call the CRM applies the team's approver rule, so the engine offers approve and reject.
+        $acts = $owner || ReviewGate::crmCaller();
         $open = in_array($i->review_status, self::STATES['waiting'], true);
 
         return [
@@ -115,9 +117,9 @@ final class ReviewFeed
             'updated_at' => $i->updated_at?->toIso8601String(),
             'approver' => ReviewGate::reviewOwnerName($i, $approvers),
             'waiting_on_other' => $open && ! $owner,
-            'can_approve' => $owner && $open,
+            'can_approve' => $acts && $open,
             'can_edit' => $owner && $open,
-            'can_reject' => $owner && ! in_array($i->review_status, [ReviewStatus::Scheduled, ReviewStatus::Published, ReviewStatus::Rejected], true),
+            'can_reject' => $acts && ! in_array($i->review_status, [ReviewStatus::Scheduled, ReviewStatus::Published, ReviewStatus::Rejected], true),
         ];
     }
 

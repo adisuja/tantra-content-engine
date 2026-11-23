@@ -7,6 +7,7 @@ namespace App\Tantra\Gateway;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Tantra\Engagement\EngagementChannels;
+use App\Tantra\Review\ReviewGate;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -81,6 +82,8 @@ final class AuthenticateTantraGateway
             return response()->json(['message' => 'Active subscription required.'], Response::HTTP_PAYMENT_REQUIRED);
         }
 
+        // M2: the CRM checked the team's approver rule before calling; the review owner rule does not apply here.
+        ReviewGate::trustCrmCaller();
         Auth::setUser($user);
         $request->setUserResolver(fn () => $user);
         $user->setRelation('currentWorkspace', $workspace);

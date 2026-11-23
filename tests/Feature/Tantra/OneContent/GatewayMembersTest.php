@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Enums\SocialAccount\Platform;
+use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Tantra\Boost\MemberProfile;
@@ -9,6 +11,7 @@ use App\Tantra\Gateway\GatewaySignature;
 use App\Tantra\Kit\PostKit;
 use App\Tantra\Provision\TantraWorkspaceLink;
 use App\Tantra\Review\Actions\ImportBatch;
+use App\Tantra\Review\Enums\ReviewStatus;
 use App\Tantra\Review\Models\ReviewItem;
 use App\Tantra\Review\Models\WorkspaceSettings;
 use Illuminate\Support\Facades\Cache;
@@ -32,6 +35,7 @@ beforeEach(function () {
     WorkspaceSettings::query()->create(['workspace_id' => $this->ws->id, 'brand_profile_key' => 'adi', 'review_owner_user_id' => $this->owner->id]);
     TantraWorkspaceLink::query()->create(['tantra_workspace_id' => 'ws_crm_team', 'workspace_id' => $this->ws->id, 'account_id' => $this->owner->account_id, 'name' => 'Team']);
 
+    SocialAccount::factory()->create(['workspace_id' => $this->ws->id, 'platform' => Platform::UnipileLinkedIn, 'platform_user_id' => 'acc_m2']);
     $this->member = workspaceMember($this->ws, 'member', ['clerk_user_id' => M2_MEMBER]);
 
     ImportBatch::execute($this->owner, ['engine_batch_id' => '41', 'posts' => [[
@@ -41,22 +45,28 @@ beforeEach(function () {
     $this->item = ReviewItem::query()->where('engine_post_id', 'M2P1')->sole();
 });
 
-it('lets a plain member read Review and save a post thread through the gateway', function () {
+it('lets a plain member who is not the review owner read Review, save a thread, approve, unapprove and reject through the gateway', function () {
     expect($this->member->can('manageTeam', $this->ws))->toBeFalse();
 
     oneGatewayCall($this, 'GET', '/api/gateway/tantra/review', member: M2_MEMBER)->assertOk();
     oneGatewayCall($this, 'GET', '/api/gateway/workspace', member: M2_MEMBER)->assertOk();
 
-    // The gateway lets the member through; the team's own review owner rule (ReviewGate) still decides who edits the kit.
+    // M2: the CRM applies the team's approver rule before it calls, so the engine's review owner rule is not applied here.
+    expect($this->member->id)->not->toBe(WorkspaceSettings::query()->findOrFail($this->ws->id)->review_owner_user_id);
     $path = "/api/gateway/tantra/posts/{$this->item->id}/thread";
     oneGatewayCall($this, 'GET', $path, member: M2_MEMBER)->assertOk();
-    oneGatewayCall($this, 'PUT', $path, ['first_comment' => 'Not mine.'], ['If-Match' => PostKit::etag($this->item)], member: M2_MEMBER)
-        ->assertStatus(422)->assertJsonPath('errors.review.0', 'Only the review owner of this workspace can do that.');
-
-    WorkspaceSettings::query()->whereKey($this->ws->id)->update(['review_owner_user_id' => $this->member->id]);
-    oneGatewayCall($this, 'PUT', $path, ['first_comment' => 'Member edit.'], ['If-Match' => PostKit::etag($this->item->refresh())], member: M2_MEMBER)
+    oneGatewayCall($this, 'PUT', $path, ['first_comment' => 'Member edit.'], ['If-Match' => PostKit::etag($this->item)], member: M2_MEMBER)
         ->assertOk();
     expect(data_get($this->item->refresh()->payload, 'first_comment'))->toBe('Member edit.');
+
+    $row = collect(oneGatewayCall($this, 'GET', '/api/gateway/tantra/review', member: M2_MEMBER)->json('data.items') ?? [])->firstWhere('ref', $this->item->id);
+    expect($row)->not->toBeNull()->and($row['can_approve'])->toBeTrue();
+
+    oneGatewayCall($this, 'POST', "/api/gateway/tantra/review/{$this->item->id}/approve", member: M2_MEMBER)->assertOk();
+    expect($this->item->refresh()->review_status)->not->toBe(ReviewStatus::InReview);
+    oneGatewayCall($this, 'POST', "/api/gateway/tantra/review/{$this->item->id}/unapprove", member: M2_MEMBER)->assertOk();
+    oneGatewayCall($this, 'POST', "/api/gateway/tantra/review/{$this->item->id}/reject", member: M2_MEMBER)->assertOk();
+    expect($this->item->refresh()->review_status)->toBe(ReviewStatus::Rejected);
 });
 
 it('lets a member pin a workspace they belong to, but not one they do not', function () {

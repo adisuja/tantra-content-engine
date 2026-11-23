@@ -129,7 +129,7 @@ final class PostKit
      */
     public static function save(User $user, ReviewItem $item, array $data, array $present): void
     {
-        ReviewGate::assertReviewOwner($user, $item);
+        ReviewGate::assertReviewOwnerUnlessCrm($user, $item);
 
         $payload = (array) ($item->payload ?? []);
         $overrides = (array) ($item->thread_overrides ?? []);
