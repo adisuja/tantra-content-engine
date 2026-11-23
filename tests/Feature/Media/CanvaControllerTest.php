@@ -716,7 +716,8 @@ test('the connection is deleted with its user and there is no disconnect route',
     expect(MediaSourceConnection::query()->find($connection->id))->toBeNull()
         ->and(MediaSourceConnection::query()->find($other->id))->not->toBeNull()
         ->and(collect(Route::getRoutes()->getRoutesByName())->keys()
-            ->filter(fn (string $name): bool => str_contains($name, 'canva'))
+            // tantra: the CRM Write picker's Canva start link (tantra.canva.start and its gateway route) is not an engine Canva route.
+            ->filter(fn (string $name): bool => str_contains($name, 'canva') && ! str_starts_with($name, 'tantra.'))
             ->sort()->values()->all())
         ->toBe([
             'app.integrations.canva.callback',

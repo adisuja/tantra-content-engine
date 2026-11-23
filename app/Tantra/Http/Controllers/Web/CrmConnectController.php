@@ -12,11 +12,9 @@ use App\Models\Workspace;
 use App\Services\Http\SafeHttpFetcher;
 use App\Support\Social\PendingConnection;
 use App\Tantra\Channels\CrmConnectLink;
+use App\Tantra\Channels\LinkSignIn;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Cookie;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -36,7 +34,7 @@ class CrmConnectController extends Controller
         $fail = fn (): RedirectResponse => redirect()->away(CrmConnectLink::withResult($return, $network, CrmConnectLink::FAILED));
 
         // Once only: a link copied out of the address bar cannot sign anyone in again.
-        if (! Cache::add('tantra:crm-connect:'.sha1((string) $request->query('signature')), 1, now()->addMinutes(CrmConnectLink::TTL_MINUTES + 1))) {
+        if (! LinkSignIn::once($request, 'crm-connect', CrmConnectLink::TTL_MINUTES)) {
             return $fail();
         }
 
@@ -51,19 +49,7 @@ class CrmConnectController extends Controller
             return $fail();
         }
 
-        $guard = Auth::guard('web');
-        if ($guard->check() && $guard->id() !== $user->getAuthIdentifier()) {
-            $guard->logoutCurrentDevice();
-            Cookie::queue(Cookie::forget($guard->getRecallerName()));
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-        }
-        if (! $guard->check()) {
-            $request->session()->regenerate();
-            $guard->login($user, remember: false);
-        }
-
-        $user->switchWorkspace($workspace);
+        LinkSignIn::signIn($request, $user, $workspace);
         CrmConnectLink::remember($network, $return);
 
         if ($instance !== '') {

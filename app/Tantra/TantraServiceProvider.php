@@ -57,6 +57,7 @@ use App\Tantra\Embed\Embed;
 use App\Tantra\Embed\TantraView;
 use App\Tantra\Gateway\AuthenticateTantraGateway;
 use App\Tantra\Http\Controllers\Web\ReviewPageController;
+use App\Tantra\Http\Middleware\EngineUiOff;
 use App\Tantra\Http\Middleware\EnsureCrmKey;
 use App\Tantra\Http\Middleware\EnsureOwnerToken;
 use App\Tantra\Http\Middleware\EnsureRunnerToken;
@@ -152,6 +153,8 @@ class TantraServiceProvider extends ServiceProvider
             $kernel->appendMiddlewareToGroup('web', LandOnReview::class);
             // Only the Engine and the Tantra CRM may frame its pages (PRD 2026-11-15, 4.7).
             $kernel->prependMiddlewareToGroup('web', FrameAncestors::class);
+            // One Content app PRD 4.1: TANTRA_UI_OFF sends every engine screen to the Tantra app (first, ahead of the session).
+            $kernel->prependMiddlewareToGroup('web', EngineUiOff::class);
         }
         $this->loadRoutesFrom(__DIR__.'/Http/routes-api.php');
         $this->loadRoutesFrom(__DIR__.'/Http/routes-web.php');

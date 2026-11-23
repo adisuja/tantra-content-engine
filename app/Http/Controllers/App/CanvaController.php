@@ -19,6 +19,7 @@ use App\Models\Workspace;
 use App\Services\Media\RemoteMediaImporter;
 use App\Services\Media\Sources\CanvaClient;
 use App\Support\MediaImportStatus;
+use App\Tantra\Media\CanvaLink;
 use Closure;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -159,7 +160,7 @@ class CanvaController extends Controller implements HasMiddleware
         }
     }
 
-    public function return(Request $request): Response
+    public function return(Request $request): Response|RedirectResponse
     {
         $user = $request->user();
         $workspace = $user->currentWorkspace;
@@ -348,8 +349,14 @@ class CanvaController extends Controller implements HasMiddleware
         return "canva-return:{$user->id}:{$nonce}";
     }
 
-    private function popup(bool $success, ?string $nonce, ?string $messageKey = null, ?string $importId = null, ?string $replaces = null): Response
+    private function popup(bool $success, ?string $nonce, ?string $messageKey = null, ?string $importId = null, ?string $replaces = null): Response|RedirectResponse
     {
+        // tantra: One Content app PRD 4.1, a design started from the CRM Write media picker ends back there (CanvaLink).
+        $crm = CanvaLink::take($nonce, $success, $importId);
+        if ($crm !== null) {
+            return redirect()->away($crm);
+        }
+
         return Inertia::render('integrations/MediaSourcePopup', [
             'source' => Source::Canva->value,
             'nonce' => $nonce,
