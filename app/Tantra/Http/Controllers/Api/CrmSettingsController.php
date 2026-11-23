@@ -35,6 +35,11 @@ class CrmSettingsController extends Controller
 
         $workspaces = Workspace::query()->whereIn('id', $ids)->withCount('socialAccounts')->with(['owner', 'members'])->orderBy('name')->get();
         $found = $workspaces->map(fn (Workspace $w): array => [$w, CrmContent::actor($w, $data['actor_email'])]);
+        if ($found->every(fn (array $pair): bool => $pair[1] === null) && CrmContent::actorInTeam($ids, $data['actor_email']) !== null) {
+            // M1: a teammate the Tantra app names joined the team's first workspace as a member; read it again.
+            $workspaces = Workspace::query()->whereIn('id', $ids)->withCount('socialAccounts')->with(['owner', 'members'])->orderBy('name')->get();
+            $found = $workspaces->map(fn (Workspace $w): array => [$w, CrmContent::actor($w, $data['actor_email'])]);
+        }
         if ($found->every(fn (array $pair): bool => $pair[1] === null)) {
             return response()->json(['error' => 'unknown_person'], 403)->header('Cache-Control', 'no-store, private');
         }

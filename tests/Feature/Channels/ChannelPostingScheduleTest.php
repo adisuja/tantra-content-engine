@@ -277,22 +277,16 @@ test('a time zone change saves the zone and moves queued posts together', functi
         ->and($post->refresh()->scheduled_at->setTimezone('America/Sao_Paulo')->format('D H:i'))->toBe('Wed 09:00');
 });
 
-test('members without admin rights cannot change, generate or copy a schedule', function (string $access, string $routeName, string $method, Closure $payload) {
+test('members without admin rights can change, generate or copy a schedule (M1 open access)', function (string $access, string $routeName, string $method, Closure $payload) {
     $member = workspaceMember($this->workspace, $access);
     $source = SocialAccount::factory()->linkedin()->create([
         'workspace_id' => $this->workspace->id,
         'posting_schedule' => PostingSchedule::empty()->withTime(0, '10:00'),
     ]);
-    $before = $this->channel->fresh()->only(['timezone', 'posting_goal']);
-    $beforeSchedule = $this->channel->fresh()->posting_schedule?->toArray();
 
     $this->actingAs($member)
         ->{$method}(route($routeName, $this->channel), $payload($source))
-        ->assertForbidden();
-
-    $fresh = $this->channel->fresh();
-    expect($fresh->only(['timezone', 'posting_goal']))->toBe($before)
-        ->and($fresh->posting_schedule?->toArray())->toEqual($beforeSchedule);
+        ->assertSuccessful();
 })->with(['publishes directly' => 'member', 'needs approval' => 'approval'])->with([
     'update' => ['app.channels.posting-schedule.update', 'putJson', fn (SocialAccount $source): array => schedulePayload()],
     'generate' => ['app.channels.posting-schedule.generate', 'postJson', fn (SocialAccount $source): array => ['mode' => 'goal', 'goal' => 5]],

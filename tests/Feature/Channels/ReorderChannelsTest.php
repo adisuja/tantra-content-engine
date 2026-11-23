@@ -112,14 +112,15 @@ test('reorder requires a list of ids', function () {
         ->assertJsonValidationErrors('social_account_ids');
 });
 
-test('only members who manage channels can reorder them', function (string $role) {
+test('every member can reorder channels (M1 open access)', function (string $role) {
     [$a, $b] = reorderChannelsAccounts($this->workspace, 2);
 
     $this->actingAs(reorderChannelsMember($this->workspace, $role))
         ->put(route('app.channels.reorder'), ['social_account_ids' => [$b->id, $a->id]])
-        ->assertForbidden();
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
 
-    expect($this->workspace->socialAccounts()->pluck('id')->all())->toBe([$a->id, $b->id]);
+    expect($this->workspace->socialAccounts()->pluck('id')->all())->toBe([$b->id, $a->id]);
 })->with(['member', 'approval']);
 
 test('a new channel is appended after the workspace channels', function () {

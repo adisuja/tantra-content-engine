@@ -70,6 +70,7 @@ it('lists the channels of the team a post can go to, and the networks not connec
     $names = collect($r->json('data.channels'))->pluck('name')->all();
     expect($names)->toEqualCanonicalizing(['Adi Murali', 'Tantra on X'])->and($r->json('data.unconnected'))->toContain('facebook')->not->toContain('x')
         ->and($r->json('data.channels.0'))->not->toHaveKeys(['workspace_id', 'avatar']);
+    User::factory()->create(['email' => 'stranger@example.test']); // M1: a user of another Engine account never joins
     crmRep($this, 'targets', ['workspace' => 'ws_team', 'actor_email' => 'stranger@example.test'])->assertForbidden()->assertJsonPath('error', 'unknown_person');
 });
 
@@ -88,6 +89,7 @@ it('refuses another team\'s post, a rejected post, a channel from outside the te
     crmRep($this, 'start', [...$base, 'review_item_id' => $this->webinar->id])->assertNotFound();
     crmRep($this, 'start', [...$base, 'review_item_id' => (string) str()->uuid()])->assertNotFound();
     crmRep($this, 'start', [...$base, 'targets' => [['channel_id' => $this->hidden->id]]])->assertNotFound()->assertJsonPath('error', 'unknown_channel');
+    User::factory()->create(['email' => 'stranger@example.test']); // M1: a user of another Engine account never joins
     crmRep($this, 'start', [...$base, 'actor_email' => 'stranger@example.test'])->assertForbidden();
     crmRep($this, 'start', [...$base, 'targets' => []])->assertUnprocessable();
     crmRep($this, 'start', [...$base, 'targets' => [['network' => 'myspace']]])->assertUnprocessable();

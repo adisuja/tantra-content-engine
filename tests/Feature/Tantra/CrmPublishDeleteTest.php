@@ -248,7 +248,8 @@ it('answers unknown_person for an email outside the workspace, and forbidden for
     crmDelFake(Http::response('', 204));
     $post = crmDelPost($this, $this->linkedin, 'urn:li:share:7006');
     crmDel($this, ['post_id' => $post->id, 'actor_email' => 'stan@example.test'])->assertForbidden()->assertJsonPath('error', 'unknown_person');
-    crmDel($this, ['post_id' => $post->id, 'actor_email' => 'nobody@example.test'])->assertForbidden()->assertJsonPath('error', 'unknown_person');
+    // M1: a teammate the Tantra app names joins as a member, who still may not delete another person's live post.
+    crmDel($this, ['post_id' => $post->id, 'actor_email' => 'nobody@example.test'])->assertForbidden()->assertJsonPath('error', 'forbidden');
     crmDel($this, ['post_id' => $post->id, 'actor_email' => 'pat@example.test'])->assertForbidden()->assertJsonPath('error', 'forbidden')
         ->assertJsonStructure(['error', 'message']);
     Http::assertNothingSent();

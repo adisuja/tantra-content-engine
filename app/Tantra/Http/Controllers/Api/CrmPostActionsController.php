@@ -78,7 +78,7 @@ class CrmPostActionsController extends Controller
         if ($post === null) {
             return [null, null, null, $this->refuse(404, 'not_found')];
         }
-        $actor = CrmContent::actor($post->workspace, $data['actor_email']);
+        $actor = CrmContent::actorOrJoin($post->workspace, $data['actor_email']);
         if ($actor === null) {
             return [null, null, null, $this->refuse(403, 'unknown_person')];
         }

@@ -29,7 +29,7 @@ use Throwable;
  *     read from the CRM's GET /api/me with that key (the team mapping the Engagement tab already uses: the main
  *     Account is the Tantra team). Kept 5 minutes, so a teammate added in Tantra gets in within minutes.
  * They join the main Account and the team's Engine workspace (TANTRA_EMBED_PROVISION_WORKSPACE, an id or a name)
- * as a member who is not an admin and whose posts need approval. Tantra stores nothing new.
+ * as a member who is not an admin; M1 (23 Nov): their posts go out without approval. Tantra stores nothing new.
  *
  * Never: a person whose email is not in the Tantra team, an email held by another Account, or an Engine user
  * linked to another Clerk user. Each of those keeps the "not turned on" screen.
@@ -89,7 +89,7 @@ final class Provision
             ]))->save();
 
             if (! $workspace->hasMember($user)) {
-                $workspace->members()->attach($user->id, ['is_admin' => false, 'requires_approval' => true]);
+                $workspace->members()->attach($user->id, ['is_admin' => false, 'requires_approval' => false]);
             }
             if ($user->current_workspace_id === null) {
                 $user->forceFill(['current_workspace_id' => $workspace->id])->save();

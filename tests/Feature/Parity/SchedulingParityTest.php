@@ -1030,20 +1030,13 @@ test('copying from a foreign channel or one without a schedule is refused on eve
     expect($target->fresh()->posting_schedule)->toBeNull();
 });
 
-test('a non-admin member is refused on the posting schedule routes and tools', function () {
+test('a non-admin member changes the posting schedule through the mcp tool (M1 open access)', function () {
     $member = workspaceMember($this->workspace, 'approval');
-    $headers = parityApi(passportToken($member, $this->workspace));
-    $before = schedulingParityStored($this->account);
     $payload = ['timezone' => 'America/Sao_Paulo', 'posting_goal' => 2, 'posting_schedule' => null];
 
-    $this->withHeaders($headers)->putJson(route('api.channels.posting-schedule.update', $this->account), $payload)->assertForbidden();
-    $this->withHeaders($headers)->postJson(route('api.channels.posting-schedule.generate', $this->account), ['mode' => 'goal'])->assertForbidden();
-    $this->withHeaders($headers)->postJson(route('api.channels.posting-schedule.copy', $this->account), ['from' => $this->account->id])->assertForbidden();
-    TryPostServer::actingAs($member)->tool(UpdatePostingScheduleTool::class, ['account_id' => $this->account->id, ...$payload])->assertHasErrors([__('This action is unauthorized.')]);
-    TryPostServer::actingAs($member)->tool(GeneratePostingScheduleTool::class, ['account_id' => $this->account->id, 'mode' => 'goal'])->assertHasErrors([__('This action is unauthorized.')]);
-    TryPostServer::actingAs($member)->tool(CopyPostingScheduleTool::class, ['account_id' => $this->account->id, 'from' => $this->account->id])->assertHasErrors([__('This action is unauthorized.')]);
+    TryPostServer::actingAs($member)->tool(UpdatePostingScheduleTool::class, ['account_id' => $this->account->id, ...$payload])->assertHasNoErrors();
 
-    expect(schedulingParityStored($this->account))->toEqual($before);
+    expect($this->account->fresh()->timezone)->toBe('America/Sao_Paulo');
 });
 
 test('the posting schedule routes and tools of a foreign channel are refused', function () {

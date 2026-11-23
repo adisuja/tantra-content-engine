@@ -218,7 +218,7 @@ test('account owner and admin can manage team', function () {
     expect($this->policy->manageTeam($regularUser, $workspace))->toBeFalse();
 });
 
-test('account owner and workspace admin can manage accounts', function () {
+test('every member of the workspace can manage accounts (M1 open access)', function () {
     $account = Account::factory()->create();
     $owner = User::factory()->create([
         'account_id' => $account->id,
@@ -239,7 +239,8 @@ test('account owner and workspace admin can manage accounts', function () {
 
     expect($this->policy->manageAccounts($owner, $workspace))->toBeTrue();
     expect($this->policy->manageAccounts($admin, $workspace))->toBeTrue();
-    expect($this->policy->manageAccounts($member, $workspace))->toBeFalse();
+    expect($this->policy->manageAccounts($member, $workspace))->toBeTrue();
+    expect($this->policy->manageAccounts(workspaceOutsider($workspace), $workspace))->toBeFalse();
 });
 
 test('account owner and workspace admin can manage webhooks', function () {
@@ -287,13 +288,14 @@ test('account owner and workspace member can create post', function () {
     expect($this->policy->createPost($otherUser, $workspace))->toBeFalse();
 });
 
-test('a member who needs approval can write posts but cannot publish directly, approve or manage', function () {
+test('a member an admin marked for approval connects channels but does not publish directly, approve, repurpose or manage the team', function () {
     $owner = User::factory()->create();
     $workspace = Workspace::factory()->create(['account_id' => $owner->account_id, 'user_id' => $owner->id]);
     $requester = workspaceMember($workspace, 'approval');
 
     expect($this->policy->view($requester, $workspace))->toBeTrue()
         ->and($this->policy->createPost($requester, $workspace))->toBeTrue()
+        ->and($this->policy->manageAccounts($requester, $workspace))->toBeTrue()
         ->and($this->policy->publishDirectly($requester, $workspace))->toBeFalse()
         ->and($this->policy->approvePosts($requester, $workspace))->toBeFalse()
         ->and($this->policy->manageRepurposes($requester, $workspace))->toBeFalse()
@@ -302,15 +304,31 @@ test('a member who needs approval can write posts but cannot publish directly, a
         ->and($this->policy->inviteMember($requester, $workspace))->toBeFalse();
 });
 
-test('owners, admins and direct publishers can publish directly and approve', function (string $access) {
+test('owners, admins and members publish directly, approve, add channels and repurpose', function (string $access) {
     $owner = User::factory()->create();
     $workspace = Workspace::factory()->create(['account_id' => $owner->account_id, 'user_id' => $owner->id]);
     $actor = $access === 'owner' ? $owner : workspaceMember($workspace, $access);
 
     expect($this->policy->publishDirectly($actor, $workspace))->toBeTrue()
         ->and($this->policy->approvePosts($actor, $workspace))->toBeTrue()
+        ->and($this->policy->manageAccounts($actor, $workspace))->toBeTrue()
         ->and($this->policy->manageRepurposes($actor, $workspace))->toBeTrue();
 })->with(['owner', 'admin', 'member']);
+
+test('a member still cannot manage the team, invite, manage webhooks or billing (M1)', function () {
+    $owner = User::factory()->create();
+    $workspace = Workspace::factory()->create(['account_id' => $owner->account_id, 'user_id' => $owner->id]);
+    $member = workspaceMember($workspace, 'member');
+    $admin = workspaceMember($workspace, 'admin');
+
+    expect($this->policy->manageTeam($member, $workspace))->toBeFalse()
+        ->and($this->policy->inviteMember($member, $workspace))->toBeFalse()
+        ->and($this->policy->manageWebhooks($member, $workspace))->toBeFalse()
+        ->and($this->policy->manageBilling($member, $workspace))->toBeFalse()
+        ->and($this->policy->manageBilling($admin, $workspace))->toBeFalse()
+        ->and($this->policy->update($member, $workspace))->toBeFalse()
+        ->and($this->policy->delete($member, $workspace))->toBeFalse();
+});
 
 test('a user outside the workspace cannot write, publish or approve', function () {
     $owner = User::factory()->create();

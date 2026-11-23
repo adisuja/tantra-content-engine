@@ -7,6 +7,7 @@ namespace App\Tantra\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Tantra\Boost\MemberProfile;
+use App\Tantra\Crm\CrmContent;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -16,11 +17,13 @@ use Symfony\Component\HttpFoundation\Response;
  * accept calls PUT .../boost {consent: true}. Turning it off is stored as boost_opted_out_at, never as a null consent. Consent is per
  * person (MemberProfile is keyed by the engine user), so a member of two teams boosts in both.
  *
- *   PUT  /api/gateway/tantra/team/members/{clerk_user_id}/boost   {consent: bool, paused_until?: ISO time|null}
+ *   PUT  /api/gateway/tantra/team/members/{clerk_user_id}/boost   {consent: bool, paused_until?: ISO time|null, email?: string}
  *   POST /api/gateway/tantra/team/members/{clerk_user_id}/match   {unipile_account_id, name?}: link their Unipile LinkedIn account
  *   GET  /api/gateway/tantra/team/members/{clerk_user_id}/status  their boost status and the blocker() reason
  *
- * The member is found by Clerk user id within the acting person's own Account only.
+ * The member is found by Clerk user id within the acting person's own Account only. M1 (open access): when the engine has never seen
+ * that member and the boost call carries their email, they join the acting person's current workspace as a member
+ * (CrmContent::join) and their Clerk id is linked, instead of 404 no_engine_user.
  */
 class GatewayBoostController extends Controller
 {
@@ -29,8 +32,9 @@ class GatewayBoostController extends Controller
         $data = $request->validate([
             'consent' => ['required', 'boolean'],
             'paused_until' => ['nullable', 'date'],
+            'email' => ['nullable', 'email', 'max:255'],
         ]);
-        $user = $this->member($request, $member);
+        $user = $this->find($request, $member) ?? $this->join($request, $member, $data['email'] ?? null) ?? $this->member($request, $member);
         $profile = MemberProfile::query()->firstOrNew(['user_id' => $user->id]);
 
         if ($data['consent']) {
@@ -98,10 +102,46 @@ class GatewayBoostController extends Controller
         ];
     }
 
+    private function find(Request $request, string $member): ?User
+    {
+        if (preg_match('/^user_[A-Za-z0-9]{10,64}$/', $member) !== 1) {
+            return null;
+        }
+
+        return User::query()->where('clerk_user_id', $member)->where('account_id', $request->user()->account_id)->first();
+    }
+
+    /**
+     * M1: a teammate the engine never saw joins the acting person's current workspace by email, and the Clerk id is linked to them.
+     * Null (so the 404 stands) without an email, when the email belongs to another Account, or to a user linked to another Clerk id,
+     * or when the Clerk id is already held by another user.
+     */
+    private function join(Request $request, string $member, ?string $email): ?User
+    {
+        $workspace = $request->user()->currentWorkspace;
+        if ($email === null || $workspace === null || preg_match('/^user_[A-Za-z0-9]{10,64}$/', $member) !== 1
+            || User::query()->where('clerk_user_id', $member)->exists()) {
+            return null;
+        }
+        $held = User::query()->whereRaw('lower(email) = ?', [mb_strtolower(trim($email))])->whereNotNull('clerk_user_id')->where('clerk_user_id', '!=', $member)->exists();
+        if ($held) {
+            return null;
+        }
+        $user = CrmContent::join($workspace, $email);
+        if ($user === null || ($user->clerk_user_id !== null && $user->clerk_user_id !== $member)) {
+            return null;
+        }
+        if ($user->clerk_user_id === null) {
+            $user->forceFill(['clerk_user_id' => $member])->save();
+        }
+
+        return $user;
+    }
+
     private function member(Request $request, string $member): User
     {
         abort_unless(preg_match('/^user_[A-Za-z0-9]{10,64}$/', $member) === 1, Response::HTTP_NOT_FOUND);
-        $user = User::query()->where('clerk_user_id', $member)->where('account_id', $request->user()->account_id)->first();
+        $user = $this->find($request, $member);
         abort_if($user === null, response()->json([
             'message' => 'This member has not signed in to the content engine yet.', 'code' => 'no_engine_user',
         ], Response::HTTP_NOT_FOUND));

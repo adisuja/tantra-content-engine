@@ -110,7 +110,8 @@ it('lists a team channel\'s published posts after since, newest first, never dra
 
     crmFlow($this, 'source-posts', [...$base, 'channel_id' => $this->hidden->id])->assertNotFound()->assertJsonPath('error', 'unknown_channel');
     crmFlow($this, 'source-posts', [...$base, 'workspace' => 'ws_other'])->assertNotFound()->assertJsonPath('error', 'unknown_channel');
-    crmFlow($this, 'source-posts', [...$base, 'actor_email' => 'nobody@example.test'])->assertForbidden()->assertJsonPath('error', 'unknown_person');
+    User::factory()->create(['email' => 'elsewhere@example.test']); // M1: a user of another Engine account never joins
+    crmFlow($this, 'source-posts', [...$base, 'actor_email' => 'elsewhere@example.test'])->assertForbidden()->assertJsonPath('error', 'unknown_person');
     crmFlow($this, 'source-posts', [...$base, 'limit' => 21])->assertUnprocessable();
 });
 
@@ -141,7 +142,8 @@ it('refuses a start-post outside the team, from an unknown person, or with a bad
     crmFlow($this, 'start-post', [...$base, 'targets' => [['channel_id' => $this->otherX->id]]])->assertNotFound()->assertJsonPath('error', 'unknown_channel');
     crmFlow($this, 'start-post', [...$base, 'source' => feedPost(['kind' => 'channel', 'channel_id' => $this->hidden->id])])->assertNotFound()->assertJsonPath('error', 'unknown_channel');
     crmFlow($this, 'start-post', [...$base, 'workspace' => 'ws_unknown'])->assertNotFound();
-    crmFlow($this, 'start-post', [...$base, 'actor_email' => 'nobody@example.test'])->assertForbidden()->assertJsonPath('error', 'unknown_person');
+    User::factory()->create(['email' => 'elsewhere@example.test']); // M1: a user of another Engine account never joins
+    crmFlow($this, 'start-post', [...$base, 'actor_email' => 'elsewhere@example.test'])->assertForbidden()->assertJsonPath('error', 'unknown_person');
     crmFlow($this, 'start-post', [...$base, 'source' => feedPost(['kind' => 'email'])])->assertUnprocessable();
     crmFlow($this, 'start-post', [...$base, 'source' => feedPost(['text' => str_repeat('y', 6001)])])->assertUnprocessable();
     crmFlow($this, 'start-post', [...$base, 'targets' => [['network' => 'myspace']]])->assertUnprocessable();

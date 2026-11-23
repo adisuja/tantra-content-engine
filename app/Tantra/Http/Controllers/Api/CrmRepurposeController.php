@@ -20,8 +20,8 @@ use App\Tantra\Repurpose\Cadence;
 use App\Tantra\Repurpose\Reposts;
 use App\Tantra\Review\Enums\ReviewStatus;
 use App\Tantra\Review\Models\ReviewItem;
-use Illuminate\Http\JsonResponse;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -121,7 +121,7 @@ class CrmRepurposeController extends Controller
         if ($source === null) {
             return $this->refuse(404, 'not_found');
         }
-        $actor = CrmContent::actor(Workspace::query()->findOrFail($source->workspace_id), $data['actor_email']);
+        $actor = CrmContent::actorOrJoin(Workspace::query()->findOrFail($source->workspace_id), $data['actor_email']);
         if ($actor === null) {
             return $this->refuse(403, 'unknown_person');
         }
@@ -157,7 +157,7 @@ class CrmRepurposeController extends Controller
         if ($channel === null || $channel->workspace === null) {
             return $this->refuse(404, 'unknown_channel');
         }
-        if (CrmContent::actor($channel->workspace, $data['actor_email']) === null) {
+        if (CrmContent::actorOrJoin($channel->workspace, $data['actor_email']) === null) {
             return $this->refuse(403, 'unknown_person');
         }
         $since = filled($data['since'] ?? null) ? CarbonImmutable::parse($data['since'])->utc() : now()->subDays(30)->toImmutable();
@@ -232,7 +232,7 @@ class CrmRepurposeController extends Controller
         $workspaceId = $from?->workspace_id
             ?? ($firstTarget ? SocialAccount::query()->whereIn('workspace_id', $ids)->whereKey($firstTarget)->value('workspace_id') : null)
             ?? $ids[0];
-        $actor = CrmContent::actor(Workspace::query()->findOrFail($workspaceId), $data['actor_email']);
+        $actor = CrmContent::actorOrJoin(Workspace::query()->findOrFail($workspaceId), $data['actor_email']);
         if ($actor === null) {
             return $this->refuse(403, 'unknown_person');
         }
@@ -294,13 +294,8 @@ class CrmRepurposeController extends Controller
     /** @param  list<string>  $workspaceIds */
     private function actorIn(array $workspaceIds, string $email): ?User
     {
-        foreach (Workspace::query()->whereIn('id', $workspaceIds)->get() as $workspace) {
-            if (($user = CrmContent::actor($workspace, $email)) !== null) {
-                return $user;
-            }
-        }
-
-        return null;
+        // M1: the first mapped workspace they belong to, or they join the first one as a member.
+        return CrmContent::actorInTeam($workspaceIds, $email)[1] ?? null;
     }
 
     private function refuse(int $status, string $code, ?string $message = null): JsonResponse

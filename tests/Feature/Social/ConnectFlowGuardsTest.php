@@ -134,15 +134,23 @@ test('every connect and channel route points at an action its controller has', f
     expect($missing)->toBe([]);
 });
 
-test('a member without admin rights cannot start a connection', function (string $routeName, string $method, array $platforms, array $payload, string $access) {
+test('a member without admin rights can start a connection (M1 open access)', function (string $routeName, string $method, array $platforms, array $payload, string $access) {
     $member = workspaceMember($this->workspace, $access);
-    Socialite::shouldReceive('driver')->never();
+    fakePublicDns();
+    Http::fake([
+        'https://mastodon.example/api/v1/apps' => Http::response(['client_id' => 'client-id', 'client_secret' => 'client-secret']),
+        config('trypost.platforms.bluesky.default_service').'/*' => Http::response(['error' => 'AuthenticationRequired', 'message' => 'Invalid identifier or password'], 401),
+    ]);
 
-    $this->actingAs($member)->{$method}(route($routeName), $payload)->assertForbidden();
+    $response = $this->actingAs($member)->{$method}(route($routeName), $payload);
 
-    expect(PendingConnection::current())->toBeNull()
-        ->and(SocialAccount::query()->count())->toBe(0);
-    Http::assertNothingSent();
+    expect($response->status())->toBeIn([200, 302]);
+
+    match ($routeName) {
+        'app.social.telegram.connect' => $response->assertJsonStructure(['code', 'nonce', 'expires_at']),
+        'app.social.bluesky.store' => $response->assertSessionHasErrors('password'),
+        default => expect(PendingConnection::current()?->workspaceId())->toBe($this->workspace->id),
+    };
 })->with('connect starts')->with(['publishes directly' => 'member', 'needs approval' => 'approval']);
 
 test('a workspace admin who is not the owner can start a connection', function (string $routeName, string $method, array $platforms, array $payload) {
@@ -192,8 +200,8 @@ test('a callback without its connect session shows the expired confirmation page
     Http::assertNothingSent();
 })->with('connect callbacks');
 
-test('a callback for a user who lost the right to manage channels connects nothing', function (string $routeName, array $session) {
-    $demoted = workspaceMember($this->workspace, 'member');
+test('a callback for a user who left the workspace connects nothing', function (string $routeName, array $session) {
+    $demoted = workspaceOutsider($this->workspace);
     Socialite::shouldReceive('driver')->never();
     startSocialConnect($this->workspace, connectRoutePlatform($routeName));
     session($session);
@@ -207,8 +215,8 @@ test('a callback for a user who lost the right to manage channels connects nothi
     Http::assertNothingSent();
 })->with('connect callbacks');
 
-test('the confirmation page and finish refuse a user who lost the right to manage channels', function (Platform $platform) {
-    $demoted = workspaceMember($this->workspace, 'member');
+test('the confirmation page and finish refuse a user who left the workspace', function (Platform $platform) {
+    $demoted = workspaceOutsider($this->workspace);
     startSocialConnect($this->workspace, $platform)->offer([
         PendingConnection::identity($platform, 'identity-1', 'Brand', 'brand', null, 'profile', ['access_token' => 'user-token']),
     ]);
@@ -229,8 +237,8 @@ test('the confirmation page and finish refuse a user who lost the right to manag
     Http::assertNothingSent();
 })->with('confirmation pages');
 
-test('finish by a user who lost the right after the page loaded connects nothing', function (Platform $platform) {
-    $demoted = workspaceMember($this->workspace, 'member');
+test('finish by a user who left the workspace after the page loaded connects nothing', function (Platform $platform) {
+    $demoted = workspaceOutsider($this->workspace);
     startSocialConnect($this->workspace, $platform)->offer([
         PendingConnection::identity($platform, 'identity-1', 'Brand', 'brand', null, 'profile', ['access_token' => 'user-token']),
     ]);

@@ -49,9 +49,13 @@ class WorkspacePolicy
         return $this->isAdmin($user, $workspace);
     }
 
+    /**
+     * tantra: M1 open access (23 Nov). Every member connects, reorders and disconnects channels; only team
+     * management (manageTeam, inviteMember), webhooks and billing stay with admins and the owner.
+     */
     public function manageAccounts(User $user, Workspace $workspace): bool
     {
-        return $this->isAdmin($user, $workspace);
+        return $this->canAccess($user, $workspace);
     }
 
     public function manageWebhooks(User $user, Workspace $workspace): bool
@@ -59,6 +63,7 @@ class WorkspacePolicy
         return $this->isAdmin($user, $workspace);
     }
 
+    /** Repurposes publish on the team's channels, so they follow publishDirectly. */
     public function manageRepurposes(User $user, Workspace $workspace): bool
     {
         return $this->publishDirectly($user, $workspace);
@@ -73,6 +78,11 @@ class WorkspacePolicy
         return $this->canAccess($user, $workspace);
     }
 
+    /**
+     * tantra: M1, every member publishes directly (Tantra members join with requires_approval false, and
+     * tantra:members-open-access clears it for existing ones). Two rules a team sets for itself stay: a member an
+     * admin explicitly marked "needs approval", and the review owner rule (PRD 10.8, OwnerApproval).
+     */
     public function publishDirectly(User $user, Workspace $workspace): bool
     {
         return $this->canAccess($user, $workspace) && $user->canPublishDirectlyIn($workspace);

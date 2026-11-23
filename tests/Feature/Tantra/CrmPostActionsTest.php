@@ -8,7 +8,9 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 
 // tantra: the two changes the Tantra app's Content > Drafts makes: the text of a draft, and sending a draft for approval.
@@ -72,8 +74,9 @@ it('refuses to change a post that is not a draft, an unknown person, an unknown 
     crmAct($this, 'update', [...$body, 'post' => $waiting->id])->assertStatus(409)->assertJsonPath('error', 'not_a_draft');
     crmAct($this, 'update', [...$body, 'post' => $published->id])->assertStatus(409)->assertJsonPath('error', 'not_a_draft');
     crmAct($this, 'update', [...$body, 'post' => $draft->id, 'actor_email' => 'stan@example.test'])->assertForbidden()->assertJsonPath('error', 'unknown_person');
-    crmAct($this, 'update', [...$body, 'post' => $draft->id, 'actor_email' => 'nobody@example.test'])->assertForbidden();
-    crmAct($this, 'update', [...$body, 'post' => (string) \Illuminate\Support\Str::uuid()])->assertNotFound()->assertJsonPath('error', 'not_found');
+    User::factory()->create(['email' => 'elsewhere@example.test']); // M1: a user of another Engine account never joins
+    crmAct($this, 'update', [...$body, 'post' => $draft->id, 'actor_email' => 'elsewhere@example.test'])->assertForbidden();
+    crmAct($this, 'update', [...$body, 'post' => (string) Str::uuid()])->assertNotFound()->assertJsonPath('error', 'not_found');
     crmAct($this, 'update', [...$body, 'post' => $draft->id, 'workspace' => 'ws_other'])->assertNotFound();
     crmAct($this, 'update', [...$body, 'post' => $draft->id, 'workspace' => 'ws_unknown'])->assertNotFound();
     expect($waiting->fresh()->content)->toBe('Waiting.')->and($published->fresh()->content)->toBe('Out.')->and($draft->fresh()->content)->toBe('A draft about timing.');
@@ -95,7 +98,7 @@ it('sends a draft for approval at the time given, for a person whose posts need 
     $response = crmAct($this, 'approval', ['workspace' => 'ws_team', 'actor_email' => 'ann@example.test', 'post' => $post->id, 'scheduled_at' => $when])->assertOk();
     $response->assertJsonPath('data.status', 'pending_approval');
     $fresh = $post->fresh();
-    expect($fresh->status)->toBe(PostStatus::PendingApproval)->and($fresh->scheduled_at->utc()->toIso8601String())->toBe(\Carbon\CarbonImmutable::parse($when)->utc()->toIso8601String())
+    expect($fresh->status)->toBe(PostStatus::PendingApproval)->and($fresh->scheduled_at->utc()->toIso8601String())->toBe(CarbonImmutable::parse($when)->utc()->toIso8601String())
         ->and($fresh->content)->toBe('A draft about timing.');
 });
 
