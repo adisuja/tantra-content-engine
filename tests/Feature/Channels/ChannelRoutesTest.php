@@ -31,7 +31,7 @@ test('admins see the channel list of the current workspace only', function () {
 });
 
 test('members open the channel list to connect a network', function () {
-    $member = User::factory()->create();
+    $member = User::factory()->create(['account_id' => $this->workspace->account_id]);
     $this->workspace->members()->attach($member->id, membershipPivot('member'));
     $member->update(['current_workspace_id' => $this->workspace->id]);
 

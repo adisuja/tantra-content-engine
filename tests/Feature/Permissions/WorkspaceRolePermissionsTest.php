@@ -85,14 +85,14 @@ test('a user outside the workspace cannot save changes to a post', function () {
         ->assertForbidden();
 });
 
-test('only admins and above can open the connections screen', function (string $actor, bool $allowed) {
+test('every member of the team can open the connections screen', function (string $actor, bool $allowed) {
     $response = $this->actingAs($this->{$actor})->get(route('app.workspace.channels'));
 
     $allowed ? $response->assertOk() : $response->assertForbidden();
 })->with([
     'admin' => ['admin', true],
-    'member' => ['member', false],
-    'requester' => ['requester', false],
+    'member' => ['member', true],
+    'requester' => ['requester', true],
 ]);
 
 test('opening the dialog does not assign a channel for a member who needs approval', function () {

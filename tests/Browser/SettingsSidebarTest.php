@@ -106,7 +106,7 @@ test('members only see the settings they may use', function () {
     $page->assertVisible('@settings-nav-profile')
         ->assertVisible('@settings-nav-signatures')
         ->assertVisible('@settings-nav-mcp')
-        ->assertMissing('@settings-nav-channels')
+        ->assertVisible('@settings-nav-channels')
         ->assertMissing('@settings-nav-general')
         ->assertMissing('@settings-nav-webhooks')
         ->assertNotPresent('@settings-nav-billing')

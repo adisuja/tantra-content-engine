@@ -570,11 +570,11 @@ it('shows the setup step, still as a refusal, when a network has no keys', funct
         );
 });
 
-it('still refuses a member who may not manage channels, with no step in the way', function () {
+it('lets a member start a connection, with no step in the way', function () {
     seamlessEnforce();
     $member = workspaceMember($this->workspace, 'member');
 
-    $this->actingAs($member)->get(route('app.social.threads.connect'))->assertForbidden();
+    $this->actingAs($member)->get(route('app.social.threads.connect'))->assertRedirect();
 });
 
 it('emails the owner once when someone asks for tester access', function () {

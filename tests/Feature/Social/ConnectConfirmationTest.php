@@ -235,8 +235,9 @@ test('a second finish after the first one does not connect again', function () {
     expect($this->workspace->socialAccounts()->count())->toBe(1);
 });
 
-test('finish re-checks that the user may still manage the workspace accounts', function (string $access) {
-    $member = workspaceMember($this->workspace, $access);
+test('finish re-checks that the user is still on the team', function () {
+    // tantra: every member may connect; someone no longer on the team may not.
+    $member = User::factory()->create(['account_id' => $this->workspace->account_id]);
 
     startSocialConnect($this->workspace, Platform::Facebook)->offer([offeredFacebookPage('p1', 'One')]);
 
@@ -247,7 +248,7 @@ test('finish re-checks that the user may still manage the workspace accounts', f
 
     expect(socialConnectFailure())->toBe('workspace_not_found');
     $this->assertDatabaseCount('social_accounts', 0);
-})->with(['member', 'approval']);
+});
 
 test('a workspace admin who is not the owner can finish a connection', function () {
     $admin = workspaceMember($this->workspace, 'admin');

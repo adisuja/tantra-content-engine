@@ -72,7 +72,7 @@ const emit = defineEmits<{
 }>();
 
 const page = usePage();
-const { canManageBilling, canManageTeam, canManageWorkspace, canConnectAccounts } =
+const { canManageBilling, canManageTeam, canConnectAccounts } =
     useWorkspaceAbilities();
 // tantra: inside Tantra (AF-10) the team and its workspaces are Tantra's: no Members or Workspaces here.
 const { inTantra } = useTantraView();

@@ -246,8 +246,8 @@ test('keyboard focus reveals the channels header actions', function () {
     waitForState($page, '@sidebar-channels-actions', "getComputedStyle(element).opacity === '1'");
 
     expect($page->script("getComputedStyle({$actions}).opacity"))->toBe('1');
-    $page->assertMissing('@sidebar-channels-settings')
-        ->assertMissing('@sidebar-channels-connect')
+    $page->assertVisible('@sidebar-channels-settings')
+        ->assertVisible('@sidebar-channels-connect')
         ->assertNoJavaScriptErrors();
 });
 
