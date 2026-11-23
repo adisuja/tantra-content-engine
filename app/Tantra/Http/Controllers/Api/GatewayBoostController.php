@@ -7,7 +7,7 @@ namespace App\Tantra\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Tantra\Boost\MemberProfile;
-use App\Tantra\Crm\CrmContent;
+use App\Tantra\Gateway\LinkTeammate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -24,6 +24,9 @@ use Symfony\Component\HttpFoundation\Response;
  * The member is found by Clerk user id within the acting person's own Account only. M1 (open access): when the engine has never seen
  * that member and the boost call carries their email, they join the acting person's current workspace as a member
  * (CrmContent::join) and their Clerk id is linked, instead of 404 no_engine_user.
+ *
+ * M2 (open access, team management stays with admins): a member changes their own boost and LinkedIn link; changing another
+ * member's (boost or match) needs manageTeam on the workspace, as the CRM proxy also checks. Reading a status is open.
  */
 class GatewayBoostController extends Controller
 {
@@ -34,6 +37,7 @@ class GatewayBoostController extends Controller
             'paused_until' => ['nullable', 'date'],
             'email' => ['nullable', 'email', 'max:255'],
         ]);
+        $this->ownOrManager($request, $member);
         $user = $this->find($request, $member) ?? $this->join($request, $member, $data['email'] ?? null) ?? $this->member($request, $member);
         $profile = MemberProfile::query()->firstOrNew(['user_id' => $user->id]);
 
@@ -58,6 +62,7 @@ class GatewayBoostController extends Controller
             'unipile_account_id' => ['required', 'string', 'max:191'],
             'name' => ['nullable', 'string', 'max:191'],
         ]);
+        $this->ownOrManager($request, $member);
         $user = $this->member($request, $member);
 
         $taken = MemberProfile::query()->where('unipile_account_id', $data['unipile_account_id'])->where('user_id', '!=', $user->id)->exists();
@@ -111,31 +116,25 @@ class GatewayBoostController extends Controller
         return User::query()->where('clerk_user_id', $member)->where('account_id', $request->user()->account_id)->first();
     }
 
-    /**
-     * M1: a teammate the engine never saw joins the acting person's current workspace by email, and the Clerk id is linked to them.
-     * Null (so the 404 stands) without an email, when the email belongs to another Account, or to a user linked to another Clerk id,
-     * or when the Clerk id is already held by another user.
-     */
+    /** M1: a teammate the engine never saw joins the acting person's current workspace by email (LinkTeammate). */
     private function join(Request $request, string $member, ?string $email): ?User
     {
         $workspace = $request->user()->currentWorkspace;
-        if ($email === null || $workspace === null || preg_match('/^user_[A-Za-z0-9]{10,64}$/', $member) !== 1
-            || User::query()->where('clerk_user_id', $member)->exists()) {
-            return null;
-        }
-        $held = User::query()->whereRaw('lower(email) = ?', [mb_strtolower(trim($email))])->whereNotNull('clerk_user_id')->where('clerk_user_id', '!=', $member)->exists();
-        if ($held) {
-            return null;
-        }
-        $user = CrmContent::join($workspace, $email);
-        if ($user === null || ($user->clerk_user_id !== null && $user->clerk_user_id !== $member)) {
-            return null;
-        }
-        if ($user->clerk_user_id === null) {
-            $user->forceFill(['clerk_user_id' => $member])->save();
-        }
 
-        return $user;
+        return $workspace === null ? null : LinkTeammate::join($workspace, $member, $email);
+    }
+
+    /** M2: their own boost, or someone who manages the team. */
+    private function ownOrManager(Request $request, string $member): void
+    {
+        $actor = $request->user();
+        if ($actor->clerk_user_id === $member) {
+            return;
+        }
+        $workspace = $actor->currentWorkspace;
+        abort_if($workspace === null || ! $actor->can('manageTeam', $workspace), response()->json([
+            'message' => 'Only a team owner or admin can change another member\'s boost.', 'code' => 'forbidden',
+        ], Response::HTTP_FORBIDDEN));
     }
 
     private function member(Request $request, string $member): User
@@ -143,7 +142,7 @@ class GatewayBoostController extends Controller
         abort_unless(preg_match('/^user_[A-Za-z0-9]{10,64}$/', $member) === 1, Response::HTTP_NOT_FOUND);
         $user = $this->find($request, $member);
         abort_if($user === null, response()->json([
-            'message' => 'This member has not signed in to the content engine yet.', 'code' => 'no_engine_user',
+            'message' => 'This member is not set up in Content yet.', 'code' => 'no_engine_user',
         ], Response::HTTP_NOT_FOUND));
 
         return $user;

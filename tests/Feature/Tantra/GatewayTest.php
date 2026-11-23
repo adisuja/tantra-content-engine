@@ -74,14 +74,20 @@ test('the signed scopes decide what the call may do', function () {
 
 test('a Tantra member with no linked engine account gets no access', function () {
     $this->user->forceFill(['clerk_user_id' => null])->save();
-    gatewayCall($this, 'GET', '/api/gateway/workspace')->assertForbidden()->assertJsonPath('code', 'no_engine_access');
+    gatewayCall($this, 'GET', '/api/gateway/workspace')->assertForbidden()->assertJsonPath('code', 'no_engine_access')
+        ->assertJsonPath('message', 'Your Tantra account is being linked to Content. Try again in a minute.');
 });
 
-test('a person who cannot manage the team gets what the API would give them: no', function () {
+test('M2: a plain member of the pinned workspace gets in; someone outside it does not', function () {
+    $mate = workspaceMember($this->workspace, 'member');
+    $this->user->forceFill(['clerk_user_id' => null])->save();
+    $mate->forceFill(['clerk_user_id' => GATEWAY_TEST_CLERK])->save();
+    gatewayCall($this, 'GET', '/api/gateway/workspace', headers: ['X-Tantra-Content-Workspace' => (string) $this->workspace->id])->assertOk();
+
     $other = createApiTestToken();
     subscribeAccount($other['user']->account);
-    $other['workspace']->members()->attach($this->user->id, membershipPivot('member'));
-    gatewayCall($this, 'GET', '/api/gateway/workspace', headers: ['X-Tantra-Content-Workspace' => (string) $other['workspace']->id])->assertForbidden();
+    gatewayCall($this, 'GET', '/api/gateway/workspace', headers: ['X-Tantra-Content-Workspace' => (string) $other['workspace']->id])
+        ->assertForbidden()->assertJsonPath('code', 'no_workspace');
 });
 
 test('engine API keys are not reachable through the gateway', function () {

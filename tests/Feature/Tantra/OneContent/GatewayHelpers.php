@@ -14,10 +14,10 @@ const ONE_GW_CLERK = 'user_OneContentOwner0123456';
  * @param  array<string, mixed>  $body
  * @param  array<string, string>  $headers
  */
-function oneGatewayCall(object $test, string $method, string $path, array $body = [], array $headers = [], string $scopes = 'content:read,content:write,content:publish', string $member = ONE_GW_CLERK): TestResponse
+function oneGatewayCall(object $test, string $method, string $path, array $body = [], array $headers = [], string $scopes = 'content:read,content:write,content:publish', string $member = ONE_GW_CLERK, ?string $email = null): TestResponse
 {
     $raw = $body === [] ? '' : json_encode($body);
-    $sig = GatewaySignature::sign(ONE_GW_SECRET, 'k1', time(), 'ws_crm_team', $member, $scopes, $method, $path, $raw);
+    $sig = GatewaySignature::sign(ONE_GW_SECRET, 'k1', time(), 'ws_crm_team', $member, $scopes, $method, $path, $raw, $email);
     $server = [
         'CONTENT_TYPE' => 'application/json',
         'HTTP_ACCEPT' => 'application/json',
@@ -26,6 +26,9 @@ function oneGatewayCall(object $test, string $method, string $path, array $body 
         'HTTP_X_TANTRA_MEMBER' => $member,
         'HTTP_X_TANTRA_SCOPES' => $scopes,
     ];
+    if ($email !== null) {
+        $server['HTTP_X_TANTRA_MEMBER_EMAIL'] = $email;
+    }
     foreach ($headers as $name => $value) {
         $server['HTTP_'.strtoupper(str_replace('-', '_', $name))] = $value;
     }
