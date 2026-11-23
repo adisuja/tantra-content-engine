@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tantra\Http\Middleware;
 
+use App\Tantra\Review\ReviewGate;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -21,6 +22,8 @@ class EnsureCrmKey
         if ($key === '' || ! hash_equals($key, (string) $request->bearerToken())) {
             return response()->json(['error' => 'Invalid or missing key', 'code' => 'unauthenticated'], 401);
         }
+        // M2: a CRM server to server call; the CRM enforces the team's approver rule (ReviewGate::crmCaller).
+        ReviewGate::trustCrmCaller();
 
         return $next($request);
     }

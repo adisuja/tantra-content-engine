@@ -91,6 +91,8 @@ final class ReviewFeed
         $network = $i->platform === 'x' ? 'x' : 'linkedin';
         $who = Identity::forWorkspace((string) $i->workspace_id, $network) ?? [];
         $owner = ReviewGate::isReviewOwner($user, $i);
+        // M2: on a CRM call the CRM applies the team's approver rule, so the engine offers approve, edit and reject.
+        $acts = $owner || ReviewGate::crmCaller();
         $open = in_array($i->review_status, self::STATES['waiting'], true);
 
         return [
@@ -115,16 +117,16 @@ final class ReviewFeed
             'updated_at' => $i->updated_at?->toIso8601String(),
             'approver' => ReviewGate::reviewOwnerName($i, $approvers),
             'waiting_on_other' => $open && ! $owner,
-            'can_approve' => $owner && $open,
-            'can_edit' => $owner && $open,
-            'can_reject' => $owner && ! in_array($i->review_status, [ReviewStatus::Scheduled, ReviewStatus::Published, ReviewStatus::Rejected], true),
+            'can_approve' => $acts && $open,
+            'can_edit' => $acts && $open,
+            'can_reject' => $acts && ! in_array($i->review_status, [ReviewStatus::Scheduled, ReviewStatus::Published, ReviewStatus::Rejected], true),
         ];
     }
 
     /** Change the post's text while it waits for review: the review item and its channel drafts. */
     public static function editText(User $user, ReviewItem $item, string $text): void
     {
-        ReviewGate::assertReviewOwner($user, $item);
+        ReviewGate::assertReviewOwnerUnlessCrm($user, $item);
         if (! in_array($item->review_status, self::STATES['waiting'], true)) {
             throw ValidationException::withMessages(['review' => 'Only a post waiting for review can be edited.']);
         }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Enums\SocialAccount\Platform;
 use App\Models\SocialAccount;
+use App\Models\User;
+use App\Models\Workspace;
 use App\Tantra\Create\CreateFromFormat;
 use App\Tantra\Create\CreatePiece;
 use App\Tantra\Create\FormatPostWriter;
@@ -152,9 +154,9 @@ describe('review', function () {
         expect($this->item->refresh()->review_status)->toBe(ReviewStatus::Rejected);
     });
 
-    it('lists a post someone else approves, read only, with who approves it, and keeps the actions with them', function () {
-        $mate = App\Models\User::factory()->create(['account_id' => $this->user->account_id, 'name' => 'Sam Reviewer']);
-        $team = App\Models\Workspace::factory()->create(['account_id' => $this->user->account_id, 'user_id' => $mate->id]);
+    it('lists a post someone else approves with who approves it; on the gateway the CRM applies the approver rule (M2)', function () {
+        $mate = User::factory()->create(['account_id' => $this->user->account_id, 'name' => 'Sam Reviewer']);
+        $team = Workspace::factory()->create(['account_id' => $this->user->account_id, 'user_id' => $mate->id]);
         $team->members()->attach($mate->id, membershipPivot('admin'));
         WorkspaceSettings::query()->create(['workspace_id' => $team->id, 'brand_profile_key' => 'mate', 'review_owner_user_id' => $mate->id]);
         ImportBatch::execute($this->user, ['engine_batch_id' => 'b3', 'posts' => [['engine_post_id' => 'M1', 'profile' => 'mate', 'platform' => 'linkedin', 'text' => 'Waiting for someone else.']]]);
@@ -167,16 +169,18 @@ describe('review', function () {
             ->and($data['counts']['waiting_others'])->toBe(1)
             ->and($rows[$other->id]['approver'])->toBe('Sam Reviewer')
             ->and($rows[$other->id]['waiting_on_other'])->toBeTrue()
-            ->and($rows[$other->id]['can_approve'])->toBeFalse()
-            ->and($rows[$other->id]['can_edit'])->toBeFalse()
-            ->and($rows[$other->id]['can_reject'])->toBeFalse()
+            ->and($rows[$other->id]['can_approve'])->toBeTrue()
+            ->and($rows[$other->id]['can_edit'])->toBeTrue()
+            ->and($rows[$other->id]['can_reject'])->toBeTrue()
             ->and($rows[$this->item->id]['waiting_on_other'])->toBeFalse()
             ->and($rows[$this->item->id]['approver'])->toBe($this->user->name);
 
-        nativeGatewayCall($this, 'POST', "/api/gateway/tantra/review/{$other->id}/approve")->assertStatus(422);
-        nativeGatewayCall($this, 'PUT', "/api/gateway/tantra/review/{$other->id}", ['text' => 'Not mine to edit.'])->assertStatus(422);
-        expect($other->refresh()->review_status)->toBe(ReviewStatus::InReview)
-            ->and($other->payload['text'])->toBe('Waiting for someone else.');
+        // M2: approving and editing are the CRM's call (CX-03); every member edits.
+        nativeGatewayCall($this, 'PUT', "/api/gateway/tantra/review/{$other->id}", ['text' => 'Edited by a teammate.'])->assertOk()
+            ->assertJsonPath('data.text', 'Edited by a teammate.');
+        nativeGatewayCall($this, 'POST', "/api/gateway/tantra/review/{$other->id}/reject")->assertOk();
+        expect($other->refresh()->review_status)->toBe(ReviewStatus::Rejected)
+            ->and($other->payload['text'])->toBe('Edited by a teammate.');
     });
 
     it('answers 404 for a post the person cannot see', function () {

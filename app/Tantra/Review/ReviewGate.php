@@ -10,6 +10,7 @@ use App\Models\Workspace;
 use App\Tantra\Review\Enums\ReviewStatus;
 use App\Tantra\Review\Models\ReviewItem;
 use App\Tantra\Review\Models\WorkspaceSettings;
+use Illuminate\Support\Facades\Context;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -59,6 +60,35 @@ final class ReviewGate
     {
         return $user->account_id === $item->account_id
             && ($user->can('view', $item->workspace) || self::isAccountOwner($user, $item));
+    }
+
+    /** Context key set for a request the Tantra CRM made (the signed gateway or the CRM key routes). */
+    public const CRM_CALLER = 'tantra.crm_caller';
+
+    /**
+     * M2 (PRD 2.4, team rules default to everyone): the Tantra CRM enforces the team's own approver rule (CX-03) before it
+     * calls the engine, so on its calls the CRM is authoritative and the review owner rule here does not apply. Set by
+     * AuthenticateTantraGateway and EnsureCrmKey; request scoped (Context).
+     */
+    public static function trustCrmCaller(): void
+    {
+        Context::addHidden(self::CRM_CALLER, true);
+    }
+
+    public static function crmCaller(): bool
+    {
+        return Context::getHidden(self::CRM_CALLER) === true;
+    }
+
+    /**
+     * The review owner rule for saving a thread, editing the post text, approving, unapproving and rejecting: skipped on a CRM call (crmCaller),
+     * kept for the engine's own web UI.
+     */
+    public static function assertReviewOwnerUnlessCrm(User $user, ReviewItem $item): void
+    {
+        if (! self::crmCaller()) {
+            self::assertReviewOwner($user, $item);
+        }
     }
 
     public static function assertReviewOwner(User $user, ReviewItem $item): void
