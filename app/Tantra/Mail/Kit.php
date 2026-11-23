@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Tantra\Mail;
 
 use App\Enums\SocialAccount\Platform;
-use Illuminate\Support\Facades\Route;
+use App\Tantra\Crm\CrmPaths;
 use Illuminate\Support\Str;
 
 /**
@@ -45,9 +45,8 @@ final class Kit
 
     public static function settingsUrl(): string
     {
-        return Route::has('app.notifications.preferences')
-            ? route('app.notifications.preferences')
-            : self::appUrl('/settings/profile/notifications');
+        // One Content app PRD 4.1: notification settings live in the Tantra app.
+        return CrmPaths::content();
     }
 
     public static function networkOf(Platform|string|null $platform): string

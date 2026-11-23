@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tantra\Billing;
 
 use App\Models\User;
+use App\Tantra\Crm\CrmPaths;
 use App\Tantra\Mail\Kit;
 use App\Tantra\Mail\Letter;
 use App\Tantra\Notify\CrmMailFlags;
@@ -83,7 +84,7 @@ class BillingMail extends Mailable implements ShouldQueue
                 ->lead('You bring the ideas. The agents turn each one into posts for every channel, you approve them in a couple of minutes, and the Engine publishes and tracks what comes back.')
                 ->steps(['Connect the channels you post on.', 'Send in one idea: a note, a call recording or a voice memo.', 'Approve the drafts when the review email lands.'])
                 ->facts([['Paid today', $amount], ['Plan', 'Content OS, monthly'], ['Next charge', $this->day($plan->next_billing_at)], ['Workspace', $ws]])
-                ->cta('Open Content OS', Kit::appUrl('/tantra/review'))
+                ->cta('Open Content OS', CrmPaths::review())
                 ->secondary('Invoices and billing', $manage)
                 ->note('This is your receipt. Dodo Payments processes the charge and sends a tax invoice as well.'),
             'receipt' => Letter::make(! empty($this->context['recovered']) ? 'Payment received. Publishing is back on' : 'Thanks, your Content OS payment went through')

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tantra\Manual;
 
+use App\Tantra\Crm\CrmPaths;
 use App\Tantra\Mail\Letter;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -43,7 +44,7 @@ class ManualTaskDue extends Mailable implements ShouldQueue
             ->steps($poll
                 ? ['Open the task and copy the question and options.', 'Post the poll from your LinkedIn profile.', 'Mark the task posted so the follow ups start.']
                 : ['Open the task and copy the text.', 'Post it on X with the image.', 'Paste the post link back so the task closes.'])
-            ->cta('Open the task', url('/tantra/tasks'))
+            ->cta('Open the task', CrmPaths::content())
             ->reason('You get this because this post is on your schedule.')
             ->content();
     }

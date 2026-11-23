@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tantra\Digest;
 
+use App\Tantra\Crm\CrmPaths;
 use App\Tantra\Mail\Kit;
 use App\Tantra\Mail\PostCard;
 use App\Tantra\Review\Models\ReviewItem;
@@ -74,8 +75,8 @@ class DailyDigest extends Mailable implements ShouldQueue
             'networks' => collect($s['networks'])->map(fn (int $views, string $network): array => [
                 'label' => Kit::networkLabel($network), 'icon' => Kit::networkIcon($network), 'views' => Kit::compact($views), 'pct' => max(2, (int) round($views / $max * 100)),
             ])->values()->all(),
-            'reviewUrl' => url('/tantra/review'),
-            'insightsUrl' => url('/tantra/insights'),
+            'reviewUrl' => CrmPaths::review(),
+            'insightsUrl' => CrmPaths::content(),
             'footer' => [
                 'reason' => 'You get this once a day because you are a member of a Tantra workspace.',
                 'unsubscribe_url' => $this->unsubscribeUrl,

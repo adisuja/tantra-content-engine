@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Tantra\Agent\AgentJob;
 use App\Tantra\Agent\InvalidResult;
 use App\Tantra\Agent\JobApplier;
+use App\Tantra\Crm\CrmPaths;
 use App\Tantra\Notify\Notify;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -66,7 +67,7 @@ final class TemplateFromPostApplier implements JobApplier
         $template->save();
 
         if (($by = User::query()->find($template->created_by)) !== null) {
-            Notify::send($by, 'template_ready', ['key' => $template->key, 'title' => $template->title, 'subject' => "Your template {$template->key} is ready", 'text' => "The template you asked for from {$template->source_url} is ready: {$template->title}."], null, null, url('/tantra/templates'), 'See the template');
+            Notify::send($by, 'template_ready', ['key' => $template->key, 'title' => $template->title, 'subject' => "Your template {$template->key} is ready", 'text' => "The template you asked for from {$template->source_url} is ready: {$template->title}."], null, null, CrmPaths::content(), 'See the template');
         }
 
         return "Template {$template->key} is live: {$template->title}.";

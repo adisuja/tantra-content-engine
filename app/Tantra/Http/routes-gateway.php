@@ -24,10 +24,15 @@ use App\Http\Controllers\Api\TikTokCreatorInfoController;
 use App\Http\Controllers\Api\UploadController;
 use App\Http\Controllers\Api\WebhookController;
 use App\Http\Controllers\Api\WorkspaceController;
+use App\Tantra\Http\Controllers\Api\GatewayBoostController;
+use App\Tantra\Http\Controllers\Api\GatewayChannelsController;
+use App\Tantra\Http\Controllers\Api\GatewayComposerController;
 use App\Tantra\Http\Controllers\Api\GatewayContentController;
 use App\Tantra\Http\Controllers\Api\GatewayIdeasController;
+use App\Tantra\Http\Controllers\Api\GatewayKitController;
 use App\Tantra\Http\Controllers\Api\GatewayLibraryController;
 use App\Tantra\Http\Controllers\Api\GatewayMediaController;
+use App\Tantra\Http\Controllers\Api\GatewayOpsController;
 use App\Tantra\Http\Controllers\Api\GatewayReviewController;
 use App\Tantra\Http\Controllers\Api\GatewayTasksController;
 use Illuminate\Support\Facades\Route;
@@ -204,5 +209,29 @@ Route::middleware(['api', 'tantra.gateway', 'throttle:api'])
 
         Route::get('/tantra/feeds', [GatewayLibraryController::class, 'feeds'])->name('tantra.feeds');
         Route::get('/tantra/post-templates', [GatewayLibraryController::class, 'postTemplates'])->name('tantra.post-templates');
+
+        // tantra: One Content app PRD 3.5, 3.8 and 4.1. Boost consent, the post kit, channel care, the composer and the Engine card.
+        $clerk = 'user_[A-Za-z0-9]{10,64}';
+        Route::put('/tantra/team/members/{member}/boost', [GatewayBoostController::class, 'boost'])->where('member', $clerk)->name('tantra.team.boost');
+        Route::post('/tantra/team/members/{member}/match', [GatewayBoostController::class, 'match'])->where('member', $clerk)->name('tantra.team.match');
+        Route::get('/tantra/team/members/{member}/status', [GatewayBoostController::class, 'status'])->where('member', $clerk)->name('tantra.team.status');
+
+        Route::get('/tantra/posts/{ref}/thread', [GatewayKitController::class, 'show'])->whereUuid('ref')->name('tantra.kit.show');
+        Route::put('/tantra/posts/{ref}/thread', [GatewayKitController::class, 'update'])->whereUuid('ref')->name('tantra.kit.update');
+
+        Route::post('/tantra/connect/bluesky', [GatewayChannelsController::class, 'connectBluesky'])->middleware('throttle:10,1')->name('tantra.connect.bluesky');
+        Route::post('/tantra/connect/mastodon', [GatewayChannelsController::class, 'connectMastodon'])->middleware('throttle:10,1')->name('tantra.connect.mastodon');
+        Route::get('/tantra/connect/{token}/candidates', [GatewayChannelsController::class, 'candidates'])->where('token', '[A-Za-z0-9]{48}')->name('tantra.connect.candidates');
+        Route::post('/tantra/connect/{token}/select', [GatewayChannelsController::class, 'select'])->where('token', '[A-Za-z0-9]{48}')->name('tantra.connect.select');
+        Route::put('/tantra/channels/order', [GatewayChannelsController::class, 'reorder'])->name('tantra.channels.order');
+        Route::delete('/tantra/channels/{account}', [GatewayChannelsController::class, 'disconnect'])->whereUuid('account')->name('tantra.channels.disconnect');
+        Route::get('/tantra/channels/{account}/options', [GatewayChannelsController::class, 'options'])->whereUuid('account')->middleware('throttle:60,1')->name('tantra.channels.options');
+
+        Route::post('/tantra/composer/assist', [GatewayComposerController::class, 'assist'])->name('tantra.composer.assist');
+        Route::get('/tantra/unsplash', [GatewayComposerController::class, 'unsplash'])->middleware('throttle:unsplash')->name('tantra.unsplash');
+        Route::post('/tantra/posts/{post}/duplicate', [GatewayComposerController::class, 'duplicate'])->whereUuid('post')->name('tantra.posts.duplicate');
+
+        Route::get('/tantra/ops', [GatewayOpsController::class, 'summary'])->name('tantra.ops');
+        Route::post('/tantra/ops/failed-jobs/{uuid}/retry', [GatewayOpsController::class, 'retry'])->whereUuid('uuid')->name('tantra.ops.retry');
 
     });

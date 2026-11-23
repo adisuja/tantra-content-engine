@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tantra\Review\Mail;
 
+use App\Tantra\Crm\CrmPaths;
 use App\Tantra\Mail\Letter;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -45,7 +46,7 @@ class NumbersToSignOff extends Mailable implements ShouldQueue
             ->eyebrow('Sign off needed', 'warn')
             ->lead("These posts in {$this->workspaceName} quote your numbers. They stay on hold until you confirm each one is right, so nothing goes out with a figure you did not check.")
             ->steps($lines)
-            ->cta($n === 1 ? 'Check and sign off' : 'Check and sign them off', url('/tantra/review/'.$this->batchId))
+            ->cta($n === 1 ? 'Check and sign off' : 'Check and sign them off', CrmPaths::review())
             ->reason('You get this because these numbers are attributed to you.')
             ->content();
     }

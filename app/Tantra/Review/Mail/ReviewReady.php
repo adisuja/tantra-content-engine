@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tantra\Review\Mail;
 
+use App\Tantra\Crm\CrmPaths;
 use App\Tantra\Mail\Kit;
 use App\Tantra\Mail\PostCard;
 use App\Tantra\Review\Models\ReviewItem;
@@ -58,7 +59,7 @@ class ReviewReady extends Mailable implements ShouldQueue
         $networks = $items->countBy(fn (ReviewItem $i): string => Kit::networkLabel($i->platform))
             ->map(fn (int $count, string $network): string => $count > 1 ? "{$count} for {$network}" : "1 for {$network}")->values()->implode(', ');
         $first = $cards[0]['when'] ?? null;
-        $url = url('/tantra/review/'.$this->batchId);
+        $url = CrmPaths::review();
 
         return new Content(view: 'tantra::mail.review-ready', with: [
             'title' => $this->envelope()->subject,

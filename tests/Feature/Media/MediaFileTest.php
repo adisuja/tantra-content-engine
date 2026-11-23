@@ -22,7 +22,9 @@ test('the media file is served from the app for the media editor', function () {
     $media = Media::factory()->temporaryUpload($this->workspace)->create(['path' => 'medias/photo.png', 'mime_type' => 'image/png']);
     Storage::put('medias/photo.png', 'png-bytes');
 
-    $response = $this->actingAs($this->user)->get(route('app.media.file', $media));
+    // tantra: One Content app PRD 4.1, the file is served by its signed link.
+    $redirect = $this->actingAs($this->user)->get(route('app.media.file', $media))->assertRedirect();
+    $response = $this->get((string) $redirect->headers->get('Location'));
 
     $response->assertOk()->assertHeader('Content-Type', 'image/png');
     expect($response->streamedContent())->toBe('png-bytes');
@@ -47,7 +49,8 @@ test('a media file already owned by a post is served too', function () {
     $media = Media::factory()->ownedByPost($post)->create(['path' => 'medias/post.jpg', 'mime_type' => 'image/jpeg']);
     Storage::put('medias/post.jpg', 'jpg-bytes');
 
-    $response = $this->actingAs($this->user)->get(route('app.media.file', $media));
+    $redirect = $this->actingAs($this->user)->get(route('app.media.file', $media))->assertRedirect();
+    $response = $this->get((string) $redirect->headers->get('Location'));
 
     $response->assertOk()->assertHeader('Content-Type', 'image/jpeg');
     expect($response->streamedContent())->toBe('jpg-bytes');
