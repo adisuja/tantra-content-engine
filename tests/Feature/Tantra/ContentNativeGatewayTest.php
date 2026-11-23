@@ -170,16 +170,17 @@ describe('review', function () {
             ->and($rows[$other->id]['approver'])->toBe('Sam Reviewer')
             ->and($rows[$other->id]['waiting_on_other'])->toBeTrue()
             ->and($rows[$other->id]['can_approve'])->toBeTrue()
-            ->and($rows[$other->id]['can_edit'])->toBeFalse()
+            ->and($rows[$other->id]['can_edit'])->toBeTrue()
             ->and($rows[$other->id]['can_reject'])->toBeTrue()
             ->and($rows[$this->item->id]['waiting_on_other'])->toBeFalse()
             ->and($rows[$this->item->id]['approver'])->toBe($this->user->name);
 
-        // M2: approving is the CRM's call (CX-03); editing the text keeps the review owner rule.
+        // M2: approving and editing are the CRM's call (CX-03); every member edits.
+        nativeGatewayCall($this, 'PUT', "/api/gateway/tantra/review/{$other->id}", ['text' => 'Edited by a teammate.'])->assertOk()
+            ->assertJsonPath('data.text', 'Edited by a teammate.');
         nativeGatewayCall($this, 'POST', "/api/gateway/tantra/review/{$other->id}/reject")->assertOk();
-        nativeGatewayCall($this, 'PUT', "/api/gateway/tantra/review/{$other->id}", ['text' => 'Not mine to edit.'])->assertStatus(422);
         expect($other->refresh()->review_status)->toBe(ReviewStatus::Rejected)
-            ->and($other->payload['text'])->toBe('Waiting for someone else.');
+            ->and($other->payload['text'])->toBe('Edited by a teammate.');
     });
 
     it('answers 404 for a post the person cannot see', function () {

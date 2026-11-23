@@ -81,7 +81,7 @@ final class ReviewGate
     }
 
     /**
-     * The review owner rule for saving a thread, approving, unapproving and rejecting: skipped on a CRM call (crmCaller),
+     * The review owner rule for saving a thread, editing the post text, approving, unapproving and rejecting: skipped on a CRM call (crmCaller),
      * kept for the engine's own web UI.
      */
     public static function assertReviewOwnerUnlessCrm(User $user, ReviewItem $item): void

@@ -62,6 +62,8 @@ it('lets a plain member who is not the review owner read Review, save a thread, 
     $row = collect(oneGatewayCall($this, 'GET', '/api/gateway/tantra/review', member: M2_MEMBER)->json('data.items') ?? [])->firstWhere('ref', $this->item->id);
     expect($row)->not->toBeNull()->and($row['can_approve'])->toBeTrue();
 
+    expect($row['can_edit'])->toBeTrue();
+    oneGatewayCall($this, 'PUT', "/api/gateway/tantra/review/{$this->item->id}", ['text' => 'Member text.'], member: M2_MEMBER)->assertOk();
     oneGatewayCall($this, 'POST', "/api/gateway/tantra/review/{$this->item->id}/approve", member: M2_MEMBER)->assertOk();
     expect($this->item->refresh()->review_status)->not->toBe(ReviewStatus::InReview);
     oneGatewayCall($this, 'POST', "/api/gateway/tantra/review/{$this->item->id}/unapprove", member: M2_MEMBER)->assertOk();
