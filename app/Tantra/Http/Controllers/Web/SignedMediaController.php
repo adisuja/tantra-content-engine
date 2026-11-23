@@ -29,6 +29,8 @@ class SignedMediaController extends Controller
     {
         $row = Media::query()->find($media);
         abort_if($row === null || blank($row->path) || ! Storage::exists($row->path), 404);
+        // Upload hardening: a stored svg can carry script, so it is never served, signed or not.
+        abort_if(str_contains(strtolower((string) $row->mime_type), 'svg') || str_ends_with(strtolower((string) $row->path), '.svg'), 404);
         $type = MediaType::fromMime((string) $row->mime_type);
         $inline = in_array($type, [MediaType::Image, MediaType::Video], true);
 

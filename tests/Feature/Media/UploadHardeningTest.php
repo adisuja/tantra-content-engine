@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Media\ChunkedAssetReceiver;
 use App\Services\Media\ChunkedCloudUploader;
+use App\Tantra\Http\Controllers\Web\SignedMediaController;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
@@ -237,7 +238,9 @@ test('the media file endpoint serves allowed images with headers that keep them 
     $media = Media::factory()->temporaryUpload($this->workspace)->create(['path' => 'medias/photo.png', 'mime_type' => 'image/png']);
     Storage::put('medias/photo.png', 'png-bytes');
 
-    $this->actingAs($this->user)->get(route('app.media.file', $media))
+    // tantra: One Content app PRD 4.1, the old route sends its visitors to the signed link, which keeps the same hardening.
+    $redirect = $this->actingAs($this->user)->get(route('app.media.file', $media))->assertRedirect();
+    $this->get((string) $redirect->headers->get('Location'))
         ->assertOk()
         ->assertHeader('Content-Type', 'image/png')
         ->assertHeader('X-Content-Type-Options', 'nosniff')
@@ -249,6 +252,10 @@ test('the media file endpoint never serves an svg, a video or a pdf', function (
     Storage::put($path, UPLOAD_HARDENING_SVG);
 
     $this->actingAs($this->user)->get(route('app.media.file', $media))->assertNotFound();
+    // The signed link never serves a stored svg either.
+    if ($mimeType === 'image/svg+xml') {
+        $this->get(SignedMediaController::url($media))->assertNotFound();
+    }
 })->with([
     'stored svg' => ['medias/legacy.svg', 'image/svg+xml', 'image'],
     'video' => ['medias/clip.mp4', 'video/mp4', 'video'],
