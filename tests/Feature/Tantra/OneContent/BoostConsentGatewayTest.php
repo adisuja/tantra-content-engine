@@ -75,6 +75,36 @@ it('finds members only in the acting Account, and says when one never signed in'
     oneGatewayCall($this, 'PUT', '/api/gateway/tantra/team/members/user_NeverSignedIn000000001/boost', ['consent' => true])->assertNotFound();
 });
 
+it('joins a teammate the engine never saw when the boost call carries their email, and links their Clerk id (M1)', function () {
+    $path = '/api/gateway/tantra/team/members/user_BrandNewMate000000001/boost';
+    $workspace = $this->owner->currentWorkspace;
+
+    oneGatewayCall($this, 'PUT', $path, ['consent' => true, 'email' => 'New.Mate@Example.test'])->assertOk()
+        ->assertJsonPath('data.member', 'user_BrandNewMate000000001');
+    $user = User::query()->where('clerk_user_id', 'user_BrandNewMate000000001')->sole();
+    $pivot = $workspace->members()->whereKey($user->id)->first()?->pivot;
+    expect($user->email)->toBe('new.mate@example.test')
+        ->and($user->account_id)->toBe($this->owner->account_id)
+        ->and((bool) $pivot->is_admin)->toBeFalse()
+        ->and((bool) $pivot->requires_approval)->toBeFalse()
+        ->and(MemberProfile::query()->findOrFail($user->id)->boost_consent_at)->not->toBeNull();
+
+    // Again: the same person, nobody new.
+    oneGatewayCall($this, 'PUT', $path, ['consent' => true, 'email' => 'new.mate@example.test'])->assertOk();
+    expect(User::query()->where('email', 'new.mate@example.test')->count())->toBe(1);
+});
+
+it('never joins an email of another Account or one linked to another Clerk id, and keeps the 404', function () {
+    User::factory()->create(['email' => 'elsewhere@example.test']);
+    User::factory()->create(['account_id' => $this->owner->account_id, 'email' => 'linked@example.test', 'clerk_user_id' => 'user_SomeoneElse0000000001']);
+
+    oneGatewayCall($this, 'PUT', '/api/gateway/tantra/team/members/user_Stranger00000000000001/boost', ['consent' => true, 'email' => 'elsewhere@example.test'])
+        ->assertNotFound()->assertJsonPath('code', 'no_engine_user');
+    oneGatewayCall($this, 'PUT', '/api/gateway/tantra/team/members/user_Stranger00000000000001/boost', ['consent' => true, 'email' => 'linked@example.test'])
+        ->assertNotFound()->assertJsonPath('code', 'no_engine_user');
+    expect(User::query()->where('clerk_user_id', 'user_Stranger00000000000001')->exists())->toBeFalse();
+});
+
 it('needs the write scope to change consent', function () {
     oneGatewayCall($this, 'PUT', '/api/gateway/tantra/team/members/user_MemberJoined000000001/boost', ['consent' => true], scopes: 'content:read')
         ->assertForbidden();

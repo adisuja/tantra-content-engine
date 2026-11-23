@@ -67,7 +67,7 @@ it('denies when the policy argument is null', function () {
 it('denies with the web authorization message when the user lacks the ability', function () {
     [$requester, $workspace] = authorizesMcpToolWorkspace('approval');
 
-    $denied = authorizesMcpToolProbe()->can(authorizesMcpToolRequest($requester), 'manageTeam', $workspace);
+    $denied = authorizesMcpToolProbe()->can(authorizesMcpToolRequest($requester), 'publishDirectly', $workspace);
 
     expect($denied)->toBeInstanceOf(Response::class)
         ->and($denied->isError())->toBeTrue()
@@ -109,7 +109,7 @@ it('authorizeCurrentWorkspace denies when the user has no current workspace', fu
 it('authorizeCurrentWorkspace denies when the user lacks the ability', function () {
     [$requester] = authorizesMcpToolWorkspace('approval');
 
-    $denied = authorizesMcpToolProbe()->workspace(authorizesMcpToolRequest($requester), 'manageTeam');
+    $denied = authorizesMcpToolProbe()->workspace(authorizesMcpToolRequest($requester), 'publishDirectly');
 
     expect($denied)->toBeInstanceOf(Response::class)
         ->and((string) $denied->content())->toBe('This action is unauthorized.');

@@ -350,8 +350,7 @@ test('requiring approval keeps mcp oauth grants and still lets the member write 
     expect($oauth->fresh()->revoked)->toBeFalse()
         ->and((bool) DB::table('oauth_refresh_tokens')->where('id', $refreshTokenId)->value('revoked'))->toBeFalse()
         ->and($member->fresh()->can('createPost', $this->workspace))->toBeTrue()
-        ->and($member->fresh()->requiresApprovalIn($this->workspace))->toBeTrue()
-        ->and($member->fresh()->can('approvePosts', $this->workspace))->toBeFalse();
+        ->and($member->fresh()->can('publishDirectly', $this->workspace))->toBeFalse();
 });
 
 test('the account owner cannot be demoted', function () {

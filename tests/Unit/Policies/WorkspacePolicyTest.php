@@ -288,17 +288,17 @@ test('account owner and workspace member can create post', function () {
     expect($this->policy->createPost($otherUser, $workspace))->toBeFalse();
 });
 
-test('a member an admin marked for approval uses every feature but never approves, and never manages the team', function () {
+test('a member an admin marked for approval connects channels but does not publish directly, approve, repurpose or manage the team', function () {
     $owner = User::factory()->create();
     $workspace = Workspace::factory()->create(['account_id' => $owner->account_id, 'user_id' => $owner->id]);
     $requester = workspaceMember($workspace, 'approval');
 
     expect($this->policy->view($requester, $workspace))->toBeTrue()
         ->and($this->policy->createPost($requester, $workspace))->toBeTrue()
-        ->and($this->policy->publishDirectly($requester, $workspace))->toBeTrue()
         ->and($this->policy->manageAccounts($requester, $workspace))->toBeTrue()
-        ->and($this->policy->manageRepurposes($requester, $workspace))->toBeTrue()
+        ->and($this->policy->publishDirectly($requester, $workspace))->toBeFalse()
         ->and($this->policy->approvePosts($requester, $workspace))->toBeFalse()
+        ->and($this->policy->manageRepurposes($requester, $workspace))->toBeFalse()
         ->and($this->policy->manageWebhooks($requester, $workspace))->toBeFalse()
         ->and($this->policy->manageTeam($requester, $workspace))->toBeFalse()
         ->and($this->policy->inviteMember($requester, $workspace))->toBeFalse();

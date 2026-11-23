@@ -6,7 +6,6 @@ namespace App\Policies;
 
 use App\Models\User;
 use App\Models\Workspace;
-use App\Tantra\Review\OwnerApproval;
 
 class WorkspacePolicy
 {
@@ -64,9 +63,10 @@ class WorkspacePolicy
         return $this->isAdmin($user, $workspace);
     }
 
+    /** Repurposes publish on the team's channels, so they follow publishDirectly. */
     public function manageRepurposes(User $user, Workspace $workspace): bool
     {
-        return $this->canAccess($user, $workspace);
+        return $this->publishDirectly($user, $workspace);
     }
 
     /**
@@ -79,21 +79,18 @@ class WorkspacePolicy
     }
 
     /**
-     * tantra: M1, every member. The one rule a team sets for itself stays: once the workspace's named review
-     * owner has joined (PRD 10.8, OwnerApproval), only they publish directly and approve.
+     * tantra: M1, every member publishes directly (Tantra members join with requires_approval false, and
+     * tantra:members-open-access clears it for existing ones). Two rules a team sets for itself stay: a member an
+     * admin explicitly marked "needs approval", and the review owner rule (PRD 10.8, OwnerApproval).
      */
     public function publishDirectly(User $user, Workspace $workspace): bool
     {
-        return $this->canAccess($user, $workspace) && ! OwnerApproval::someoneElseApproves($workspace, $user);
+        return $this->canAccess($user, $workspace) && $user->canPublishDirectlyIn($workspace);
     }
 
-    /**
-     * Every member, except a person whose own posts an admin chose to send for approval (requires_approval, off by
-     * default for Tantra teams since M1): they never approve their own requests.
-     */
     public function approvePosts(User $user, Workspace $workspace): bool
     {
-        return $this->publishDirectly($user, $workspace) && ! $user->requiresApprovalIn($workspace);
+        return $this->publishDirectly($user, $workspace);
     }
 
     public function inviteMember(User $user, Workspace $workspace): bool

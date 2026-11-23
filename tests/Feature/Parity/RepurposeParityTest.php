@@ -209,15 +209,16 @@ test('pausing a draft is refused with the same message on every surface', functi
     expect($repurpose->fresh()->status)->toBe(Status::Draft);
 });
 
-test('a member who needs approval reaches repurposes on every surface (M1), and a foreign workspace repurpose is refused on every surface', function () {
+test('a member who needs approval and a foreign workspace repurpose are refused on every surface', function () {
     $approval = workspaceMember($this->workspace, 'approval');
     $repurpose = Repurpose::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id, 'source_social_account_id' => $this->instagram->id]);
     $foreign = Repurpose::factory()->create(['workspace_id' => Workspace::factory()->create()->id]);
 
-    $this->actingAs($approval)->get(route('app.repurposes.index'))->assertOk();
+    $this->actingAs($approval)->post(route('app.repurposes.activate', $repurpose))->assertForbidden();
+    $this->actingAs($approval)->get(route('app.repurposes.index'))->assertForbidden();
 
-    TryPostServer::actingAs($approval)->tool(ListRepurposesTool::class, [])->assertHasNoErrors();
-    TryPostServer::actingAs($approval)->tool(GetRepurposeTool::class, ['repurpose_id' => $repurpose->id])->assertHasNoErrors();
+    TryPostServer::actingAs($approval)->tool(ListRepurposesTool::class, [])->assertHasErrors(['This action is unauthorized.']);
+    TryPostServer::actingAs($approval)->tool(GetRepurposeTool::class, ['repurpose_id' => $repurpose->id])->assertHasErrors(['This action is unauthorized.']);
 
     auth()->forgetGuards();
     $this->withHeaders(parityApi($this->token))->getJson(route('api.repurposes.show', $foreign))->assertNotFound();

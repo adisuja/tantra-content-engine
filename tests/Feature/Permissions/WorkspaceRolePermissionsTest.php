@@ -85,14 +85,14 @@ test('a user outside the workspace cannot save changes to a post', function () {
         ->assertForbidden();
 });
 
-test('only admins and above can open the connections screen', function (string $actor, bool $allowed) {
+test('every member can open the connections screen (M1 open access)', function (string $actor, bool $allowed) {
     $response = $this->actingAs($this->{$actor})->get(route('app.workspace.channels'));
 
     $allowed ? $response->assertOk() : $response->assertForbidden();
 })->with([
     'admin' => ['admin', true],
-    'member' => ['member', false],
-    'requester' => ['requester', false],
+    'member' => ['member', true],
+    'requester' => ['requester', true],
 ]);
 
 test('opening the dialog does not assign a channel for a member who needs approval', function () {
@@ -119,13 +119,13 @@ test('opening the dialog does not assign a channel for a member', function () {
     expect($this->post->fresh()->social_account_id)->toBeNull();
 });
 
-test('a member without connected accounts is redirected away from the admin-only accounts screen when creating a post', function () {
+test('a member without connected accounts is sent to the accounts screen when creating a post (M1 open access)', function () {
     $this->actingAs($this->member)
         ->post(route('app.posts.store'), [
             'status' => 'draft',
             'destinations' => [['social_account_id' => (string) Str::uuid(), 'content_type' => 'linkedin_post']],
         ])
-        ->assertRedirect(route('app.calendar'));
+        ->assertRedirect(route('app.workspace.channels'));
 });
 
 test('an admin without connected accounts is sent to the accounts screen when creating a post', function () {

@@ -786,14 +786,15 @@ test('a post of another workspace cannot get or lose a recurrence on any surface
     expect(schedulingParityRecurrence($foreign))->toBe(['interval' => 1, 'frequency' => 'day', 'remaining' => 3]);
 });
 
-test('a member who needs approval can set a recurrence through the mcp tool (M1 open access)', function () {
+test('a member who needs approval cannot set a recurrence through the api or the mcp tool', function () {
     $member = workspaceMember($this->workspace, 'approval');
     $post = schedulingParityRecurring($this->account, $this->workspace->id, $member->id);
     $rule = ['interval' => 1, 'frequency' => 'day', 'times' => 2];
 
-    TryPostServer::actingAs($member)->tool(SetPostRecurrenceTool::class, ['post_id' => $post->id, ...$rule])->assertHasNoErrors();
+    $this->withHeaders(parityApi(passportToken($member, $this->workspace)))->patchJson(route('api.posts.recurrence.update', $post), $rule)->assertForbidden();
+    TryPostServer::actingAs($member)->tool(SetPostRecurrenceTool::class, ['post_id' => $post->id, ...$rule])->assertHasErrors([__('This action is unauthorized.')]);
 
-    expect(schedulingParityRecurrence($post)['interval'])->toBe(1);
+    expect(schedulingParityRecurrence($post)['interval'])->toBeNull();
 });
 
 function schedulingParityChannelWithQueue(Workspace $workspace, string $userId, int $count = 3): SocialAccount
