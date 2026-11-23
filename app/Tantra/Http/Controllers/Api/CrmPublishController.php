@@ -84,9 +84,9 @@ class CrmPublishController extends Controller
             return $this->refuse(422, 'channel_not_connected', 'Connect '.$offline->map(fn (SocialAccount $c): string => (string) ($c->display_name ?: $c->username))->implode(', ').' again before posting to it.');
         }
         $workspace = $accounts->first()->workspace;
-        $actor = CrmContent::actor($workspace, $data['actor_email']);
+        $actor = CrmContent::actorOrJoin($workspace, $data['actor_email']);
         if ($actor === null) {
-            return $this->refuse(403, 'unknown_person');
+            return $this->unknownPerson($workspace, $data['actor_email']);
         }
 
         // A post goes out once: the same key (or the same words to the same channels at the same time) is refused for ten minutes, not published twice.
@@ -142,9 +142,9 @@ class CrmPublishController extends Controller
             return $this->refuse(404, 'not_found');
         }
 
-        $actor = CrmContent::actor($post->workspace, $data['actor_email']);
+        $actor = CrmContent::actorOrJoin($post->workspace, $data['actor_email']);
         if ($actor === null) {
-            return $this->refuse(403, 'unknown_person');
+            return $this->unknownPerson($post->workspace, $data['actor_email']);
         }
         if ($post->user_id !== $actor->id && $post->workspace->user_id !== $actor->id && ! $actor->isWorkspaceAdmin($post->workspace)) {
             return $this->refuse(403, 'forbidden', 'Only the person who wrote this post, or an owner or admin of the workspace, can delete it.');
@@ -197,27 +197,33 @@ class CrmPublishController extends Controller
             return $this->refuse(404, 'no_link');
         }
 
-        // The person's own place in the team: the first mapped workspace they belong to, and they must be able to add channels there.
+        // The person's own place in the team: the first mapped workspace they belong to. M1: a teammate the Tantra app names joins
+        // the first mapped workspace as a member, and every member may add channels (WorkspacePolicy::manageAccounts).
         $ids = CrmContent::workspaceIds($data['workspace']);
-        $found = collect($ids === [] ? [] : Workspace::query()->whereIn('id', $ids)->get())
-            ->sortBy(fn (Workspace $w): int|false => array_search($w->id, $ids, true))
-            ->map(fn (Workspace $w): array => [$w, CrmContent::actor($w, $data['actor_email'])])
-            ->filter(fn (array $pair): bool => $pair[1] !== null)
-            ->values();
-        if ($found->isEmpty()) {
-            return $this->refuse(403, 'unknown_person');
-        }
-        $pick = $found->first(fn (array $pair): bool => $pair[1]->can('manageAccounts', $pair[0]));
+        $pick = CrmContent::actorInTeam($ids, $data['actor_email']);
         if ($pick === null) {
-            return $this->refuse(403, 'cannot_connect', 'Ask the owner of your team to connect this network, or ask them to make you an admin.');
+            $first = $ids === [] ? null : Workspace::query()->find($ids[0]);
+
+            return $first === null ? $this->refuse(403, 'unknown_person') : $this->unknownPerson($first, $data['actor_email']);
         }
         [$workspace, $actor] = $pick;
+        if (! $actor->can('manageAccounts', $workspace)) {
+            return $this->refuse(403, 'cannot_connect', 'This channel could not be connected for you. Try again in a minute.');
+        }
 
         return response()->json(['data' => [
             'network' => $data['network'],
             'url' => CrmConnectLink::signedUrl($actor, $workspace, $data['network'], $return),
             'expires_at' => now()->addMinutes(CrmConnectLink::TTL_MINUTES)->toIso8601String(),
         ]])->header('Cache-Control', 'no-store, private');
+    }
+
+    /** 403 unknown_person, with the reason when the email already belongs to another Engine account (it is never moved). */
+    private function unknownPerson(Workspace $workspace, ?string $email): JsonResponse
+    {
+        return CrmContent::heldElsewhere($workspace, $email)
+            ? $this->refuse(403, 'unknown_person', 'This email already has its own Content account, so it cannot join this team here. Sign in with your team email, or ask Tantra support to move it.')
+            : $this->refuse(403, 'unknown_person');
     }
 
     private function refuse(int $status, string $code, ?string $message = null): JsonResponse

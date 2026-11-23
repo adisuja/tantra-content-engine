@@ -235,19 +235,31 @@ test('a second finish after the first one does not connect again', function () {
     expect($this->workspace->socialAccounts()->count())->toBe(1);
 });
 
-test('finish re-checks that the user may still manage the workspace accounts', function (string $access) {
+test('a member who is not an admin can finish a connection (M1 open access)', function (string $access) {
     $member = workspaceMember($this->workspace, $access);
 
     startSocialConnect($this->workspace, Platform::Facebook)->offer([offeredFacebookPage('p1', 'One')]);
 
     $this->actingAs($member);
 
+    assertFinishedOnChannel(finishSocialConnect(Platform::Facebook, ['facebook:p1']));
+
+    expect($this->workspace->socialAccounts()->count())->toBe(1);
+})->with(['member', 'approval']);
+
+test('finish re-checks that the user still belongs to the workspace', function () {
+    $outsider = workspaceOutsider($this->workspace);
+
+    startSocialConnect($this->workspace, Platform::Facebook)->offer([offeredFacebookPage('p1', 'One')]);
+
+    $this->actingAs($outsider);
+
     finishSocialConnect(Platform::Facebook, ['facebook:p1'])
         ->assertRedirect(route('app.social.connect.show', Platform::Facebook));
 
     expect(socialConnectFailure())->toBe('workspace_not_found');
     $this->assertDatabaseCount('social_accounts', 0);
-})->with(['member', 'approval']);
+});
 
 test('a workspace admin who is not the owner can finish a connection', function () {
     $admin = workspaceMember($this->workspace, 'admin');

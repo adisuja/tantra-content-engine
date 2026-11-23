@@ -149,7 +149,8 @@ it('says approval is required for an approval person and not for an owner', func
         ->and(collect($adi->json('data.workspaces'))->pluck('approval_required')->all())->each->toBeFalse();
 });
 
-it('answers 403 unknown_person to an email it does not know', function () {
+it('answers 403 unknown_person to an email of another Engine account (M1: never moved)', function () {
+    User::factory()->create(['email' => 'nobody@example.test']);
     crmIns($this, 'settings', ['workspace' => 'ws_team', 'actor_email' => 'nobody@example.test'])->assertForbidden()->assertJsonPath('error', 'unknown_person');
     crmIns($this, 'settings', ['workspace' => 'ws_team', 'actor_email' => 'stan@example.test'])->assertForbidden();
 });

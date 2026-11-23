@@ -232,7 +232,10 @@ function mcpAuthParityTools(): array
 {
     $everyMember = ['outsider'];
     $admins = ['member', 'approval', 'outsider'];
-    $publishers = ['approval', 'outsider'];
+    // M1 (open access): publishing directly, repurposes and channel settings are for every member; only approving
+    // stays away from a member an admin marked as needing approval.
+    $publishers = ['outsider'];
+    $approvers = ['approval', 'outsider'];
     $label = ['name' => 'Launch', 'color' => '#112233'];
     $signature = ['name' => 'Sign-off', 'content' => 'Cheers'];
     $webhook = ['endpoint' => 'https://example.com/hook', 'events' => ['post.published']];
@@ -260,13 +263,13 @@ function mcpAuthParityTools(): array
         'list-labels-tool' => [ListLabelsTool::class, $everyMember, fn (TestCase $t, array $f) => $t->get(route('app.labels.index')), fn (array $f) => []],
         'update-label-tool' => [UpdateLabelTool::class, $everyMember, fn (TestCase $t, array $f) => $t->put(route('app.labels.update', $f['label']), $label), fn (array $f) => ['label_id' => $f['label']->id, ...$label]],
         'list-content-types-tool' => [ListContentTypesTool::class, $everyMember, fn (TestCase $t, array $f) => $t->getJson(route('app.posts.composer.live')), fn (array $f) => []],
-        'approve-post-tool' => [ApprovePostTool::class, $publishers, fn (TestCase $t, array $f) => $t->put(route('app.posts.approve', $f['pending'])), fn (array $f) => ['post_id' => $f['pending']->id]],
-        'reject-post-tool' => [RejectPostTool::class, $publishers, fn (TestCase $t, array $f) => $t->put(route('app.posts.reject', $f['pending'])), fn (array $f) => ['post_id' => $f['pending']->id]],
+        'approve-post-tool' => [ApprovePostTool::class, $approvers, fn (TestCase $t, array $f) => $t->put(route('app.posts.approve', $f['pending'])), fn (array $f) => ['post_id' => $f['pending']->id]],
+        'reject-post-tool' => [RejectPostTool::class, $approvers, fn (TestCase $t, array $f) => $t->put(route('app.posts.reject', $f['pending'])), fn (array $f) => ['post_id' => $f['pending']->id]],
         'attach-media-from-upload-tool' => [AttachMediaFromUploadTool::class, $everyMember, fn (TestCase $t, array $f) => $t->put(route('app.posts.update', $f['post']), ['status' => 'draft', 'content' => 'Edited', 'media' => []]), fn (array $f) => ['post_id' => $f['post']->id, 'upload_token' => $f['uploadToken']]],
         'attach-media-from-url-tool' => [AttachMediaFromUrlTool::class, $everyMember, fn (TestCase $t, array $f) => $t->put(route('app.posts.update', $f['post']), ['status' => 'draft', 'content' => 'Edited', 'media' => []]), fn (array $f) => ['post_id' => $f['post']->id, 'urls' => [['url' => 'https://example.com/photo.jpg']]]],
         'create-posts-tool' => [CreatePostsTool::class, $everyMember, fn (TestCase $t, array $f) => $t->post(route('app.posts.store'), ['status' => 'draft', 'content' => 'Hello', 'media' => [], 'destinations' => [mcpAuthParityDestination($f)]]), fn (array $f) => ['status' => 'draft', 'content' => 'Hello', 'destinations' => [mcpAuthParityDestination($f)]]],
         'create-post-tool' => [CreatePostTool::class, $everyMember, fn (TestCase $t, array $f) => $t->post(route('app.posts.store'), ['status' => 'draft', 'content' => 'Hello', 'media' => [], 'destinations' => [mcpAuthParityDestination($f)]]), fn (array $f) => ['content' => 'Hello', ...mcpAuthParityDestination($f)]],
-        'delete-post-tool' => [DeletePostTool::class, $publishers, fn (TestCase $t, array $f) => $t->delete(route('app.posts.destroy', $f['post'])), fn (array $f) => ['post_id' => $f['post']->id]],
+        'delete-post-tool' => [DeletePostTool::class, $approvers, fn (TestCase $t, array $f) => $t->delete(route('app.posts.destroy', $f['post'])), fn (array $f) => ['post_id' => $f['post']->id]],
         'get-post-metrics-tool' => [GetPostMetricsTool::class, [], fn (TestCase $t, array $f) => $t->get(route('app.posts.edit', $f['post'])), fn (array $f) => ['post_id' => $f['post']->id]],
         'get-post-tool' => [GetPostTool::class, [], fn (TestCase $t, array $f) => $t->get(route('app.posts.edit', $f['post'])), fn (array $f) => ['post_id' => $f['post']->id]],
         'list-post-notes-tool' => [ListPostNotesTool::class, $everyMember, fn (TestCase $t, array $f) => $t->getJson(route('app.posts.notes.index', $f['post'])), fn (array $f) => ['post_id' => $f['post']->id]],
@@ -300,9 +303,9 @@ function mcpAuthParityTools(): array
         'get-instagram-audio-tool' => [GetInstagramAudioTool::class, $everyMember, fn (TestCase $t, array $f) => $t->getJson(route('app.instagram.audio.show', [$f['instagramFacebook'], '846373660299207'])), fn (array $f) => ['account_id' => $f['instagramFacebook']->id, 'audio_id' => '846373660299207']],
         'list-pinterest-boards-tool' => [ListPinterestBoardsTool::class, $everyMember, fn (TestCase $t, array $f) => $t->getJson(route('app.pinterest.boards.index', $f['pinterest'])), fn (array $f) => ['account_id' => $f['pinterest']->id]],
         'get-posting-schedule-tool' => [GetPostingScheduleTool::class, $everyMember, fn (TestCase $t, array $f) => $t->getJson(route('app.posts.composer.live')), fn (array $f) => ['account_id' => $f['linkedin']->id]],
-        'update-posting-schedule-tool' => [UpdatePostingScheduleTool::class, $admins, fn (TestCase $t, array $f) => $t->putJson(route('app.channels.posting-schedule.update', $f['linkedin']), ['timezone' => 'UTC', 'posting_goal' => 2, 'posting_schedule' => null]), fn (array $f) => ['account_id' => $f['linkedin']->id, 'timezone' => 'UTC', 'posting_goal' => 2, 'posting_schedule' => null]],
-        'generate-posting-schedule-tool' => [GeneratePostingScheduleTool::class, $admins, fn (TestCase $t, array $f) => $t->postJson(route('app.channels.posting-schedule.generate', $f['linkedin']), ['mode' => 'goal', 'goal' => 3]), fn (array $f) => ['account_id' => $f['linkedin']->id, 'mode' => 'goal', 'goal' => 3]],
-        'copy-posting-schedule-tool' => [CopyPostingScheduleTool::class, $admins, fn (TestCase $t, array $f) => $t->postJson(route('app.channels.posting-schedule.copy', $f['linkedin']), ['from' => $f['queueChannel']->id]), fn (array $f) => ['account_id' => $f['linkedin']->id, 'from' => $f['queueChannel']->id]],
+        'update-posting-schedule-tool' => [UpdatePostingScheduleTool::class, $everyMember, fn (TestCase $t, array $f) => $t->putJson(route('app.channels.posting-schedule.update', $f['linkedin']), ['timezone' => 'UTC', 'posting_goal' => 2, 'posting_schedule' => null]), fn (array $f) => ['account_id' => $f['linkedin']->id, 'timezone' => 'UTC', 'posting_goal' => 2, 'posting_schedule' => null]],
+        'generate-posting-schedule-tool' => [GeneratePostingScheduleTool::class, $everyMember, fn (TestCase $t, array $f) => $t->postJson(route('app.channels.posting-schedule.generate', $f['linkedin']), ['mode' => 'goal', 'goal' => 3]), fn (array $f) => ['account_id' => $f['linkedin']->id, 'mode' => 'goal', 'goal' => 3]],
+        'copy-posting-schedule-tool' => [CopyPostingScheduleTool::class, $everyMember, fn (TestCase $t, array $f) => $t->postJson(route('app.channels.posting-schedule.copy', $f['linkedin']), ['from' => $f['queueChannel']->id]), fn (array $f) => ['account_id' => $f['linkedin']->id, 'from' => $f['queueChannel']->id]],
         'list-free-slots-tool' => [ListFreeSlotsTool::class, $everyMember, fn (TestCase $t, array $f) => $t->getJson(route('app.posts.composer.live')), fn (array $f) => ['account_id' => $f['linkedin']->id]],
         'reorder-queue-tool' => [ReorderQueueTool::class, $publishers, fn (TestCase $t, array $f) => $t->putJson(route('app.channels.queue.order', $f['queueChannel']), ['post_ids' => [$f['queuedPost']->id]]), fn (array $f) => ['account_id' => $f['queueChannel']->id, 'post_ids' => [$f['queuedPost']->id]]],
         'move-post-to-slot-tool' => [MovePostToSlotTool::class, $publishers, fn (TestCase $t, array $f) => $t->putJson(route('app.channels.queue.slot', $f['queueChannel']), ['post_id' => $f['customPost']->id, 'slot_at' => $f['freeSlot']]), fn (array $f) => ['account_id' => $f['queueChannel']->id, 'post_id' => $f['customPost']->id, 'slot_at' => $f['freeSlot']]],

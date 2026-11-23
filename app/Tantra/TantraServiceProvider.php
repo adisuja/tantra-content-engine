@@ -41,6 +41,7 @@ use App\Tantra\Console\InviteTeammateCommand;
 use App\Tantra\Console\LinkedInSyncCommand;
 use App\Tantra\Console\ManualTasksCommand;
 use App\Tantra\Console\MapProfileCommand;
+use App\Tantra\Console\MembersOpenAccessCommand;
 use App\Tantra\Console\ReconnectRemindersCommand;
 use App\Tantra\Console\ReportAiUsageCommand;
 use App\Tantra\Console\RepurposeCadenceCommand;
@@ -287,7 +288,7 @@ class TantraServiceProvider extends ServiceProvider
         });
 
         if ($this->app->runningInConsole()) {
-            $this->commands([AiConnectorCommand::class, CheckConnectorsCommand::class, CollectMetricsCommand::class, CreateOwnerCommand::class, DailyDigestCommand::class, BillingTickCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class, TeamAccountsCommand::class, TeamAccountCommand::class, ClerkUnlinkCommand::class, LinkedInSyncCommand::class, AgentJobsCommand::class, RepurposeCadenceCommand::class, GiveawayRepliesCommand::class, EngagementBackfillCommand::class, HealthCommand::class, HeartbeatCommand::class, ReconnectRemindersCommand::class, SyncChannelsCommand::class, RoadmapKeyCommand::class, TrackLinksCommand::class, ReportAiUsageCommand::class, GatewayKeyUsageCommand::class, RoutesJsonCommand::class]);
+            $this->commands([AiConnectorCommand::class, CheckConnectorsCommand::class, CollectMetricsCommand::class, CreateOwnerCommand::class, DailyDigestCommand::class, BillingTickCommand::class, MapProfileCommand::class, InviteTeammateCommand::class, ZernioConnectCommand::class, ManualTasksCommand::class, TeamAccountsCommand::class, TeamAccountCommand::class, ClerkUnlinkCommand::class, MembersOpenAccessCommand::class, LinkedInSyncCommand::class, AgentJobsCommand::class, RepurposeCadenceCommand::class, GiveawayRepliesCommand::class, EngagementBackfillCommand::class, HealthCommand::class, HeartbeatCommand::class, ReconnectRemindersCommand::class, SyncChannelsCommand::class, RoadmapKeyCommand::class, TrackLinksCommand::class, ReportAiUsageCommand::class, GatewayKeyUsageCommand::class, RoutesJsonCommand::class]);
         }
 
         if ($this->app->environment('production') && config('tantra.lean_workers.enabled')) {

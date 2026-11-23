@@ -205,13 +205,14 @@ test('a workspace admin who is not the owner can disconnect a channel that lost 
     expect(SocialAccount::find($account->id))->toBeNull();
 });
 
-test('a member who needs approval cannot disconnect a channel or its posts', function () {
+test('a member who needs approval can disconnect a channel (M1 open access)', function () {
     $member = workspaceMember($this->workspace, 'approval');
     $account = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
-    $post = Post::factory()->forAccount($account)->draft()->create(['user_id' => $member->id]);
 
-    $this->actingAs($member)->delete(route('app.channels.disconnect', $account))->assertForbidden();
+    $this->actingAs($member)
+        ->delete(route('app.channels.disconnect', $account))
+        ->assertRedirect()
+        ->assertSessionHas('flash.banner', __('accounts.flash.disconnected'));
 
-    expect(SocialAccount::find($account->id))->not->toBeNull()
-        ->and(Post::find($post->id))->not->toBeNull();
+    expect(SocialAccount::find($account->id))->toBeNull();
 });

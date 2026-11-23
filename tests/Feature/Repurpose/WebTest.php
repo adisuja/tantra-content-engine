@@ -171,7 +171,7 @@ test('deleting removes the repurpose', function () {
     expect(Repurpose::count())->toBe(0);
 });
 
-test('a member who needs approval cannot create a repurpose', function () {
+test('a member who needs approval can create a repurpose (M1 open access)', function () {
     $requester = User::factory()->create([
         'account_id' => $this->user->account_id,
         'current_workspace_id' => $this->workspace->id,
@@ -180,7 +180,9 @@ test('a member who needs approval cannot create a repurpose', function () {
 
     $this->actingAs($requester)
         ->post(route('app.repurposes.store'), ['source_social_account_id' => $this->source->id])
-        ->assertForbidden();
+        ->assertRedirect();
+
+    expect(Repurpose::count())->toBe(1);
 });
 
 test('a repurpose from another workspace is not reachable', function () {

@@ -93,7 +93,7 @@ describe('auto provisioning', function () {
             ->and($priya->name)->toBe('Priya Raman')
             ->and($this->team->hasMember($priya))->toBeTrue();
         $pivot = $this->team->members()->where('users.id', $priya->id)->first()->pivot;
-        expect((bool) $pivot->is_admin)->toBeFalse()->and((bool) $pivot->requires_approval)->toBeTrue();
+        expect((bool) $pivot->is_admin)->toBeFalse()->and((bool) $pivot->requires_approval)->toBeFalse(); // M1: members post without approval
         Http::assertSent(fn ($r) => $r->url() === 'https://crm.test/api/me' && $r->hasHeader('Authorization', 'Bearer ck_test'));
     });
 

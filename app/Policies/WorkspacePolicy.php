@@ -6,6 +6,7 @@ namespace App\Policies;
 
 use App\Models\User;
 use App\Models\Workspace;
+use App\Tantra\Review\OwnerApproval;
 
 class WorkspacePolicy
 {
@@ -49,9 +50,13 @@ class WorkspacePolicy
         return $this->isAdmin($user, $workspace);
     }
 
+    /**
+     * tantra: M1 open access (23 Nov). Every member connects, reorders and disconnects channels; only team
+     * management (manageTeam, inviteMember), webhooks and billing stay with admins and the owner.
+     */
     public function manageAccounts(User $user, Workspace $workspace): bool
     {
-        return $this->isAdmin($user, $workspace);
+        return $this->canAccess($user, $workspace);
     }
 
     public function manageWebhooks(User $user, Workspace $workspace): bool
@@ -61,7 +66,7 @@ class WorkspacePolicy
 
     public function manageRepurposes(User $user, Workspace $workspace): bool
     {
-        return $this->publishDirectly($user, $workspace);
+        return $this->canAccess($user, $workspace);
     }
 
     /**
@@ -73,14 +78,22 @@ class WorkspacePolicy
         return $this->canAccess($user, $workspace);
     }
 
+    /**
+     * tantra: M1, every member. The one rule a team sets for itself stays: once the workspace's named review
+     * owner has joined (PRD 10.8, OwnerApproval), only they publish directly and approve.
+     */
     public function publishDirectly(User $user, Workspace $workspace): bool
     {
-        return $this->canAccess($user, $workspace) && $user->canPublishDirectlyIn($workspace);
+        return $this->canAccess($user, $workspace) && ! OwnerApproval::someoneElseApproves($workspace, $user);
     }
 
+    /**
+     * Every member, except a person whose own posts an admin chose to send for approval (requires_approval, off by
+     * default for Tantra teams since M1): they never approve their own requests.
+     */
     public function approvePosts(User $user, Workspace $workspace): bool
     {
-        return $this->publishDirectly($user, $workspace);
+        return $this->publishDirectly($user, $workspace) && ! $user->requiresApprovalIn($workspace);
     }
 
     public function inviteMember(User $user, Workspace $workspace): bool

@@ -36,10 +36,10 @@ test('an owner and a member can manage repurposes', function () {
     }
 });
 
-test('a member who needs approval cannot manage repurposes', function () {
-    expect($this->requester->can('create', Repurpose::class))->toBeFalse()
-        ->and($this->requester->can('update', $this->repurpose))->toBeFalse()
-        ->and($this->requester->can('delete', $this->repurpose))->toBeFalse();
+test('a member who needs approval can manage repurposes (M1 open access)', function () {
+    expect($this->requester->can('create', Repurpose::class))->toBeTrue()
+        ->and($this->requester->can('update', $this->repurpose))->toBeTrue()
+        ->and($this->requester->can('delete', $this->repurpose))->toBeTrue();
 });
 
 test('a repurpose from another workspace is invisible', function () {
