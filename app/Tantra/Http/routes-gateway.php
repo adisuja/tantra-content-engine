@@ -24,7 +24,9 @@ use App\Http\Controllers\Api\TikTokCreatorInfoController;
 use App\Http\Controllers\Api\UploadController;
 use App\Http\Controllers\Api\WebhookController;
 use App\Http\Controllers\Api\WorkspaceController;
+use App\Http\Controllers\App\MediaImportController;
 use App\Tantra\Http\Controllers\Api\GatewayBoostController;
+use App\Tantra\Http\Controllers\Api\GatewayCanvaController;
 use App\Tantra\Http\Controllers\Api\GatewayChannelsController;
 use App\Tantra\Http\Controllers\Api\GatewayComposerController;
 use App\Tantra\Http\Controllers\Api\GatewayContentController;
@@ -230,6 +232,10 @@ Route::middleware(['api', 'tantra.gateway', 'throttle:api'])
         Route::post('/tantra/composer/assist', [GatewayComposerController::class, 'assist'])->name('tantra.composer.assist');
         Route::get('/tantra/unsplash', [GatewayComposerController::class, 'unsplash'])->middleware('throttle:unsplash')->name('tantra.unsplash');
         Route::post('/tantra/posts/{post}/duplicate', [GatewayComposerController::class, 'duplicate'])->whereUuid('post')->name('tantra.posts.duplicate');
+
+        // tantra: One Content app PRD 4.1, Design in Canva from the CRM Write media picker, and the export it starts.
+        Route::get('/tantra/canva/start', [GatewayCanvaController::class, 'start'])->middleware('throttle:30,1')->name('tantra.canva.start');
+        Route::get('/tantra/media/imports/{import}', [MediaImportController::class, 'show'])->whereUuid('import')->name('tantra.media.imports.show');
 
         Route::get('/tantra/ops', [GatewayOpsController::class, 'summary'])->name('tantra.ops');
         Route::post('/tantra/ops/failed-jobs/{uuid}/retry', [GatewayOpsController::class, 'retry'])->whereUuid('uuid')->name('tantra.ops.retry');

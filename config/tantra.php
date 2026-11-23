@@ -92,6 +92,13 @@ return [
         'crm_timeout' => (int) env('TANTRA_BILLING_CRM_TIMEOUT', 3),
     ],
 
+    // One Content app PRD 4.1 (critic B6): the engine UI shutoff. On, every engine screen sends people to the Tantra app (a GET goes to
+    // the matching CRM page, any other UI request answers 410); OAuth, webhooks, the API, the gateway, MCP and signed links stay.
+    // The lists are App\Tantra\UiOff\UiRoutes. Rollback: set it back to false.
+    'ui_off' => [
+        'enabled' => (bool) env('TANTRA_UI_OFF', false),
+    ],
+
     'crm' => [
         'url' => env('TANTRA_CRM_URL', 'https://crm-api.usetantra.com'),
         'intake_key' => env('TANTRA_CRM_INTAKE_KEY'),

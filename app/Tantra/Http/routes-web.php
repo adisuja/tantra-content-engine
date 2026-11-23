@@ -10,6 +10,7 @@ use App\Tantra\Http\Controllers\RebrandController;
 use App\Tantra\Http\Controllers\RepostController;
 use App\Tantra\Http\Controllers\RepurposingController;
 use App\Tantra\Http\Controllers\TemplatesController;
+use App\Tantra\Http\Controllers\Web\CanvaStartController;
 use App\Tantra\Http\Controllers\Web\ChannelAppController;
 use App\Tantra\Http\Controllers\Web\ClerkSessionController;
 use App\Tantra\Http\Controllers\Web\ConnectorController;
@@ -242,6 +243,10 @@ Route::middleware(['web', 'signed', 'throttle:20,1'])
 Route::middleware(['web'])
     ->get('tantra/crm-connect/back', [CrmConnectController::class, 'back'])
     ->name('tantra.crm-connect.back');
+// tantra: One Content app PRD 4.1, the CRM Write media picker's signed "Design in Canva" link (CanvaLink).
+Route::middleware(['web', 'signed', 'throttle:20,1'])
+    ->get('tantra/canva/start', CanvaStartController::class)
+    ->name('tantra.canva.start');
 // tantra: signing out of Tantra ends the Engine session too (S-12).
 Route::middleware(['web'])
     ->get('tantra/embed/signout', [EmbedController::class, 'signOutPage'])
