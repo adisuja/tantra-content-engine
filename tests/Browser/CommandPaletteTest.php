@@ -184,7 +184,7 @@ test('invite and connect open their dialogs for admins', function () {
     $page->assertVisible('@connect-channel-dialog')->assertNoJavaScriptErrors();
 });
 
-test('members can create but not invite or connect', function () {
+test('members can create and connect but not invite', function () {
     $this->actingAs(commandPaletteUser('member'));
 
     $page = visit(route('app.posts.index'));
@@ -193,7 +193,7 @@ test('members can create but not invite or connect', function () {
     $page->assertVisible('@command-palette-item-action-create-post')
         ->assertVisible('@command-palette-item-action-create-idea')
         ->assertMissing('@command-palette-item-action-invite-member')
-        ->assertMissing('@command-palette-item-action-connect-channel')
+        ->assertVisible('@command-palette-item-action-connect-channel')
         ->assertNoJavaScriptErrors();
 });
 

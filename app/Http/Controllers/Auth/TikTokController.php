@@ -37,7 +37,7 @@ class TikTokController extends SocialController
 
         $workspace = $request->user()->currentWorkspace;
 
-        $this->authorize('manageAccounts', $workspace);
+        $this->authorize('connectAccounts', $workspace);
 
         return $this->redirectToProvider($request, $this->driver, $this->scopes(), [
             'disable_auto_auth' => 1,

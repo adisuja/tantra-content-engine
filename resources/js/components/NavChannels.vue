@@ -63,7 +63,7 @@ const groupName = computed<string | null>(() =>
 const channels = computed<SidebarChannel[]>(() =>
     orderChannels((page.props.channels as SidebarChannel[]) ?? []),
 );
-const { canManageAccounts, canCreatePost } = useWorkspaceAbilities();
+const { canManageAccounts, canConnectAccounts, canCreatePost } = useWorkspaceAbilities();
 const { vSortableChannel, vSortableChannelList, onHandleKeydown, dragPreview } =
     useChannelOrder({
         list: 'sidebar',
@@ -150,7 +150,7 @@ const channelActionClass =
     'top-1.5 rounded-lg text-sidebar-foreground hover:bg-sidebar-action-hover active:translate-y-[0.5px] transition-[opacity,background-color,color,border-color] duration-[200ms,150ms,150ms,150ms] ease-[ease-in-out,ease-out,ease-out,ease-out] [&>svg]:text-muted-foreground md:opacity-0 md:group-hover/channel:opacity-100 md:group-has-focus-visible/channel:opacity-100 motion-reduce:transition-none';
 
 const reconnect = (channel: SidebarChannel): void => {
-    if (canManageAccounts.value) {
+    if (canConnectAccounts.value) {
         startConnect(channel.platform, channel.id);
     }
 };
@@ -170,7 +170,7 @@ const reconnect = (channel: SidebarChannel): void => {
                     >{{ groupName ?? $t('sidebar.channels') }} ·
                     {{ channels.length }}</template
                 >
-                <template v-else-if="canManageAccounts">{{
+                <template v-else-if="canConnectAccounts">{{
                     $t('sidebar.connect_channels')
                 }}</template>
                 <template v-else>{{ $t('sidebar.channels') }}</template>
@@ -212,7 +212,7 @@ const reconnect = (channel: SidebarChannel): void => {
                         </KbdGroup>
                     </TooltipContent>
                 </Tooltip>
-                <Tooltip v-if="canManageAccounts">
+                <Tooltip v-if="canConnectAccounts">
                     <TooltipTrigger as-child>
                         <SidebarGroupAction
                             as-child
@@ -234,7 +234,7 @@ const reconnect = (channel: SidebarChannel): void => {
                         {{ $t('channels.settings') }}
                     </TooltipContent>
                 </Tooltip>
-                <Tooltip v-if="canManageAccounts">
+                <Tooltip v-if="canConnectAccounts">
                     <TooltipTrigger as-child>
                         <SidebarGroupAction
                             :class="['rounded-lg', headerActionClass]"
@@ -270,7 +270,7 @@ const reconnect = (channel: SidebarChannel): void => {
         >
             <SidebarMenuItem v-if="channels.length === 0" key="empty">
                 <div
-                    v-if="canManageAccounts"
+                    v-if="canConnectAccounts"
                     class="flex items-center gap-2 px-2 pt-1 pb-2"
                 >
                     <Tooltip
@@ -410,7 +410,7 @@ const reconnect = (channel: SidebarChannel): void => {
                                         ring="sidebar"
                                         :reserve-space="!isCollapsedRail"
                                         :status="
-                                            canManageAccounts
+                                            canConnectAccounts
                                                 ? null
                                                 : channel.status
                                         "
@@ -439,7 +439,7 @@ const reconnect = (channel: SidebarChannel): void => {
                             <p
                                 v-if="
                                     isConnectionLost(channel) &&
-                                    !canManageAccounts
+                                    !canConnectAccounts
                                 "
                                 class="px-2 pb-1.5 text-xs text-destructive"
                             >
@@ -464,7 +464,7 @@ const reconnect = (channel: SidebarChannel): void => {
                         </HoverCardContent>
                     </HoverCard>
                     <TooltipProvider
-                        v-if="isConnectionLost(channel) && canManageAccounts"
+                        v-if="isConnectionLost(channel) && canConnectAccounts"
                         :delay-duration="200"
                     >
                         <Tooltip>

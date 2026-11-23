@@ -117,7 +117,7 @@ test('account billing is hidden in the sidebar menu when self-hosted', function 
         ->toBe('0 channels');
 });
 
-test('workspace members do not see channels or plans and billing in the sidebar menu', function () {
+test('workspace members see channels but not plans and billing in the sidebar menu', function () {
     config(['trypost.self_hosted' => false]);
 
     [
@@ -147,7 +147,7 @@ test('workspace members do not see channels or plans and billing in the sidebar 
 
     $page->assertVisible('@sidebar-menu-settings')
         ->assertMissing('@sidebar-menu-billing')
-        ->assertMissing('@sidebar-menu-channels')
+        ->assertVisible('@sidebar-menu-channels')
         ->assertMissing('@sidebar-menu-manage-team')
         ->assertVisible('@logout-button');
 });

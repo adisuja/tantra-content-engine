@@ -35,7 +35,7 @@ class YouTubeController extends SocialController
 
         $workspace = $request->user()->currentWorkspace;
 
-        $this->authorize('manageAccounts', $workspace);
+        $this->authorize('connectAccounts', $workspace);
 
         $this->rememberConnectSession($request, $workspace);
 

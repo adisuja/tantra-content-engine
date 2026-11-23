@@ -337,7 +337,7 @@ if (
     composition.scheduledAt.value = date.nextFullHour(composerTimezone.value);
 }
 const { contentFor } = useXLinkDefuser();
-const { requiresApproval, canManageAccounts } = useWorkspaceAbilities();
+const { requiresApproval, canConnectAccounts } = useWorkspaceAbilities();
 const errors = usePageErrors();
 type ComposerSidePanel = 'templates' | 'assistant' | 'preview';
 const sidePanel = ref<ComposerSidePanel>(
@@ -2618,7 +2618,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                     test-id="composer-accounts-empty"
                                 >
                                     <Button
-                                        v-if="canManageAccounts"
+                                        v-if="canConnectAccounts"
                                         type="button"
                                         size="sm"
                                         data-testid="composer-accounts-connect"

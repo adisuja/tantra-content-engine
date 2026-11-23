@@ -72,13 +72,13 @@ const emit = defineEmits<{
 }>();
 
 const page = usePage();
-const { canManageBilling, canManageTeam, canManageWorkspace } =
+const { canManageBilling, canManageTeam, canManageWorkspace, canConnectAccounts } =
     useWorkspaceAbilities();
 // tantra: inside Tantra (AF-10) the team and its workspaces are Tantra's: no Members or Workspaces here.
 const { inTantra } = useTantraView();
 const selfHosted = computed(() => Boolean(page.props.selfHosted));
 const showBilling = computed(() => canManageBilling.value && !selfHosted.value);
-const showChannels = computed(() => canManageWorkspace.value);
+const showChannels = computed(() => canConnectAccounts.value);
 const planName = computed(() =>
     showBilling.value ? (page.props.auth.plan?.name ?? null) : null,
 );

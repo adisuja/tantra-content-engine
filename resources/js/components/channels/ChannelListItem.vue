@@ -21,6 +21,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
+import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { settings as settingsRoute } from '@/routes/app/channels';
 import {
     accountTypeKey,
@@ -47,6 +48,8 @@ const emit = defineEmits<{
 }>();
 
 const lost = computed(() => isConnectionLost(props.channel));
+// tantra: every member connects and reconnects; settings and disconnect stay with owners and admins.
+const { canManageAccounts } = useWorkspaceAbilities();
 
 const typeKey = computed(() => accountTypeKey(props.channel));
 </script>
@@ -104,7 +107,7 @@ const typeKey = computed(() => accountTypeKey(props.channel));
 
         <div class="flex shrink-0 items-center">
             <Button
-                v-if="showSettings"
+                v-if="showSettings && canManageAccounts"
                 as-child
                 variant="ghost"
                 size="icon"
@@ -157,8 +160,9 @@ const typeKey = computed(() => accountTypeKey(props.channel));
                         <IconRefresh class="size-4" />
                         {{ $t('channels.refresh_connection') }}
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator />
+                    <DropdownMenuSeparator v-if="canManageAccounts" />
                     <DropdownMenuItem
+                        v-if="canManageAccounts"
                         variant="destructive"
                         :data-testid="`channel-disconnect-${channel.id}`"
                         @click="emit('disconnect', channel)"

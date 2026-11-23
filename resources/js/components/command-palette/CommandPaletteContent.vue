@@ -69,7 +69,7 @@ const { open: openConnectDialog } = useConnectChannelDialog();
 const {
     canCreatePost,
     canManageRepurposes,
-    canManageAccounts,
+    canConnectAccounts,
     canManageTeam,
 } = useWorkspaceAbilities();
 
@@ -222,7 +222,7 @@ const channelEntries = computed<CommandPaletteEntry[]>(() =>
 );
 
 const connectEntries = computed<CommandPaletteEntry[]>(() =>
-    hasWorkspace.value && canManageAccounts.value
+    hasWorkspace.value && canConnectAccounts.value
         ? [
               {
                   id: 'action-connect-channel',

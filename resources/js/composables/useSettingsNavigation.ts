@@ -49,7 +49,7 @@ export const useSettingsNavigation = () => {
     const {
         canManageWorkspace,
         canCreatePost,
-        canManageAccounts,
+        canConnectAccounts,
         canManageWebhooks,
         canManageBilling,
     } = useWorkspaceAbilities();
@@ -124,7 +124,7 @@ export const useSettingsNavigation = () => {
                         'channels',
                         channels.url(),
                         IconLayoutGrid,
-                        workspace && canManageAccounts.value,
+                        workspace && canConnectAccounts.value,
                         channelCount.value,
                     ),
                     ...item(

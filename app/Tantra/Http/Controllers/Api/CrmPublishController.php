@@ -207,7 +207,7 @@ class CrmPublishController extends Controller
         if ($found->isEmpty()) {
             return $this->refuse(403, 'unknown_person');
         }
-        $pick = $found->first(fn (array $pair): bool => $pair[1]->can('manageAccounts', $pair[0]));
+        $pick = $found->first(fn (array $pair): bool => $pair[1]->can('connectAccounts', $pair[0]));
         if ($pick === null) {
             return $this->refuse(403, 'cannot_connect', 'Ask the owner of your team to connect this network, or ask them to make you an admin.');
         }

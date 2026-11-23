@@ -240,6 +240,11 @@ test('account owner and workspace admin can manage accounts', function () {
     expect($this->policy->manageAccounts($owner, $workspace))->toBeTrue();
     expect($this->policy->manageAccounts($admin, $workspace))->toBeTrue();
     expect($this->policy->manageAccounts($member, $workspace))->toBeFalse();
+    // tantra: connecting a network is open to every member; settings and disconnect stay with admins.
+    expect($this->policy->connectAccounts($owner, $workspace))->toBeTrue();
+    expect($this->policy->connectAccounts($admin, $workspace))->toBeTrue();
+    expect($this->policy->connectAccounts($member, $workspace))->toBeTrue();
+    expect($this->policy->connectAccounts(User::factory()->create(), $workspace))->toBeFalse();
 });
 
 test('account owner and workspace admin can manage webhooks', function () {

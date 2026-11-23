@@ -54,6 +54,15 @@ class WorkspacePolicy
         return $this->isAdmin($user, $workspace);
     }
 
+    /**
+     * tantra: every member of the team can open Channels and connect (or reconnect) a network, including from the Tantra app
+     * (Import my contacts, Content, Channels). Changing a channel's settings, reordering and disconnecting stay with manageAccounts.
+     */
+    public function connectAccounts(User $user, Workspace $workspace): bool
+    {
+        return $this->canAccess($user, $workspace);
+    }
+
     public function manageWebhooks(User $user, Workspace $workspace): bool
     {
         return $this->isAdmin($user, $workspace);

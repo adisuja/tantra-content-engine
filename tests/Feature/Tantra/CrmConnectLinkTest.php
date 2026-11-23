@@ -111,10 +111,18 @@ it('has no link for a form network or one this Engine has no keys for, so the Ta
     rf10Link($this, ['network' => 'myspace'])->assertStatus(422);
 });
 
-it('refuses an unknown person, an unmapped team and a person who may not add channels', function () {
+it('refuses an unknown person and an unmapped team', function () {
     rf10Link($this, ['actor_email' => 'nobody@example.test'])->assertForbidden()->assertJsonPath('error', 'unknown_person');
     rf10Link($this, ['workspace' => 'ws_unknown'])->assertForbidden()->assertJsonPath('error', 'unknown_person');
-    rf10Link($this, ['actor_email' => 'mo@example.test'])->assertForbidden()->assertJsonPath('error', 'cannot_connect');
+});
+
+it('gives every member of the team a link, not only owners and admins', function () {
+    rf10Link($this, ['actor_email' => 'mo@example.test'])->assertOk()->assertJsonPath('data.network', 'x');
+});
+
+it('returns to Content, Channels with the funnel to send the person back to', function () {
+    $url = 'https://crm.usetantra.com/content/channels?connected=social&import=pf_test123';
+    rf10Link($this, ['return_url' => $url])->assertOk();
 });
 
 it('signs the person in, opens their team and starts the Engine\'s own sign in for that network', function () {

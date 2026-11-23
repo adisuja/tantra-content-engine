@@ -17,7 +17,7 @@ defineProps<{
     hasChannels: boolean;
 }>();
 
-const { canManageAccounts } = useWorkspaceAbilities();
+const { canConnectAccounts } = useWorkspaceAbilities();
 const { open: openConnectDialog } = useConnectChannelDialog();
 
 const tiles = [
@@ -103,7 +103,7 @@ const reachCurve =
                     }}
                 </p>
                 <Button
-                    v-if="!hasChannels && canManageAccounts"
+                    v-if="!hasChannels && canConnectAccounts"
                     class="mt-4"
                     data-testid="analytics-empty-connect"
                     @click="openConnectDialog()"

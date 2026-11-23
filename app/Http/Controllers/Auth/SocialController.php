@@ -101,7 +101,7 @@ class SocialController extends Controller
         $pending = $this->pendingForThisNetwork();
         $workspace = $pending ? Workspace::find($pending->workspaceId()) : null;
 
-        if ($pending?->isReady() && ! ($workspace && $request->user()->can('manageAccounts', $workspace))) {
+        if ($pending?->isReady() && ! ($workspace && $request->user()->can('connectAccounts', $workspace))) {
             $pending->fail('workspace_not_found');
         }
 
@@ -138,7 +138,7 @@ class SocialController extends Controller
 
         $workspace = Workspace::find($pending->workspaceId());
 
-        if (! $workspace || ! $request->user()->can('manageAccounts', $workspace)) {
+        if (! $workspace || ! $request->user()->can('connectAccounts', $workspace)) {
             return $this->failConnection('workspace_not_found');
         }
 
@@ -208,7 +208,7 @@ class SocialController extends Controller
         $this->ensurePlatformEnabled();
 
         $workspace = Workspace::find($pending->workspaceId());
-        if (! $workspace || ! $user->can('manageAccounts', $workspace)) {
+        if (! $workspace || ! $user->can('connectAccounts', $workspace)) {
             throw new ConnectFlowException('workspace_not_found', $this->platform);
         }
 
@@ -245,7 +245,7 @@ class SocialController extends Controller
 
         $workspace = Workspace::find($pending->workspaceId());
 
-        if (! $workspace || ! $request->user()->can('manageAccounts', $workspace)) {
+        if (! $workspace || ! $request->user()->can('connectAccounts', $workspace)) {
             throw new ConnectFlowException('workspace_not_found', $this->platform);
         }
 

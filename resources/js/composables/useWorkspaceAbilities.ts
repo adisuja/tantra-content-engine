@@ -31,6 +31,8 @@ export const useWorkspaceAbilities = () => {
         canCreatePost,
         canManageRepurposes: canPublishDirectly,
         canManageAccounts: canManageWorkspace,
+        // tantra: every member can connect a network (WorkspacePolicy::connectAccounts); settings and disconnect stay admin.
+        canConnectAccounts: canCreatePost,
         canManageWebhooks: canManageWorkspace,
         canManageTeam: canManageWorkspace,
         canManageBilling: isOwner,

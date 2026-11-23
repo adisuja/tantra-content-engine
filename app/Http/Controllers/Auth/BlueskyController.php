@@ -30,7 +30,7 @@ class BlueskyController extends SocialController
 
         $workspace = $request->user()->currentWorkspace;
 
-        $this->authorize('manageAccounts', $workspace);
+        $this->authorize('connectAccounts', $workspace);
 
         $this->rememberConnectSession($request, $workspace);
 
@@ -51,7 +51,7 @@ class BlueskyController extends SocialController
 
         $workspace = $request->user()->currentWorkspace;
 
-        $this->authorize('manageAccounts', $workspace);
+        $this->authorize('connectAccounts', $workspace);
 
         $service = config('trypost.platforms.bluesky.default_service');
 

@@ -60,7 +60,7 @@ test('a channel publish link leads to that channel publish page', function () {
         ->assertNoJavaScriptErrors();
 });
 
-test('members see channels without admin controls', function () {
+test('members see channels and can connect one', function () {
     $user = sidebarChannelsUser('member');
     $channel = SocialAccount::factory()->linkedin()->create(['workspace_id' => $user->current_workspace_id]);
     $this->actingAs($user);
@@ -69,8 +69,8 @@ test('members see channels without admin controls', function () {
     waitFor($page, "@sidebar-channel-{$channel->id}");
 
     $page->assertVisible("@sidebar-channel-{$channel->id}")
-        ->assertMissing('@sidebar-channels-settings')
-        ->assertMissing('@sidebar-channels-connect')
+        ->assertVisible('@sidebar-channels-settings')
+        ->assertVisible('@sidebar-channels-connect')
         ->assertNoJavaScriptErrors();
 });
 
@@ -87,16 +87,16 @@ test('a lost connection is flagged on the channel', function () {
         ->assertNoJavaScriptErrors();
 });
 
-test('a lost connection shows one dot on the avatar for members who cannot reconnect', function () {
+test('a lost connection is flagged for members too, who can reconnect it', function () {
     $user = sidebarChannelsUser('member');
     $channel = SocialAccount::factory()->linkedin()->tokenExpired()->create(['workspace_id' => $user->current_workspace_id]);
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    waitFor($page, "@channel-avatar-disconnected-{$channel->id}");
+    waitFor($page, "@sidebar-channel-{$channel->id}-lost");
 
-    $page->assertVisible("@channel-avatar-disconnected-{$channel->id}")
-        ->assertMissing("@sidebar-channel-{$channel->id}-lost")
+    $page->assertVisible("@sidebar-channel-{$channel->id}-lost")
+        ->assertMissing("@channel-avatar-disconnected-{$channel->id}")
         ->assertNoJavaScriptErrors();
 });
 

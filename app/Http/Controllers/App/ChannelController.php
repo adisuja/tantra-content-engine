@@ -47,7 +47,7 @@ class ChannelController extends Controller
     {
         $workspace = $request->user()->currentWorkspace;
 
-        $this->authorize('manageAccounts', $workspace);
+        $this->authorize('connectAccounts', $workspace);
 
         return Inertia::render('settings/workspace/Channels', [
             'connectedChannels' => SocialAccountResource::collection(

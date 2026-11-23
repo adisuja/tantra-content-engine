@@ -42,7 +42,7 @@ class PreConnectGate
 
         // Someone who may not manage channels is refused by the controller, as before.
         $workspace = $request->user()?->currentWorkspace;
-        if ($workspace === null || ! $request->user()->can('manageAccounts', $workspace)) {
+        if ($workspace === null || ! $request->user()->can('connectAccounts', $workspace)) {
             return $next($request);
         }
 

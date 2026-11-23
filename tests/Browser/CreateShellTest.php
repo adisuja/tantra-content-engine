@@ -95,7 +95,7 @@ test('the create nav item links to ideas and the ideas tab is current', function
         ->assertNoJavaScriptErrors();
 });
 
-test('the new menu hides connect channel and invite member from a member', function () {
+test('the new menu offers connect channel but hides invite member from a member', function () {
     $owner = createShellUser();
     $member = User::factory()->create(['account_id' => $owner->account_id]);
     $owner->currentWorkspace->members()->attach($member->id, membershipPivot('member'));
@@ -108,7 +108,7 @@ test('the new menu hides connect channel and invite member from a member', funct
     waitFor($page, '@sidebar-new-idea');
 
     $page->assertVisible('@sidebar-new-post')
-        ->assertMissing('@sidebar-new-channel')
+        ->assertVisible('@sidebar-new-channel')
         ->assertMissing('@sidebar-new-member')
         ->assertNoJavaScriptErrors();
 });

@@ -35,7 +35,7 @@ class MastodonController extends SocialController
 
         $workspace = $request->user()->currentWorkspace;
 
-        $this->authorize('manageAccounts', $workspace);
+        $this->authorize('connectAccounts', $workspace);
 
         $this->rememberConnectSession($request, $workspace);
 
@@ -58,7 +58,7 @@ class MastodonController extends SocialController
 
         $workspace = $request->user()->currentWorkspace;
 
-        $this->authorize('manageAccounts', $workspace);
+        $this->authorize('connectAccounts', $workspace);
 
         $instance = rtrim($request->instance, '/');
 

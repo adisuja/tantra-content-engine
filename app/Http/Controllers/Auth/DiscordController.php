@@ -21,7 +21,7 @@ class DiscordController extends SocialController
 
         $workspace = $request->user()->currentWorkspace;
 
-        $this->authorize('manageAccounts', $workspace);
+        $this->authorize('connectAccounts', $workspace);
 
         return $this->redirectToProvider($request, $this->driver, config('trypost.platforms.discord.scopes'));
     }

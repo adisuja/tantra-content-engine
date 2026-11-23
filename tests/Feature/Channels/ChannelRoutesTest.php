@@ -30,14 +30,14 @@ test('admins see the channel list of the current workspace only', function () {
         );
 });
 
-test('members cannot open the channel list', function () {
+test('members open the channel list to connect a network', function () {
     $member = User::factory()->create();
     $this->workspace->members()->attach($member->id, membershipPivot('member'));
     $member->update(['current_workspace_id' => $this->workspace->id]);
 
     $this->actingAs($member)
         ->get(route('app.workspace.channels'))
-        ->assertForbidden();
+        ->assertOk();
 });
 
 test('channel pages render publish and insights for the current workspace', function () {

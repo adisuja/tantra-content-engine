@@ -47,7 +47,7 @@ class CrmConnectController extends Controller
         if ($network === 'mastodon' && ($instance === '' || ! Platform::Mastodon->isEnabled())) {
             return $fail();
         }
-        if (! $user instanceof User || ! $workspace instanceof Workspace || ($route === null && $instance === '') || ! $user->can('manageAccounts', $workspace)) {
+        if (! $user instanceof User || ! $workspace instanceof Workspace || ($route === null && $instance === '') || ! $user->can('connectAccounts', $workspace)) {
             return $fail();
         }
 

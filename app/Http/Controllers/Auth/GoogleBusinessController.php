@@ -36,7 +36,7 @@ class GoogleBusinessController extends SocialController
 
         $workspace = $request->user()->currentWorkspace;
 
-        $this->authorize('manageAccounts', $workspace);
+        $this->authorize('connectAccounts', $workspace);
 
         return $this->redirectToProvider($request, $this->driver, $this->scopes, [
             'access_type' => 'offline',

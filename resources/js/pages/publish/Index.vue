@@ -129,7 +129,7 @@ const props = defineProps<Props>();
 const page = usePage();
 // tantra: inside Tantra (AF-10) the team is Tantra's: no "Invite your team" here.
 const { inTantra } = useTantraView();
-const { canManageAccounts, canManageTeam, canPublishDirectly } =
+const { canManageAccounts, canConnectAccounts, canManageTeam, canPublishDirectly } =
     useWorkspaceAbilities();
 
 const userTimezone = computed(
@@ -934,7 +934,7 @@ const submitComposition = (
                 <template #illustration>
                     <PublishEmptyIllustration />
                 </template>
-                <template v-if="canManageAccounts" #action>
+                <template v-if="canConnectAccounts" #action>
                     <div class="flex flex-wrap items-center justify-center gap-2">
                         <Button
                             data-testid="publish-welcome-connect"
@@ -974,7 +974,7 @@ const submitComposition = (
                             {{ $t('posts.publish.new_post') }}
                         </Button>
                         <Button
-                            v-if="canManageAccounts"
+                            v-if="canConnectAccounts"
                             variant="outline"
                             data-testid="publish-empty-connect-more"
                             @click="openConnectDialog()"

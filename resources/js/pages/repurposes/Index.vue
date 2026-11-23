@@ -35,7 +35,7 @@ const props = defineProps<{
 
 const createDialogOpen = ref(false);
 
-const { canManageAccounts } = useWorkspaceAbilities();
+const { canConnectAccounts } = useWorkspaceAbilities();
 const { open: openConnectDialog } = useConnectChannelDialog();
 
 const hasSourceAccounts = computed(() => props.sourceAccounts.length > 0);
@@ -109,7 +109,7 @@ const sourceCaption = (repurpose: Repurpose): string => {
                         {{ $t('repurposes.new') }}
                     </Button>
                 </template>
-                <template v-else-if="canManageAccounts" #action>
+                <template v-else-if="canConnectAccounts" #action>
                     <Button
                         data-testid="repurposes-empty-connect"
                         @click="connectChannel"

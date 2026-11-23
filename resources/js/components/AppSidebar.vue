@@ -55,7 +55,7 @@ import type { SidebarChannel } from '@/types/channel';
 const page = usePage();
 const currentWorkspace = computed(() => page.props.auth.currentWorkspace);
 
-const { canCreatePost, canManageRepurposes, canManageAccounts, canManageTeam } =
+const { canCreatePost, canManageRepurposes, canConnectAccounts, canManageTeam } =
     useWorkspaceAbilities();
 const { inTantra } = useTantraView();
 const { open: openConnectDialog } = useConnectChannelDialog();
@@ -263,10 +263,10 @@ const mainNavItems = computed<NavItem[]>(() => [
                                 >
                             </span>
                         </DropdownMenuItem>
-                        <template v-if="canManageAccounts || canManageTeam">
+                        <template v-if="canConnectAccounts || canManageTeam">
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
-                                v-if="canManageAccounts"
+                                v-if="canConnectAccounts"
                                 data-testid="sidebar-new-channel"
                                 @select="openConnectDialog()"
                             >

@@ -34,7 +34,7 @@ class ThreadsController extends SocialController
 
         $workspace = $request->user()->currentWorkspace;
 
-        $this->authorize('manageAccounts', $workspace);
+        $this->authorize('connectAccounts', $workspace);
 
         $this->rememberConnectSession($request, $workspace);
         $this->scopes = EngagementScopes::with($this->platform, $this->scopes); // tantra: comment and reply scopes, when switched on

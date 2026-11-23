@@ -46,7 +46,7 @@ const channelsById = computed(
 
 const channelFor = (id: string): Channel => channelsById.value.get(id)!;
 
-const { canManageAccounts } = useWorkspaceAbilities();
+const { canConnectAccounts } = useWorkspaceAbilities();
 const { open: openConnectDialog } = useConnectChannelDialog();
 </script>
 
@@ -87,7 +87,7 @@ const { open: openConnectDialog } = useConnectChannelDialog();
                 :test-id="`${testId}-empty`"
             >
                 <Button
-                    v-if="canManageAccounts"
+                    v-if="canConnectAccounts"
                     type="button"
                     size="sm"
                     :data-testid="`${testId}-connect`"

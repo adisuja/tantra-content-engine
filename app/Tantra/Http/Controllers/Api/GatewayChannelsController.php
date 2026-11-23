@@ -113,7 +113,7 @@ class GatewayChannelsController extends Controller
         $data = $request->validate(['instance' => ['required', 'string', 'max:255', 'url:https']]);
         $user = $request->user();
         $workspace = $user->currentWorkspace;
-        $this->authorize('manageAccounts', $workspace);
+        $this->authorize('connectAccounts', $workspace);
         abort_unless(Platform::Mastodon->isEnabled(), Response::HTTP_FORBIDDEN, 'Mastodon is not available on this engine.');
 
         $url = CrmConnectLink::signedUrl($user, $workspace, 'mastodon', 'https://'.CrmConnectLink::RETURN_HOST.'/content/channels', rtrim($data['instance'], '/'));
