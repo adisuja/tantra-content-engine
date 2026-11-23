@@ -95,6 +95,11 @@ return [
     'crm' => [
         'url' => env('TANTRA_CRM_URL', 'https://crm-api.usetantra.com'),
         'intake_key' => env('TANTRA_CRM_INTAKE_KEY'),
+        // One Content app PRD 4.1: the Tantra app people use (not the Worker above). Engine emails and the account picker link here.
+        'app_url' => rtrim((string) env('TANTRA_CRM_APP_URL', 'https://crm.usetantra.com'), '/'),
+        // The account picker: /connect/{platform}/finish sends the person to Content > Channels in the CRM (?finish=<token>), which
+        // lists and picks the accounts over the gateway. Always for a connection started from a CRM link; for every connection when on.
+        'account_picker' => (bool) env('TANTRA_CRM_ACCOUNT_PICKER', false),
         // The CRM's /api/trk key: tracked short links and the traffic report. Server side only, never sent to the browser.
         'api_key' => env('TANTRA_CRM_API_KEY'),
         // Every AI call is sent to the CRM's AI cost ledger (A-05b, tantra:report-ai-usage). Same key as above.

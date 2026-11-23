@@ -8,6 +8,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
 use App\Models\SocialAccount;
 use App\Models\User;
+use App\Tantra\Crm\CrmPaths;
 use App\Tantra\Notify\Notify;
 use App\Tantra\Review\Models\WorkspaceSettings;
 use App\Tantra\Review\ReviewGate;
@@ -60,7 +61,7 @@ final class ReconnectReminders
                 continue;
             }
 
-            Notify::send($user, 'reconnect_channel', ['channel' => self::label($account), 'network' => $account->platform->value, 'state' => $d['state'], 'days_left' => $d['days_left']], new ReconnectChannel($account->workspace?->name ?? 'your workspace', self::label($account), $d['state'], $d['days_left']), $account->workspace?->name, url('/tantra/reconnect/'.$account->id), 'Reconnect');
+            Notify::send($user, 'reconnect_channel', ['channel' => self::label($account), 'network' => $account->platform->value, 'state' => $d['state'], 'days_left' => $d['days_left']], new ReconnectChannel($account->workspace?->name ?? 'your workspace', self::label($account), $d['state'], $d['days_left'], (string) $account->id), $account->workspace?->name, CrmPaths::reconnect((string) $account->id), 'Reconnect');
             $sent++;
         }
 

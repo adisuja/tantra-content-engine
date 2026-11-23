@@ -11,6 +11,7 @@ use App\Enums\Post\Status as PostStatus;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
+use App\Tantra\Kit\KitEvents;
 use App\Tantra\Manual\ManualTask;
 use App\Tantra\Manual\ManualTasks;
 use App\Tantra\Review\Enums\EventKind;
@@ -326,5 +327,16 @@ final class ReviewActions
             $item->save();
             $item->record($kind, $user, $note, $value);
         });
+
+        // One Content app PRD 4.2: the CRM runs or pauses the post's follow-ups on these.
+        $decision = match ($kind) {
+            EventKind::Approve => 'approved',
+            EventKind::Unapprove => 'unapproved',
+            EventKind::Reject => 'rejected',
+            default => null,
+        };
+        if ($decision !== null) {
+            KitEvents::decision($item, $user, $decision);
+        }
     }
 }

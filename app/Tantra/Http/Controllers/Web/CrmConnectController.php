@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Tantra\Http\Controllers\Web;
 
+use App\Enums\SocialAccount\Platform;
+use App\Http\Controllers\Auth\MastodonController;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\Http\SafeHttpFetcher;
 use App\Support\Social\PendingConnection;
 use App\Tantra\Channels\CrmConnectLink;
 use Illuminate\Http\RedirectResponse;
@@ -25,7 +28,7 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class CrmConnectController extends Controller
 {
-    public function __invoke(Request $request): RedirectResponse
+    public function __invoke(Request $request, SafeHttpFetcher $fetcher): Response
     {
         $network = (string) $request->query('network');
         $return = CrmConnectLink::safeReturn($request->query('return'));
@@ -40,7 +43,11 @@ class CrmConnectController extends Controller
         $user = User::query()->find($request->query('u'));
         $workspace = Workspace::query()->find($request->query('w'));
         $route = CrmConnectLink::startRoute($network);
-        if (! $user instanceof User || ! $workspace instanceof Workspace || $route === null || ! $user->can('manageAccounts', $workspace)) {
+        $instance = $network === 'mastodon' ? (string) $request->query('instance', '') : '';
+        if ($network === 'mastodon' && ($instance === '' || ! Platform::Mastodon->isEnabled())) {
+            return $fail();
+        }
+        if (! $user instanceof User || ! $workspace instanceof Workspace || ($route === null && $instance === '') || ! $user->can('manageAccounts', $workspace)) {
             return $fail();
         }
 
@@ -58,6 +65,16 @@ class CrmConnectController extends Controller
 
         $user->switchWorkspace($workspace);
         CrmConnectLink::remember($network, $return);
+
+        if ($instance !== '') {
+            // One Content app PRD 4.1: the engine's own Mastodon step, with the server the person named in the CRM.
+            $request->query->set(CrmConnectLink::FLAG, '1');
+            $request->merge(['instance' => $instance]);
+            $answer = app(MastodonController::class)->authorizeInstance($request, $fetcher);
+            $target = $answer->headers->get('X-Inertia-Location') ?? $answer->headers->get('Location');
+
+            return is_string($target) && str_starts_with($target, $instance.'/oauth/authorize') ? redirect()->away($target) : $fail();
+        }
 
         return redirect()->route($route, [CrmConnectLink::FLAG => '1']);
     }

@@ -94,6 +94,23 @@ final class BoostPlanner
             $byIndex[$index] = $actions[] = $this->action($run, $start, $parent, $index, $person, $entry['by'], 'reply', $entry['text'], $offset, null, $blocker);
         }
 
+        // tantra: One Content app PRD 3.8, the publisher's own reply to their first comment, from their own Unipile account.
+        $authorReply = trim((string) data_get($item->payload, 'author_reply', ''));
+        if ($authorReply !== '' && $run->post !== null) {
+            $author = $run->post->user_id ? User::query()->find($run->post->user_id) : null;
+            $profile = $author ? MemberProfile::query()->find($author->id) : null;
+            $blocker = match (true) {
+                $run->post->platform === Platform::ZernioLinkedInPage => 'a page post answers its first comment by hand',
+                blank(data_get($item->payload, 'first_comment')) => 'there is no first comment to reply to',
+                $author === null => 'the post has no author in the engine',
+                $profile === null => 'their LinkedIn is not matched for team comments yet (Team page)',
+                default => $profile->blocker(),
+            };
+            $person = ['user' => $author, 'profile' => $profile, 'blocker' => $blocker, 'via' => 'unipile'];
+            $offset = max((int) $config['window_min'], $last + 30) + ($this->random)((int) $config['reply_min'], (int) $config['reply_max']);
+            $actions[] = $this->action($run, $start, null, null, $person, 'author', 'author_reply', $authorReply, $offset, null, $blocker);
+        }
+
         return $actions;
     }
 
@@ -110,7 +127,7 @@ final class BoostPlanner
     /**
      * @param  array{user: ?User, profile: ?MemberProfile, blocker: ?string, via?: string}|null  $person
      */
-    private function action(BoostRun $run, CarbonImmutable $start, ?BoostAction $parent, int $index, ?array $person, string $key, string $kind, ?string $text, int $offset, ?string $reaction, ?string $blocker = null): BoostAction
+    private function action(BoostRun $run, CarbonImmutable $start, ?BoostAction $parent, ?int $index, ?array $person, string $key, string $kind, ?string $text, int $offset, ?string $reaction, ?string $blocker = null): BoostAction
     {
         return BoostAction::query()->create([
             'run_id' => $run->id,

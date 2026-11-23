@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tantra\Team;
 
+use App\Tantra\Crm\CrmPaths;
 use App\Tantra\Mail\Kit;
 use App\Tantra\Mail\Letter;
 use Illuminate\Bus\Queueable;
@@ -12,7 +13,7 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-/** tantra: the welcome a teammate gets with their set-password link. */
+/** tantra: the welcome a teammate gets, with the link to Tantra's Content tab. */
 class TeammateWelcome extends Mailable
 {
     use Queueable, SerializesModels;
@@ -36,9 +37,9 @@ class TeammateWelcome extends Mailable
             ->hero(Kit::asset('tantra/email/content-os-hero.gif'), 'One idea goes in, agents turn it into posts for every channel, and views and pipeline come back')
             ->eyebrow("Welcome to {$this->workspaceName}")
             ->lead('Your posts are drafted from your own ideas and ready for you in the Tantra Content Engine. Nothing goes out until you approve it, and approved posts go out from your own profile at their planned time.')
-            ->steps(['Set your password.', 'Connect your LinkedIn under Channels.', 'Approve each post or ask for changes.'])
-            ->cta('Set your password', $this->link)
-            ->note('This link works for 30 days. If it has run out, ask your workspace owner for a new one.')
+            ->steps(['Sign in to Tantra.', 'Connect your LinkedIn under Content, Channels.', 'Approve each post or ask for changes.'])
+            // One Content app PRD 4.1: the engine shows no screens; the person works in Tantra's Content tab.
+            ->cta('Open Tantra', CrmPaths::content())
             ->content();
     }
 }

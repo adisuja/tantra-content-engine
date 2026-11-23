@@ -12,6 +12,7 @@ use App\Models\Media;
 use App\Models\Post;
 use App\Services\Social\LinkCard\LinkCardFetcher;
 use App\Support\PostMediaRules;
+use App\Tantra\Http\Controllers\Web\SignedMediaController;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -136,6 +137,8 @@ class GatewayMediaController extends Controller
             'size' => $m->size,
             'original_filename' => $m->original_filename,
             'url' => $m->url,
+            // One Content app PRD 4.1: a link that works without an engine sign in, for an hour.
+            'signed_url' => SignedMediaController::url($m),
             'alt_text' => data_get($m->meta, 'alt_text'),
             'created_at' => $m->created_at?->toIso8601String(),
         ];

@@ -7,6 +7,7 @@ namespace App\Tantra\Mail;
 use App\Dto\MediaItem;
 use App\Models\Post;
 use App\Models\SocialAccount;
+use App\Tantra\Crm\CrmPaths;
 use App\Tantra\Review\Actions\ImportBatch;
 use App\Tantra\Review\Models\ReviewItem;
 use Carbon\CarbonImmutable;
@@ -56,7 +57,7 @@ final class PostCard
             'more' => $more,
             'first_comment' => $comment !== '' ? $comment : null,
             'media' => self::media((string) ($manifest['type'] ?? ''), array_values(array_filter((array) ($manifest['previews'] ?? []), 'is_string')), $post?->media_items ?? collect()),
-            'url' => $item->shareUrl(),
+            'url' => CrmPaths::review(),
             'link_label' => 'Review this post',
         ];
     }

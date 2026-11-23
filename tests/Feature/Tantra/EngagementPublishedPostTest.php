@@ -53,6 +53,7 @@ it('sends engine.post_published for Engagement only, with the post, the Unipile 
         && $r['event'] === 'engine.post_published'
         && $r['data']['notify'] === false
         && $r['data']['post']['id'] === (string) $this->post->id
+        && $r['data']['post']['review_item_id'] === (string) $this->item->id
         && $r['data']['post']['platform'] === 'unipile-linkedin'
         && $r['data']['post']['url'] === 'https://www.linkedin.com/feed/update/urn:li:share:7400000000000000001/'
         && $r['data']['post']['account']['unipile_account_id'] === 'acc_adi'

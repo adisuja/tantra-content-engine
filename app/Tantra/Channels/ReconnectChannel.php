@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tantra\Channels;
 
+use App\Tantra\Crm\CrmPaths;
 use App\Tantra\Mail\Letter;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -22,6 +23,7 @@ class ReconnectChannel extends Mailable implements ShouldQueue
         public string $channelName,
         public string $state,
         public ?int $daysLeft,
+        public ?string $accountId = null,
     ) {}
 
     public function envelope(): Envelope
@@ -41,7 +43,7 @@ class ReconnectChannel extends Mailable implements ShouldQueue
                 ? "The LinkedIn connection for {$this->channelName} in {$this->workspaceName} stopped working. Scheduled posts there will not go out until you connect it again."
                 : "LinkedIn asks everyone to sign in again every 60 days. The connection for {$this->channelName} in {$this->workspaceName} runs out {$this->dueText()}. Reconnect now and every scheduled post goes out as planned.")
             ->para('It takes about a minute: sign in to LinkedIn and approve the access again.')
-            ->cta('Reconnect LinkedIn', url('/tantra/review'))
+            ->cta('Reconnect LinkedIn', CrmPaths::reconnect($this->accountId))
             ->reason("You get this because you review posts for {$this->workspaceName}.")
             ->content();
     }

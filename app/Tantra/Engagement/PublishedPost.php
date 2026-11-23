@@ -87,6 +87,9 @@ final class PublishedPost
 
         return [
             'id' => (string) $post->id,
+            // One Content app PRD 3.1: the review item this post came from. One item fans out to one post per network, and the CRM
+            // binds the item's follow-up set to every source with this id.
+            'review_item_id' => $item?->id !== null ? (string) $item->id : null,
             'url' => $post->platform_url,
             'platform' => $post->platform?->value,
             'published_at' => $post->published_at?->toIso8601ZuluString(),

@@ -6,6 +6,7 @@ namespace App\Tantra\Boost;
 
 use App\Enums\Post\Status as PostStatus;
 use App\Models\Post;
+use App\Tantra\Kit\KitEvents;
 use App\Tantra\Review\Models\ReviewItem;
 use Carbon\CarbonImmutable;
 use Illuminate\Bus\Queueable;
@@ -50,6 +51,9 @@ class StartBoostRun implements ShouldQueue
         foreach ($actions as $action) {
             if ($action->status === 'queued') {
                 RunBoostAction::dispatch($action->id)->delay($action->run_at);
+            } else {
+                // Skipped at planning (no consent, no LinkedIn): the CRM's kit shows why (PRD 3.8).
+                KitEvents::boostAction($action);
             }
         }
 

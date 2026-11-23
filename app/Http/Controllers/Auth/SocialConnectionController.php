@@ -7,8 +7,10 @@ namespace App\Http\Controllers\Auth;
 use App\Enums\SocialAccount\Platform;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\FinishSocialConnectionRequest;
+use App\Tantra\Channels\AccountPicker;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
@@ -18,8 +20,13 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
  */
 class SocialConnectionController extends Controller
 {
-    public function show(Request $request, Platform $platform): Response
+    public function show(Request $request, Platform $platform): Response|SymfonyResponse
     {
+        // tantra: One Content app PRD 4.1, the CRM's Content > Channels picks the accounts (AccountPicker).
+        if (AccountPicker::enabled($platform) && $request->user() !== null) {
+            return Inertia::location(AccountPicker::handoff($request->user(), $platform));
+        }
+
         return $this->network($platform)->confirm($request);
     }
 
@@ -29,6 +36,12 @@ class SocialConnectionController extends Controller
     }
 
     private function network(Platform $platform): SocialController
+    {
+        return self::networkFor($platform);
+    }
+
+    /** The controller of the network being connected (also used by the CRM's account picker, AccountPicker). */
+    public static function networkFor(Platform $platform): SocialController
     {
         return app(match ($platform) {
             Platform::LinkedIn => LinkedInController::class,

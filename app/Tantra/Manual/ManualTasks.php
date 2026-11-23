@@ -6,6 +6,7 @@ namespace App\Tantra\Manual;
 
 use App\Models\SocialAccount;
 use App\Models\User;
+use App\Tantra\Crm\CrmPaths;
 use App\Tantra\Mail\Kit;
 use App\Tantra\Mail\PostCard;
 use App\Tantra\Notify\Notify;
@@ -148,7 +149,7 @@ final class ManualTasks
                 if ($task->owner !== null) {
                     // text, network and due_label go with the event so the main app can render the same email on its kit (R3, 15 Nov).
                     Notify::send($task->owner, 'manual_task_due', ['task_id' => $task->id, 'kind' => $task->kind, 'post' => (string) $task->item?->engine_post_id, 'due_at' => $task->due_at?->toIso8601String(),
-                        'text' => mb_substr(trim((string) $task->text), 0, 600), 'network' => Kit::networkOf($task->item?->platform), 'due_label' => $task->due_at ? PostCard::when($task->due_at, $task->owner->timezone) : 'now', 'url' => url('/tantra/tasks')], new ManualTaskDue($task->id, $task->kind, (string) $task->item?->engine_post_id, $task->text), null, url('/tantra/tasks'), 'Open the task');
+                        'text' => mb_substr(trim((string) $task->text), 0, 600), 'network' => Kit::networkOf($task->item?->platform), 'due_label' => $task->due_at ? PostCard::when($task->due_at, $task->owner->timezone) : 'now', 'url' => CrmPaths::content()], new ManualTaskDue($task->id, $task->kind, (string) $task->item?->engine_post_id, $task->text), null, CrmPaths::content(), 'Open the task');
                 }
                 $due++;
             });

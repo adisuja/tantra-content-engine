@@ -116,14 +116,16 @@ final class CrmConnectLink
     }
 
     /** The signed link the person opens: it carries the person, the workspace, the network and the return URL, and expires. */
-    public static function signedUrl(User $user, Workspace $workspace, string $network, string $returnUrl): string
+    public static function signedUrl(User $user, Workspace $workspace, string $network, string $returnUrl, ?string $instance = null): string
     {
-        return URL::temporarySignedRoute('tantra.crm-connect', now()->addMinutes(self::TTL_MINUTES), [
+        return URL::temporarySignedRoute('tantra.crm-connect', now()->addMinutes(self::TTL_MINUTES), array_filter([
             'u' => $user->id,
             'w' => $workspace->id,
             'network' => $network,
             'return' => $returnUrl,
-        ]);
+            // One Content app PRD 4.1: Mastodon signs in on the person's own server, named in the CRM (signed with the rest).
+            'instance' => $instance,
+        ], fn (mixed $v): bool => $v !== null));
     }
 
     /** Keeps where to send the person back for this network until the connection ends. */
@@ -164,6 +166,19 @@ final class CrmConnectLink
         Session::forget(self::SESSION_KEY);
 
         return $stored === null ? null : self::withResult($stored['url'], $stored['network'], in_array($result, [self::CONNECTED, self::CANCELLED], true) ? $result : self::FAILED);
+    }
+
+    /**
+     * One Content app PRD 4.1: the CRM link this connection started from, when it came back to Content > Channels (that page runs the
+     * account picker), as {network, url}. Null for any other start.
+     *
+     * @return array{network: string, url: string}|null
+     */
+    public static function channelsReturn(?Platform $platform): ?array
+    {
+        $stored = self::owns($platform) ? self::stored() : null;
+
+        return $stored !== null && parse_url($stored['url'], PHP_URL_PATH) === '/content/channels' ? $stored : null;
     }
 
     /** @return array{network: string, url: string}|null */

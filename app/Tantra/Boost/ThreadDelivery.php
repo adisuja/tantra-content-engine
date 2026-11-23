@@ -9,9 +9,11 @@ use App\Enums\SocialAccount\Status;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
+use App\Tantra\Kit\PostKit;
 use App\Tantra\Review\Models\ReviewItem;
 use App\Tantra\Review\Models\WorkspaceSettings;
 use App\Tantra\Zernio\ZernioClient;
+use Illuminate\Support\Str;
 
 /**
  * tantra: how each part of a post goes out, for the review screen and the boost
@@ -46,9 +48,15 @@ final class ThreadDelivery
             if ($pageKey !== null && $key === $pageKey) {
                 $out[$key] = ['user' => null, 'profile' => null, 'via' => 'zernio', 'blocker' => ZernioClient::configured() ? null : 'Zernio is not set up'];
             } else {
-                $settings = WorkspaceSettings::query()->where('brand_profile_key', $key)
-                    ->whereHas('workspace', fn ($q) => $q->where('account_id', $accountId))->first();
-                $user = $settings?->review_owner_user_id ? User::query()->find($settings->review_owner_user_id) : null;
+                // tantra: One Content app PRD 3.8, a kit entry written for a member with no brand profile is keyed user:<engine user id>.
+                if (str_starts_with($key, PostKit::USER_KEY)) {
+                    $id = substr($key, strlen(PostKit::USER_KEY));
+                    $user = Str::isUuid($id) ? User::query()->where('account_id', $accountId)->find($id) : null;
+                } else {
+                    $settings = WorkspaceSettings::query()->where('brand_profile_key', $key)
+                        ->whereHas('workspace', fn ($q) => $q->where('account_id', $accountId))->first();
+                    $user = $settings?->review_owner_user_id ? User::query()->find($settings->review_owner_user_id) : null;
+                }
                 $profile = $user ? MemberProfile::query()->find($user->id) : null;
 
                 $out[$key] = [
@@ -94,7 +102,7 @@ final class ThreadDelivery
         $people = self::people((string) $item->account_id, $keys, $isPage ? $settings?->brand_profile_key : null, $cache);
 
         $run = $post ? BoostRun::query()->where('post_id', $post->id)->first() : null;
-        $actions = $run ? BoostAction::query()->where('run_id', $run->id)->where('kind', '!=', 'reaction')->get()->keyBy('entry_index') : collect();
+        $actions = $run ? BoostAction::query()->where('run_id', $run->id)->whereNotIn('kind', ['reaction', 'author_reply'])->get()->keyBy('entry_index') : collect();
 
         $entries = [];
         $stateOf = [];
