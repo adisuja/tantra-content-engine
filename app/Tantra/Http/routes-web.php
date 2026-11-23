@@ -30,6 +30,7 @@ use App\Tantra\Http\Controllers\Web\PreviewLinkController;
 use App\Tantra\Http\Controllers\Web\ReconnectController;
 use App\Tantra\Http\Controllers\Web\ReviewItemActionController;
 use App\Tantra\Http\Controllers\Web\ReviewPageController;
+use App\Tantra\Http\Controllers\Web\SignedMediaController;
 use App\Tantra\Http\Controllers\Web\TeamController;
 use App\Tantra\Http\Controllers\Web\ThreadsAppCallbackController;
 use App\Tantra\Http\Controllers\Web\ThreadsRepliesController;
@@ -70,6 +71,12 @@ Route::middleware(['signed', 'throttle:600,1'])
     ->get('tantra/mail-image/{kind}/{src}', MailImageController::class)
     ->where(['kind' => 'cover|thumb|gif', 'src' => '[A-Za-z0-9_-]{4,800}'])
     ->name('tantra.mail.image');
+
+// tantra: One Content app PRD 4.1, a media file by the signed, expiring link the gateway returns (no engine sign in).
+Route::middleware(['signed', 'throttle:600,1'])
+    ->get('tantra/media/{media}/file', SignedMediaController::class)
+    ->whereUuid('media')
+    ->name('tantra.media.signed');
 
 // tantra: turn the daily digest off from the email (signed link; POST is the one-click unsubscribe).
 Route::middleware(['signed', 'throttle:30,1', SubstituteBindings::class])

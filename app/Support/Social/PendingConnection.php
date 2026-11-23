@@ -64,6 +64,30 @@ final class PendingConnection
         Session::forget(self::SESSION_KEY);
     }
 
+    /**
+     * tantra: One Content app PRD 4.1. The whole connection, so the CRM's account picker can finish it later over the gateway
+     * (App\Tantra\Channels\AccountPicker keeps it server side, never in the browser).
+     *
+     * @return array<string, mixed>
+     */
+    public function toArray(): array
+    {
+        return $this->data;
+    }
+
+    /**
+     * tantra: puts a connection kept by toArray() back as the current one, for the request that finishes it.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public static function restore(array $data): self
+    {
+        $pending = new self($data);
+        $pending->save();
+
+        return $pending;
+    }
+
     public function platform(): ?Platform
     {
         return Platform::tryFrom((string) data_get($this->data, 'platform'));

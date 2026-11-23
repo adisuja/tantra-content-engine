@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tantra\Ops;
 
+use App\Tantra\Crm\CrmPaths;
 use App\Tantra\Mail\Letter;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -39,7 +40,7 @@ class MediaMissing extends Mailable implements ShouldQueue
 
         return $letter
             ->para('Open it, attach the file again and save. The slot stays the same.')
-            ->cta('Fix the post', url('/schedule?tab=queue'))
+            ->cta('Fix the post', CrmPaths::content())
             ->reason("You get this because you review posts for {$this->workspaceName}.")
             ->content();
     }

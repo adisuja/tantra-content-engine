@@ -9,6 +9,7 @@ use App\Enums\User\TimeFormat;
 use App\Enums\User\WeekStart;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Tantra\Crm\CrmPaths;
 use App\Tantra\Notify\Notify;
 use App\Tantra\Review\Models\WorkspaceSettings;
 use App\Tantra\Team\TeammateWelcome;
@@ -82,7 +83,7 @@ class InviteTeammateCommand extends Command
         $link = URL::temporarySignedRoute('tantra.join', now()->addDays(self::LINK_DAYS), ['user' => $user->id]);
 
         if ($this->option('send')) {
-            Notify::send($user, 'teammate_welcome', ['link' => $link], new TeammateWelcome($user->name, $workspace->name, $link), $workspace->name, $link, 'Join', now: true);
+            Notify::send($user, 'teammate_welcome', ['link' => CrmPaths::content()], new TeammateWelcome($user->name, $workspace->name, $link), $workspace->name, CrmPaths::content(), 'Open Tantra', now: true);
             $this->components->info("Welcome email sent to {$email}.");
         } else {
             $this->components->info("{$email} can join {$workspace->name}. Link (".self::LINK_DAYS." days): {$link}");

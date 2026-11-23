@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tantra\Boost;
 
+use App\Tantra\Kit\KitEvents;
 use App\Tantra\Unipile\UnipileClient;
 use App\Tantra\Unipile\UnipileException;
 use App\Tantra\Zernio\ZernioClient;
@@ -77,6 +78,15 @@ class RunBoostAction implements ShouldQueue
         }
 
         $parentRef = null;
+        if ($action->kind === 'author_reply') {
+            // The first comment went out from this same account when the post was published (UnipilePublisher).
+            $parentRef = (string) data_get($run->post?->meta, 'unipile_first_comment_id', '');
+            if ($parentRef === '') {
+                $this->settle($action, 'skipped', 'the first comment was not posted through Unipile');
+
+                return;
+            }
+        }
         if ($action->kind === 'reply') {
             $parent = $action->parent;
             if ($parent === null || in_array($parent->status, ['skipped', 'failed'], true)) {
@@ -96,9 +106,10 @@ class RunBoostAction implements ShouldQueue
             $ref = match ($action->kind) {
                 'reaction' => (string) ($unipile->react($action->unipile_account_id, $postRef, $action->reaction_type ?: 'linkedin_like')->json('id') ?? 'reaction'),
                 'comment' => $unipile->comment($action->unipile_account_id, $postRef, (string) $action->text),
-                'reply' => $unipile->reply($action->unipile_account_id, $postRef, (string) $parentRef, (string) $action->text),
+                'reply', 'author_reply' => $unipile->reply($action->unipile_account_id, $postRef, (string) $parentRef, (string) $action->text),
             };
             $action->forceFill(['status' => 'posted', 'unipile_ref' => $ref, 'posted_at' => now(), 'error' => null])->save();
+            KitEvents::boostAction($action);
         } catch (UnipileException $e) {
             if ($e->isRestriction()) {
                 $profile->forceFill(['boost_paused_until' => now()->addHours(72)])->save();
@@ -146,6 +157,7 @@ class RunBoostAction implements ShouldQueue
         $response = $zernio->commentAsPage($accountId, $urn, $commentUrn, (string) $action->text, 'tantra-boost-'.$action->id);
         if ($response->successful() && $response->json('success') !== false) {
             $action->forceFill(['status' => 'posted', 'unipile_ref' => (string) $response->json('data.commentId'), 'posted_at' => now(), 'error' => null])->save();
+            KitEvents::boostAction($action);
             $this->finishRun($run);
 
             return;
@@ -181,6 +193,7 @@ class RunBoostAction implements ShouldQueue
     private function settle(BoostAction $action, string $status, string $reason): void
     {
         $action->forceFill(['status' => $status, 'error' => $reason])->save();
+        KitEvents::boostAction($action);
         $this->finishRun($action->run);
     }
 

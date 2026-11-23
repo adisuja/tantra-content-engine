@@ -19,6 +19,7 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Support\Mail\ApprovalEmailPost;
+use App\Tantra\Crm\CrmPaths;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Support\Str;
@@ -78,7 +79,7 @@ final class CoreEmails
                 ->lead('Five deliveries in a row to this endpoint failed, so the Engine paused it. Anything that relies on it, such as a CRM or Slack sync, is not getting post events.')
                 ->facts([['Endpoint', $mail->webhook->endpoint]])
                 ->para('Check the endpoint is up, then turn the webhook back on. Events from the pause are not sent again.')
-                ->cta('Open the webhook', route('app.webhooks.show', $mail->webhook))
+                ->cta('Open the webhook', CrmPaths::content())
                 ->reason('You get this because you own this webhook.')
                 ->content(),
             $mail instanceof WorkspaceInvite => self::invite($mail)->content(),
@@ -113,7 +114,7 @@ final class CoreEmails
             ->lead("The {$network} connection in {$account->workspace->name} stopped working, usually because the sign in expired or a password changed. Scheduled posts for this channel will not go out until you connect it again.")
             ->facts([['Channel', $account->accountDisplayName()], ['Network', $network], ['Workspace', $account->workspace->name]])
             ->para('Reconnecting takes about a minute and keeps every scheduled post in its slot.')
-            ->cta("Reconnect {$network}", route('app.workspace.channels'))
+            ->cta("Reconnect {$network}", CrmPaths::reconnect((string) $account->id))
             ->reason('You get this because you own this workspace.');
     }
 
@@ -122,7 +123,7 @@ final class CoreEmails
         return Letter::make(self::count($count, 'channel').' stopped posting in '.$workspace->name)
             ->eyebrow('Posting is paused', 'bad')
             ->lead('Our daily check found '.($count === 1 ? 'a channel whose' : 'channels whose').' sign in no longer works. Posts scheduled there will not go out until '.($count === 1 ? 'it is' : 'they are').' reconnected.')
-            ->cta('Reconnect channels', route('app.workspace.channels'))
+            ->cta('Reconnect channels', CrmPaths::reconnect())
             ->reason('You get this because you own this workspace.');
     }
 
@@ -134,17 +135,17 @@ final class CoreEmails
             ->eyebrow('Fix before the slot', 'warn')
             ->lead('The channel '.($mail->count === 1 ? 'this post goes' : 'these posts go').' to is disconnected. Reconnect it before the slot and nothing changes. If not, '.($mail->count === 1 ? 'it fails' : 'they fail').' at the posting time.');
         if ($next !== null) {
-            $letter->card(PostCard::fromPost($next, $mail->workspace->owner?->timezone, route('app.posts.edit', $next), 'Open the post'));
+            $letter->card(PostCard::fromPost($next, $mail->workspace->owner?->timezone, CrmPaths::content(), 'Open the post'));
         }
 
-        return $letter->cta('Reconnect the channel', route('app.workspace.channels'))
+        return $letter->cta('Reconnect the channel', CrmPaths::reconnect())
             ->reason('You get this because you own '.$mail->workspace->name.'.');
     }
 
     private static function noteAdded(PostNoteAdded $mail): Letter
     {
         $post = $mail->note->post;
-        $url = route('app.posts.edit', ['post' => $post, 'comment' => $mail->note->id]);
+        $url = CrmPaths::content();
 
         return Letter::make($mail->author->name.' left a note on your post')
             ->eyebrow('New note')
@@ -163,8 +164,8 @@ final class CoreEmails
         return Letter::make($mail->requester->name.' needs your approval')
             ->eyebrow('Approval needed')
             ->lead('This post waits for you. Approve it and it goes out '.($when ? "on {$when}" : 'in its slot').', or send it back with a note.')
-            ->card($post && $post->platform !== null ? PostCard::fromPost($post, $mail->recipient->timezone, route('app.posts.index', ['tab' => 'approvals']), 'Review the post') : null)
-            ->cta('Review and approve', route('app.posts.index', ['tab' => 'approvals']))
+            ->card($post && $post->platform !== null ? PostCard::fromPost($post, $mail->recipient->timezone, CrmPaths::review(), 'Review the post') : null)
+            ->cta('Review and approve', CrmPaths::review())
             ->reason('You get this because you approve posts in '.($post?->workspace?->name ?? 'this workspace').'.');
     }
 
@@ -176,8 +177,8 @@ final class CoreEmails
         return Letter::make('Your post is approved')
             ->eyebrow('Approved', 'good')
             ->lead($mail->approver->name.' approved it. '.($when ? "It goes out on {$when}." : 'It goes out in its slot.').' Nothing else to do.')
-            ->card($post && $post->platform !== null ? PostCard::fromPost($post, $mail->recipient->timezone, route('app.posts.index', ['tab' => 'queue']), 'See it in the queue') : null)
-            ->cta('Open the queue', route('app.posts.index', ['tab' => 'queue']));
+            ->card($post && $post->platform !== null ? PostCard::fromPost($post, $mail->recipient->timezone, CrmPaths::content(), 'See it in the queue') : null)
+            ->cta('Open the queue', CrmPaths::content());
     }
 
     private static function rejected(PostRejected $mail): Letter
@@ -187,8 +188,8 @@ final class CoreEmails
         return Letter::make($mail->approver->name.' sent your post back')
             ->eyebrow('Changes needed', 'warn')
             ->lead('It is back in your drafts. Read the notes on the post, change it and send it for approval again.')
-            ->card($post && $post->platform !== null ? PostCard::fromPost($post, null, route('app.posts.index', ['tab' => 'drafts']), 'Open the draft') : null)
-            ->cta('Edit the post', route('app.posts.index', ['tab' => 'drafts']));
+            ->card($post && $post->platform !== null ? PostCard::fromPost($post, null, CrmPaths::content(), 'Open the draft') : null)
+            ->cta('Edit the post', CrmPaths::content());
     }
 
     private static function published(Post $post): Letter
@@ -198,11 +199,11 @@ final class CoreEmails
         $letter = Letter::make("Your post is live on {$network}")
             ->eyebrow('Published', 'good')
             ->lead('The first hour decides how far a post travels. Reply to the first comments while people are still reading.')
-            ->card(PostCard::fromPost($post, $post->user?->timezone, $post->platform_url ?: route('app.posts.edit', $post), $post->platform_url ? "See it on {$network}" : 'Open the post'));
+            ->card(PostCard::fromPost($post, $post->user?->timezone, $post->platform_url ?: CrmPaths::content(), $post->platform_url ? "See it on {$network}" : 'Open the post'));
         if ($post->platform_url) {
-            $letter->cta("Open on {$network}", (string) $post->platform_url)->secondary('Open in Tantra', route('app.posts.edit', $post));
+            $letter->cta("Open on {$network}", (string) $post->platform_url)->secondary('Open in Tantra', CrmPaths::content());
         } else {
-            $letter->cta('Open in Tantra', route('app.posts.edit', $post));
+            $letter->cta('Open in Tantra', CrmPaths::content());
         }
 
         return $letter->reason('You get this because you are in '.$post->workspace->name.'. You can turn these off in email settings.');
@@ -217,8 +218,8 @@ final class CoreEmails
             ->eyebrow('Publishing failed', 'bad')
             ->lead("{$network} refused it at the posting time, so it is not live. Fix the cause below and publish it again; the copy and media are kept.")
             ->facts([['Reason', (string) ($post->error_message ?: 'The network did not say why.')], ['Channel', (string) ($post->display_name ?: $network)]])
-            ->card(PostCard::fromPost($post, $post->user?->timezone, route('app.posts.index', ['tab' => 'sent', 'post' => $post->id]), 'Open the post'))
-            ->cta('Fix and publish again', route('app.posts.index', ['tab' => 'sent', 'post' => $post->id]))
+            ->card(PostCard::fromPost($post, $post->user?->timezone, CrmPaths::content(), 'Open the post'))
+            ->cta('Fix and publish again', CrmPaths::content())
             ->reason('You get this because you are in '.$post->workspace->name.'.');
     }
 
@@ -230,7 +231,7 @@ final class CoreEmails
             ->eyebrow('You are invited')
             ->lead("You have been invited to {$workspace} in the Tantra Content Engine, where the team turns ideas into posts for every channel and reviews them before they go out.")
             ->facts([['Role', $mail->invite->is_admin ? 'Admin' : 'Member'], ['Your posts', $mail->invite->requires_approval ? 'Go out after an admin approves them' : 'Go out when you schedule them']])
-            ->cta('Accept the invite', route('app.invites.show', $mail->invite))
+            ->cta('Accept the invite', CrmPaths::content())
             ->note('If you were not expecting this, ignore the email and nothing happens.');
     }
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tantra\Agent;
 
 use App\Models\User;
+use App\Tantra\Crm\CrmPaths;
 use App\Tantra\Notify\Notify;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -56,7 +57,7 @@ final class AgentJobs
             $job->save();
             // Tell the admins there is a job to run (email, and Slack through the CRM's sequence).
             foreach (User::query()->whereIn(DB::raw('lower(email)'), Admin::emails())->whereNotNull('email_verified_at')->get() as $admin) {
-                Notify::send($admin, 'agent_job_waiting', ['kind' => $kind, 'by' => $by->name, 'subject' => "{$by->name} started a {$kind} job", 'text' => "{$by->name} started a {$kind} job. It waits in Studio ops until you press Run."], null, null, url('/tantra/ops'), 'Open Studio ops');
+                Notify::send($admin, 'agent_job_waiting', ['kind' => $kind, 'by' => $by->name, 'subject' => "{$by->name} started a {$kind} job", 'text' => "{$by->name} started a {$kind} job. It waits in Studio ops until you press Run."], null, null, CrmPaths::content(), 'Open Studio ops');
             }
         }
 

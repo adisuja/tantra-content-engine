@@ -29,6 +29,8 @@ beforeEach(function () {
     WorkspaceSettings::query()->create(['workspace_id' => $this->adi->id, 'brand_profile_key' => 'adi', 'review_owner_user_id' => $this->owner->id]);
 
     $mate = User::factory()->create(['account_id' => $this->owner->account_id]);
+    // Members are listed by workspace created_at: under the frozen clock both workspaces tied and Postgres could return either first.
+    $this->travel(1)->seconds();
     $this->ben = Workspace::factory()->create(['account_id' => $this->owner->account_id, 'user_id' => $mate->id, 'name' => 'Ben']);
     WorkspaceSettings::query()->create(['workspace_id' => $this->ben->id, 'brand_profile_key' => 'ben', 'review_owner_user_id' => $mate->id]);
 

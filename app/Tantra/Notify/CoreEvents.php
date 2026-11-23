@@ -19,6 +19,7 @@ use App\Models\Post;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Support\Mail\ApprovalEmailPost;
+use App\Tantra\Crm\CrmPaths;
 use App\Tantra\Mail\CoreEmails;
 use App\Tantra\Mail\Kit;
 use App\Tantra\Mail\PostCard;
@@ -94,28 +95,28 @@ final class CoreEvents
         $data = match (true) {
             $mail instanceof AccountDisconnected => [
                 'channel' => $mail->account->accountDisplayName(), 'network' => Kit::networkOf($mail->account->platform),
-                'workspace' => $mail->account->workspace?->name, 'url' => route('app.workspace.channels'),
+                'workspace' => $mail->account->workspace?->name, 'url' => CrmPaths::reconnect((string) $mail->account->id),
             ],
             $mail instanceof WorkspaceConnectionsDisconnected => [
                 'count' => $mail->disconnectedAccounts->count(), 'workspace' => $mail->workspace->name,
                 'channels' => $mail->disconnectedAccounts->map(fn ($a): string => (string) $a->accountDisplayName())->take(10)->values()->all(),
-                'url' => route('app.workspace.channels'),
+                'url' => CrmPaths::reconnect(),
             ],
             $mail instanceof PostAtRisk => self::atRisk($mail, $to),
             $mail instanceof PostNoteAdded => [
                 'by' => $mail->author->name, 'note' => mb_substr((string) $mail->note->body, 0, 2000), 'workspace' => $mail->note->post?->workspace?->name,
-                'posts' => self::cards($mail->note->post, $to, route('app.posts.edit', ['post' => $mail->note->post, 'comment' => $mail->note->id])),
-                'url' => route('app.posts.edit', ['post' => $mail->note->post, 'comment' => $mail->note->id]),
+                'posts' => self::cards($mail->note->post, $to, CrmPaths::content()),
+                'url' => CrmPaths::content(),
             ],
             $mail instanceof PostApprovalRequested => self::approval($mail->postId, $mail->requester->name, $to, 'approvals', ApprovalEmailPost::time(ApprovalEmailPost::find($mail->postId)?->scheduled_at, $mail->recipient)),
             $mail instanceof PostApproved => self::approval($mail->postId, $mail->approver->name, $to, 'queue', ApprovalEmailPost::goesOutAt(ApprovalEmailPost::find($mail->postId), $mail->recipient)),
             $mail instanceof PostRejected => self::approval($mail->postId, $mail->approver->name, $to, 'drafts', null),
             $mail instanceof PostPublished => self::post($mail->post, $to, true),
             $mail instanceof PostPublishFailed => self::post($mail->post, $to, false),
-            $mail instanceof WebhookPausedMail => ['endpoint' => $mail->webhook->endpoint, 'workspace' => $mail->webhook->workspace?->name, 'url' => route('app.webhooks.show', $mail->webhook)],
+            $mail instanceof WebhookPausedMail => ['endpoint' => $mail->webhook->endpoint, 'workspace' => $mail->webhook->workspace?->name, 'url' => CrmPaths::content()],
             $mail instanceof WorkspaceInvite => [
                 'by' => $mail->invite->invitedBy?->name, 'workspace' => (string) (Workspace::query()->whereIn('id', (array) ($mail->invite->workspaces ?? []))->value('name') ?? 'a workspace'),
-                'admin' => (bool) $mail->invite->is_admin, 'requires_approval' => (bool) $mail->invite->requires_approval, 'url' => route('app.invites.show', $mail->invite),
+                'admin' => (bool) $mail->invite->is_admin, 'requires_approval' => (bool) $mail->invite->requires_approval, 'url' => CrmPaths::content(),
             ],
             default => [],
         };
@@ -146,7 +147,7 @@ final class CoreEvents
     private static function approval(string $postId, string $by, ?User $to, string $tab, ?string $when): array
     {
         $post = ApprovalEmailPost::find($postId);
-        $url = route('app.posts.index', ['tab' => $tab]);
+        $url = $tab === 'approvals' ? CrmPaths::review() : CrmPaths::content();
 
         return ['by' => $by, 'when' => $when, 'post_id' => $postId, 'workspace' => $post?->workspace?->name, 'posts' => self::cards($post, $to, $url), 'url' => $url];
     }
@@ -155,7 +156,7 @@ final class CoreEvents
     private static function post(Post $post, ?User $to, bool $live): array
     {
         $post->loadMissing('socialAccount', 'workspace');
-        $url = $live ? route('app.posts.edit', $post) : route('app.posts.index', ['tab' => 'sent', 'post' => $post->id]);
+        $url = CrmPaths::content();
 
         return [
             'post_id' => (string) $post->id, 'network' => Kit::networkOf($post->platform), 'channel' => $post->display_name,
@@ -172,7 +173,7 @@ final class CoreEvents
 
         return [
             'count' => $mail->count, 'workspace' => $mail->workspace->name, 'post_ids' => array_slice(array_values($mail->postIds), 0, 20),
-            'posts' => $next ? self::cards($next, $to ?? $mail->workspace->owner, route('app.posts.edit', $next)) : [], 'url' => route('app.workspace.channels'),
+            'posts' => $next ? self::cards($next, $to ?? $mail->workspace->owner, CrmPaths::content()) : [], 'url' => CrmPaths::reconnect(),
         ];
     }
 }

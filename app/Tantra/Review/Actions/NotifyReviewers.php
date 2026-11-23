@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tantra\Review\Actions;
 
 use App\Models\User;
+use App\Tantra\Crm\CrmPaths;
 use App\Tantra\Mail\PostCard;
 use App\Tantra\Notify\Notify;
 use App\Tantra\Review\Mail\NumbersToSignOff;
@@ -45,7 +46,7 @@ final class NotifyReviewers
 
                 // The cards go with the event too, so the main app can render the same email on its kit (16 KB data limit: 6 cards).
                 $cards = $sorted->take(6)->map(fn (ReviewItem $i): array => PostCard::fromReviewItem($i, $reviewer->timezone))->values()->all();
-                Notify::send($reviewer, 'review_ready', ['batch' => (string) $batchId, 'count' => $sorted->count(), 'week' => $week, 'workspace' => (string) $workspace?->name, 'url' => url('/tantra/review/'.$batchId), 'posts' => $cards], new ReviewReady(
+                Notify::send($reviewer, 'review_ready', ['batch' => (string) $batchId, 'count' => $sorted->count(), 'week' => $week, 'workspace' => (string) $workspace?->name, 'url' => CrmPaths::review(), 'posts' => $cards], new ReviewReady(
                     (string) $batchId,
                     (string) $workspace?->name,
                     $week,
@@ -57,7 +58,7 @@ final class NotifyReviewers
                     ])->all(),
                     $sorted->pluck('id')->map(fn ($id): string => (string) $id)->all(),
                     $reviewer->timezone,
-                ), (string) $workspace?->name, url('/tantra/review'), 'Open Review');
+                ), (string) $workspace?->name, CrmPaths::review(), 'Open Review');
             }
 
             $adi = User::query()->find($workspace?->account?->owner_id);
@@ -80,7 +81,7 @@ final class NotifyReviewers
             if ($quoting->isNotEmpty()) {
                 // The quotes go with the event so the main app can render the same email on its kit (R3, 15 Nov).
                 $quotes = $quoting->flatMap(fn (array $p): array => array_map(fn (string $n): array => ['number' => $n, 'context' => (string) $p['short']], $p['numbers']))->take(12)->values()->all();
-                Notify::send($adi, 'numbers_to_sign_off', ['batch' => (string) $batchId, 'count' => count($quotes), 'posts' => $quoting->count(), 'quotes' => $quotes, 'workspace' => (string) $workspace?->name, 'url' => url('/tantra/review')], new NumbersToSignOff((string) $batchId, (string) $workspace?->name, $quoting->all()), (string) $workspace?->name, url('/tantra/review'), 'Sign off');
+                Notify::send($adi, 'numbers_to_sign_off', ['batch' => (string) $batchId, 'count' => count($quotes), 'posts' => $quoting->count(), 'quotes' => $quotes, 'workspace' => (string) $workspace?->name, 'url' => CrmPaths::review()], new NumbersToSignOff((string) $batchId, (string) $workspace?->name, $quoting->all()), (string) $workspace?->name, CrmPaths::review(), 'Sign off');
             }
         }
     }

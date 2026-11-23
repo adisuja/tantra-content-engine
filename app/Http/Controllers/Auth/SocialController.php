@@ -18,6 +18,7 @@ use App\Jobs\PostHog\TrackSocialAccountConnected;
 use App\Jobs\PostHog\TrackSocialAccountRemoved;
 use App\Models\Repurpose;
 use App\Models\SocialAccount;
+use App\Models\User;
 use App\Models\Workspace;
 use App\Services\PostHogService;
 use App\Support\Social\PendingConnection;
@@ -186,6 +187,35 @@ class SocialController extends Controller
         Inertia::flash('connectedChannels', $reconnect === null ? $accounts->filter(fn (SocialAccount $account): bool => $account->wasRecentlyCreated)->pluck('id')->values()->all() : []);
 
         return redirect()->route('app.channels.publish', $channel);
+    }
+
+    /**
+     * tantra: One Content app PRD 4.1. The CRM's account picker finishes the connection over the gateway: the identities the person
+     * picked there, stored under the rights they hold now. The connection was put back as the current one first (AccountPicker).
+     *
+     * @param  list<string>  $keys
+     * @return Collection<int, SocialAccount>
+     *
+     * @throws ConnectFlowException|NetworkAlreadyConnectedException
+     */
+    public function finishPicked(User $user, array $keys): Collection
+    {
+        $pending = $this->pendingForThisNetwork();
+        if (! $pending?->isReady()) {
+            throw new ConnectFlowException(ConnectFlowException::SESSION_EXPIRED, $this->platform);
+        }
+
+        $this->ensurePlatformEnabled();
+
+        $workspace = Workspace::find($pending->workspaceId());
+        if (! $workspace || ! $user->can('manageAccounts', $workspace)) {
+            throw new ConnectFlowException('workspace_not_found', $this->platform);
+        }
+
+        $accounts = $this->connectIdentities($workspace, $pending->selected($keys), $this->reconnectAccount($workspace));
+        PendingConnection::forget();
+
+        return $accounts;
     }
 
     /**
